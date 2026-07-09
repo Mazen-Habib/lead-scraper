@@ -3,6 +3,8 @@ import { dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
 import { scrapeGoogleMaps } from './scrapers/googleMaps.js';
 import { scrapeOpenStreetMap } from './scrapers/openStreetMap.js';
+import { scrapeClutch } from './scrapers/clutch.js';
+import { scrapeGoodFirms } from './scrapers/goodFirms.js';
 import { enrichLeads } from './scrapers/emailFinder.js';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -21,11 +23,15 @@ const CSV_COLUMNS = [
   ['linkedin', 'linkedin'],
   ['facebook', 'facebook'],
   ['instagram', 'instagram'],
-  ['rating', 'google_rating'],
+  ['rating', 'rating'],
   ['reviews', 'review_count'],
+  ['company_size', 'company_size'],
+  ['hourly_rate', 'hourly_rate'],
+  ['min_project', 'min_project'],
   ['search_query', 'search_query'],
-  ['maps_url', 'maps_url'],
-  ['source', 'source'],
+  ['maps_url', 'profile_url'],
+  ['source', 'source'], // which data source: google_maps, openstreetmap, clutch, goodfirms
+  ['engine', 'engine'], // which tool fetched it: normal_scraper or cloak_browser
   ['scraped_at', 'scraped_at'],
 ];
 
@@ -79,46 +85,83 @@ function dedupe(leads) {
   });
 }
 
+// Stamps provenance on each lead: the data source and the engine that fetched it.
+function tag(leads, { source, engine, query }) {
+  const now = new Date().toISOString();
+  for (const lead of leads) {
+    lead.source = source;
+    lead.engine = engine;
+    lead.search_query = query;
+    lead.scraped_at = now;
+  }
+  return leads;
+}
+
 async function main() {
   console.log('Lead scraper starting\n');
   let allLeads = [];
+  const cloak = config.cloak || {};
 
-  // --- Source 1: Google Maps ---
+  // === NORMAL SCRAPERS (our own Playwright / HTTP) ===
+
+  // Source: Google Maps
   const gmaps = config.googleMaps || {};
   if (gmaps.enabled) {
     for (const query of gmaps.searches || []) {
-      console.log(`Scraping Google Maps: "${query}"`);
+      console.log(`[normal] Google Maps: "${query}"`);
       try {
         const leads = await scrapeGoogleMaps(query, gmaps.maxResultsPerSearch, gmaps.headless);
-        for (const lead of leads) {
-          lead.search_query = query;
-          lead.source = 'google_maps';
-          lead.scraped_at = new Date().toISOString();
-        }
-        allLeads.push(...leads);
-        console.log(`  -> ${leads.length} leads collected\n`);
+        allLeads.push(...tag(leads, { source: 'google_maps', engine: 'normal_scraper', query }));
+        console.log(`  -> ${leads.length} leads\n`);
       } catch (err) {
-        console.error(`  !! Search failed: ${err.message.split('\n')[0]}\n`);
+        console.error(`  !! Google Maps failed: ${err.message.split('\n')[0]}\n`);
       }
     }
   }
 
-  // --- Source 2: OpenStreetMap (Overpass API) ---
+  // Source: OpenStreetMap (Overpass API)
   const osm = config.openStreetMap || {};
   if (osm.enabled) {
     for (const city of osm.cities || []) {
-      console.log(`Querying OpenStreetMap: "${city}"`);
+      console.log(`[normal] OpenStreetMap: "${city}"`);
       try {
         const leads = await scrapeOpenStreetMap(city);
-        for (const lead of leads) {
-          lead.search_query = city;
-          lead.source = 'openstreetmap';
-          lead.scraped_at = new Date().toISOString();
-        }
-        allLeads.push(...leads);
-        console.log(`  -> ${leads.length} leads collected\n`);
+        allLeads.push(...tag(leads, { source: 'openstreetmap', engine: 'normal_scraper', query: city }));
+        console.log(`  -> ${leads.length} leads\n`);
       } catch (err) {
-        console.error(`  !! OSM query failed: ${err.message.split('\n')[0]}\n`);
+        console.error(`  !! OSM failed: ${err.message.split('\n')[0]}\n`);
+      }
+    }
+  }
+
+  // === CLOAK BROWSER (stealth Chromium for anti-bot-protected directories) ===
+
+  // Source: Clutch.co
+  const clutch = config.clutch || {};
+  if (clutch.enabled) {
+    for (const dir of clutch.directories || []) {
+      console.log(`[cloak] Clutch: "${dir}"`);
+      try {
+        const leads = await scrapeClutch(dir, cloak, clutch.maxPages || 2);
+        allLeads.push(...tag(leads, { source: 'clutch', engine: 'cloak_browser', query: dir }));
+        console.log(`  -> ${leads.length} leads\n`);
+      } catch (err) {
+        console.error(`  !! Clutch failed: ${err.message.split('\n')[0]}\n`);
+      }
+    }
+  }
+
+  // Source: GoodFirms
+  const goodFirms = config.goodFirms || {};
+  if (goodFirms.enabled) {
+    for (const dir of goodFirms.directories || []) {
+      console.log(`[cloak] GoodFirms: "${dir}"`);
+      try {
+        const leads = await scrapeGoodFirms(dir, cloak, goodFirms.maxPages || 2);
+        allLeads.push(...tag(leads, { source: 'goodfirms', engine: 'cloak_browser', query: dir }));
+        console.log(`  -> ${leads.length} leads\n`);
+      } catch (err) {
+        console.error(`  !! GoodFirms failed: ${err.message.split('\n')[0]}\n`);
       }
     }
   }

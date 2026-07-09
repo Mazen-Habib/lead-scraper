@@ -1,40 +1,43 @@
 # Free Lead Scraper (Node.js)
 
-Scrapes tech-industry business leads from **two free sources** — Google Maps and
-OpenStreetMap — then crawls each company's website to extract **emails and social
-links**. Outputs a scoring-ready CSV. No API keys, no paid services.
+Scrapes tech-industry business leads from **four free sources** via **two engines** — our
+own normal scrapers and the CloakBrowser stealth engine — then crawls each company's website
+for **emails and social links**. Every lead is marked with its `source` and `engine`.
+Outputs a scoring-ready CSV. No API keys, no paid services.
 
-## Sources
+> Full strategy, engine rationale, and how to add sources: **[SOURCES.md](SOURCES.md)**.
 
-| Source | What it gives | How | Anti-bot? |
+## Sources & engines
+
+| Source | Engine | What it gives | Anti-bot? |
 |---|---|---|---|
-| **Google Maps** | name, category, website, phone, address, rating, reviews | Playwright browser | scroll/pacing to avoid CAPTCHA |
-| **OpenStreetMap** (Overpass API) | name, category, website, phone, sometimes email + socials | plain HTTP JSON, no browser | none — fully open data |
+| **Google Maps** | `normal_scraper` | name, category, website, phone, address, rating, reviews | scroll/pacing |
+| **OpenStreetMap** (Overpass) | `normal_scraper` | name, category, website, phone, sometimes email | none — open data |
+| **Clutch.co** | `cloak_browser` | name, website, location, rating, reviews, **company size, hourly rate, min project** | Cloudflare (CloakBrowser passes) |
+| **GoodFirms** | `cloak_browser` | name, **website (~100%)**, location, rating, reviews | Cloudflare (CloakBrowser passes) |
 
-Both feed the same pipeline and are deduped together. Enable/disable each in
-[config.json](config.json).
-
-> Note on other directories: YellowPages, Clutch, Yelp etc. are all behind
-> Cloudflare/DataDome and return 403 even with stealth browsers (Patchright was tested).
-> OpenStreetMap was chosen because it's the one high-quality source that's genuinely
-> open. `patchright` is installed if you later want to attempt a protected site.
+**Two engines:** our normal Playwright scraper gets `403` on Cloudflare-protected directories
+(Clutch, GoodFirms) — even `patchright` fails. [CloakBrowser](https://github.com/CloakHQ/CloakBrowser)
+(stealth Chromium with C++-patched fingerprints) passes them, unlocking richer firmographic
+data. Each lead's `engine` column records which tool fetched it. YellowPages still needs a
+residential proxy even with CloakBrowser — add one in `config.cloak.proxy` to enable harder sites.
 
 ## How it works
 
 ```
-config.json (searches + cities)
+config.json (sources + engines)
    │
-   ├── Google Maps scraper (Playwright)
-   └── OpenStreetMap scraper (Overpass API, with mirror failover)
+   ├── NORMAL:  Google Maps (Playwright) + OpenStreetMap (HTTP)
+   └── CLOAK:   Clutch + GoodFirms (CloakBrowser stealth Chromium)
    │
    ▼
-Dedupe (by website/name across both sources)
+Dedupe across ALL sources (by website/name)
    │
    ▼
 Website crawler (fetch + Cheerio) ── emails, LinkedIn, Facebook, Instagram
    │
    ▼
-output/leads.csv
+output/leads.csv   (source + engine columns mark every row)
 ```
 
 ## Usage
@@ -56,11 +59,25 @@ output/leads.csv
        "enabled": true,
        "cities": ["<YOUR CITY>"]
      },
+     "clutch": {
+       "enabled": true,
+       "directories": ["pk/developers", "ae/developers"],
+       "maxPages": 2
+     },
+     "goodFirms": {
+       "enabled": true,
+       "directories": ["directory/country/top-software-development-companies/pakistan"],
+       "maxPages": 2
+     },
+     "cloak": { "headless": true, "humanize": true, "proxy": "" },
      "findEmails": true,
      "outputFile": "output/leads.csv"
    }
    ```
-   The OSM `cities` must be real place names (it resolves them to map areas).
+   - OSM `cities` must be real place names (resolved to map areas).
+   - Clutch slugs: `pk/developers`, `ae/developers`, `us/developers/mobile-app`, …
+   - GoodFirms uses the **full country name** (`.../pakistan`, not `/pk`).
+   - See [SOURCES.md](SOURCES.md) for the full source/engine reference.
 2. **Run:**
    ```
    npm run scrape
@@ -72,11 +89,15 @@ Set `"headless": false` to watch the browser work (useful for debugging).
 ## CSV columns
 
 `company_name, category, website, email, all_emails, phone, address, linkedin,
-facebook, instagram, google_rating, review_count, search_query, maps_url, source, scraped_at`
+facebook, instagram, rating, review_count, company_size, hourly_rate, min_project,
+search_query, profile_url, source, engine, scraped_at`
 
-Columns useful for scoring: `category` (industry fit), `google_rating` / `review_count`
-(business maturity), `email` present (reachability), `linkedin` present (B2B presence),
-`website` present (digital maturity).
+**Provenance:** `source` = data source (`google_maps`, `openstreetmap`, `clutch`,
+`goodfirms`); `engine` = tool that fetched it (`normal_scraper` or `cloak_browser`).
+
+Columns useful for scoring: `category` (industry fit), `rating` / `review_count`
+(maturity), `company_size` / `hourly_rate` (firm profile, from Clutch/GoodFirms),
+`email` present (reachability), `linkedin` present (B2B presence).
 
 ## Notes & limits
 

@@ -1,6 +1,7 @@
 {
   "googleMaps": {
     "enabled": true,
+    "engine": "normal_scraper",
     "searches": [
       "software companies in Karachi",
       "software companies in Lahore",
@@ -13,8 +14,28 @@
   },
   "openStreetMap": {
     "enabled": true,
+    "engine": "normal_scraper",
     "cities": ["Karachi", "Lahore", "Islamabad"]
   },
+  "clutch": {
+    "enabled": true,
+    "engine": "cloak_browser",
+    "directories": ["pk/developers", "pk/it-services", "pk/web-developers"],
+    "maxPages": 2
+  },
+  "goodFirms": {
+    "enabled": true,
+    "engine": "cloak_browser",
+    "directories": [
+      "directory/country/top-software-development-companies/pakistan"
+    ],
+    "maxPages": 2
+  },
+  "cloak": {
+    "headless": true,
+    "humanize": true,
+    "proxy": ""
+  },
   "findEmails": true,
-  "outputFile": "output/leads-pk.csv"
+  "outputFile": "output/leads.csv"
 }
