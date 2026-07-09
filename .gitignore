@@ -1,0 +1,18 @@
+# Separate third-party project living in this folder — not part of the scraper
+CLoak Browser/
+
+# Dependencies
+node_modules/
+
+# Scraped output (contains business contact data — not committed)
+output/
+*.log
+
+# Playwright browser cache
+.cache/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

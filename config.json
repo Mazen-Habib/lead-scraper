@@ -1,0 +1,20 @@
+{
+  "googleMaps": {
+    "enabled": true,
+    "searches": [
+      "software companies in Karachi",
+      "software companies in Lahore",
+      "software companies in Islamabad",
+      "IT services companies in Karachi",
+      "web development agencies in Lahore"
+    ],
+    "maxResultsPerSearch": 30,
+    "headless": true
+  },
+  "openStreetMap": {
+    "enabled": true,
+    "cities": ["Karachi", "Lahore", "Islamabad"]
+  },
+  "findEmails": true,
+  "outputFile": "output/leads-pk.csv"
+}
