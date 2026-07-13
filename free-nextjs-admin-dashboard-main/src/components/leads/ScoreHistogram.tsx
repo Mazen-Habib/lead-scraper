@@ -8,31 +8,29 @@ type Props = {
   buckets: { label: string; count: number }[];
 };
 
-// color per bucket index: 0-2 = D (gray), 3-4 = C (amber), 5-6 = B (blue), 7-9 = A (green)
 const BUCKET_COLORS = [
   "#9ca3af","#9ca3af","#9ca3af",
   "#eab308","#eab308",
-  "#3b82f6","#3b82f6",
+  "#465fff","#465fff",
   "#22c55e","#22c55e","#22c55e",
 ];
 
 export default function ScoreHistogram({ buckets }: Props) {
   const totalScored = buckets.slice(1).reduce((s, b) => s + b.count, 0);
   const unscored = buckets[0]?.count ?? 0;
-  const hasRealScores = totalScored > 0;
 
   const options: ApexOptions = {
     chart: {
       type: "bar",
       fontFamily: "Outfit, sans-serif",
       toolbar: { show: false },
-      animations: { enabled: true, speed: 600 },
+      animations: { enabled: true, speed: 400 },
     },
     plotOptions: {
       bar: {
         horizontal: false,
-        columnWidth: "68%",
-        borderRadius: 5,
+        columnWidth: "60%",
+        borderRadius: 4,
         borderRadiusApplication: "end",
         distributed: true,
       },
@@ -43,58 +41,77 @@ export default function ScoreHistogram({ buckets }: Props) {
     xaxis: {
       categories: buckets.map((b) => b.label),
       labels: {
-        style: { fontSize: "10px", fontFamily: "Outfit, sans-serif", colors: "#9ca3af" },
-        rotate: -30,
+        style: {
+          fontSize: "10px",
+          fontFamily: "Outfit, sans-serif",
+          colors: Array(10).fill("#6b7280"),
+        },
+        rotate: 0,
       },
       axisBorder: { show: false },
       axisTicks: { show: false },
     },
     yaxis: {
       labels: {
-        style: { fontSize: "11px", fontFamily: "Outfit, sans-serif", colors: "#9ca3af" },
+        style: { fontSize: "12px", fontFamily: "Outfit, sans-serif", colors: ["#6b7280"] },
       },
-      min: 0,
     },
     grid: {
       borderColor: "#f3f4f6",
       strokeDashArray: 4,
       yaxis: { lines: { show: true } },
       xaxis: { lines: { show: false } },
-      padding: { left: 0, right: 0 },
+      padding: { left: -10, right: 0 },
     },
     tooltip: {
       y: { formatter: (val: number) => `${val.toLocaleString()} leads` },
+      style: { fontFamily: "Outfit, sans-serif" },
     },
   };
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
-      <div className="flex items-start justify-between mb-1">
+    <div className="rounded-2xl border border-gray-200 bg-white px-5 pb-5 pt-5 dark:border-gray-800 dark:bg-white/[0.03] sm:px-6 sm:pt-6">
+      <div className="flex items-start justify-between mb-5">
         <div>
-          <h3 className="text-base font-semibold text-gray-800 dark:text-white">Score Distribution</h3>
-          <p className="text-xs text-gray-400 mt-0.5">Composite lead quality (0–100)</p>
+          <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">
+            Score Distribution
+          </h3>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            Composite lead quality (0–100)
+          </p>
         </div>
-        <div className="flex items-center gap-3 shrink-0 text-xs text-gray-400 mt-0.5">
-          <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-full bg-gray-300" /> D</span>
-          <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-full bg-amber-400" /> C</span>
-          <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-full bg-blue-500" /> B</span>
-          <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500" /> A</span>
+        <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400 mt-1">
+          <span className="flex items-center gap-1.5">
+            <span className="block h-2 w-2 rounded-full bg-gray-400" />D
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="block h-2 w-2 rounded-full bg-warning-500" />C
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="block h-2 w-2 rounded-full bg-brand-500" />B
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="block h-2 w-2 rounded-full bg-success-500" />A
+          </span>
         </div>
       </div>
 
-      {!hasRealScores && unscored > 0 && (
-        <div className="mb-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 px-3 py-2 text-xs text-amber-600 dark:text-amber-400 flex items-center gap-2">
-          <span>⚠️</span>
-          <span>{unscored.toLocaleString()} leads await scoring — trigger a scraper run to compute scores</span>
+      {!totalScored && unscored > 0 && (
+        <div className="mb-4 rounded-lg border border-warning-200 bg-warning-50 px-3 py-2 text-xs text-warning-600 dark:border-warning-500/20 dark:bg-warning-500/10 dark:text-orange-400">
+          {unscored.toLocaleString()} leads await scoring — trigger a scraper run to compute scores
         </div>
       )}
 
-      <ReactApexChart
-        options={options}
-        series={[{ name: "Leads", data: buckets.map((b) => b.count) }]}
-        type="bar"
-        height={220}
-      />
+      <div className="max-w-full overflow-x-auto custom-scrollbar">
+        <div className="min-w-[400px] xl:min-w-full">
+          <ReactApexChart
+            options={options}
+            series={[{ name: "Leads", data: buckets.map((b) => b.count) }]}
+            type="bar"
+            height={220}
+          />
+        </div>
+      </div>
     </div>
   );
 }
