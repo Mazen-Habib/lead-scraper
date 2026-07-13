@@ -11,7 +11,7 @@ permissions:
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    timeout-minutes: 180    # 3h cap — well above typical ~45min run
+    timeout-minutes: 360    # 6h cap — full global run (85 GM + 35 Clutch + 10 GF + 5 Sortlist + 17 DR)
 
     steps:
       - name: Checkout repo

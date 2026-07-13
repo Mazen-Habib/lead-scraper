@@ -16,6 +16,7 @@ import { enrichLeads } from './scrapers/emailFinder.js';
 import { dedupeKey } from './lib/normalizeUrl.js';
 import { filterByIcp, filterByContactPoint } from './quality/qualityFilter.js';
 import { verifyLeads } from './quality/emailVerifier.js';
+import { scoreLeads } from './quality/scorer.js';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const config = JSON.parse(readFileSync(resolve(root, 'config.json'), 'utf8'));
@@ -42,7 +43,9 @@ const CSV_COLUMNS = [
   ['maps_url', 'profile_url'],
   ['source', 'source'], // which data source: google_maps, openstreetmap, clutch, goodfirms
   ['engine', 'engine'], // which tool fetched it: normal_scraper or cloak_browser
-  ['email_verified', 'email_verified'], // alive/dead/unknown MX check on the email domain
+  ['email_verified', 'email_verified'],
+  ['score', 'score'],   // 0-100 composite quality score
+  ['tier', 'tier'],     // A / B / C / D — A is top tier
   ['scraped_at', 'scraped_at'],
 ];
 
@@ -374,8 +377,14 @@ async function main() {
     console.log(`  -> ${alive} alive, ${dead} dead, ${withEmail - alive - dead} unknown`);
   }
 
+  console.log('Scoring leads...');
+  scoreLeads(allLeads);
+
   allLeads = filterByContactPoint(allLeads);
   console.log(`${allLeads.length} leads after contact-point filter`);
+
+  // Sort: highest score first so the top of the CSV is immediately actionable
+  allLeads.sort((a, b) => (b.score || 0) - (a.score || 0));
 
   // --- Per-run file ---
   const label = config.runLabel ? `-${config.runLabel}` : '';
