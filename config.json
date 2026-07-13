@@ -13,7 +13,7 @@
     "headless": true
   },
   "openStreetMap": {
-    "enabled": true,
+    "enabled": false,
     "engine": "normal_scraper",
     "cities": ["Karachi", "Lahore", "Islamabad"]
   },
@@ -31,10 +31,62 @@
     ],
     "maxPages": 2
   },
+  "githubOrgs": {
+    "enabled": true,
+    "engine": "normal_scraper",
+    "locations": ["Karachi", "Lahore", "Islamabad", "Pakistan"],
+    "token": "",
+    "maxResults": 50
+  },
+  "openCorporates": {
+    "enabled": false,
+    "engine": "normal_scraper",
+    "jurisdiction": "pk",
+    "searches": ["software", "technology"],
+    "apiToken": "",
+    "maxResults": 30
+  },
+  "pseb": {
+    "enabled": true,
+    "engine": "normal_scraper"
+  },
+  "topDevelopers": {
+    "enabled": true,
+    "engine": "normal_scraper",
+    "categories": ["app-development", "web-development"],
+    "maxPages": 2
+  },
+  "sortlist": {
+    "enabled": true,
+    "engine": "cloak_browser",
+    "categories": ["software-development", "web-development"]
+  },
+  "eventbrite": {
+    "enabled": true,
+    "engine": "normal_scraper",
+    "searches": [
+      { "query": "software development", "location": "pakistan" },
+      { "query": "tech", "location": "pakistan" }
+    ],
+    "concurrency": 5
+  },
+  "designRush": {
+    "enabled": true,
+    "engine": "cloak_browser",
+    "categories": ["software-development", "web-development-companies"]
+  },
   "cloak": {
     "headless": true,
     "humanize": true,
     "proxy": ""
+  },
+  "qualityFilter": {
+    "categoryKeywords": [
+      "software", "technology", "tech", "it services", "information technology",
+      "web", "app", "developer", "development", "digital", "systems", "solutions",
+      "computer", "network", "cyber", "cloud", "saas", "mobile", "data",
+      "electronics", "telecommunication"
+    ]
   },
   "findEmails": true,
   "outputFile": "output/leads.csv"

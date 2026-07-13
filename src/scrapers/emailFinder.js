@@ -2,14 +2,14 @@ import * as cheerio from 'cheerio';
 
 const EMAIL_RE = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,}/g;
 // Paths most likely to expose a contact email
-const CANDIDATE_PATHS = ['', '/contact', '/contact-us', '/contactus', '/about', '/about-us'];
+const CANDIDATE_PATHS = ['', '/contact', '/about'];
 // Junk matches that regex picks up from asset filenames / trackers
 const JUNK_PATTERNS =
   /\.(png|jpe?g|gif|svg|webp|css|js)$|sentry|wixpress|example\.(com|org)|@2x|@3x|^(xxx|email|name|user|your|test|firstname|lastname)@|@(xxx|domain|yourdomain|yoursite|sentry|example)\.|placeholder/i;
 
 async function fetchPage(url) {
   const res = await fetch(url, {
-    signal: AbortSignal.timeout(12000),
+    signal: AbortSignal.timeout(6000),
     headers: {
       'User-Agent':
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
@@ -86,7 +86,7 @@ export async function findContacts(website) {
 }
 
 /** Runs findContacts over many leads with limited concurrency. */
-export async function enrichLeads(leads, concurrency = 5) {
+export async function enrichLeads(leads, concurrency = 15) {
   const queue = leads.filter((l) => l.website);
   let done = 0;
 
@@ -95,13 +95,18 @@ export async function enrichLeads(leads, concurrency = 5) {
       const lead = queue.shift();
       try {
         const c = await findContacts(lead.website);
-        lead.email = c.emails[0] || '';
-        lead.all_emails = c.emails.join('; ');
-        lead.linkedin = c.linkedin;
-        lead.facebook = c.facebook;
-        lead.instagram = c.instagram;
+        // Merge crawler results with scraper-provided values — prefer the
+        // crawler's contact page email (more reliable) but never blank-out
+        // a field that the original scraper already populated.
+        const prevEmail = lead.email || '';
+        lead.email = c.emails[0] || prevEmail;
+        const emailSet = new Set([...c.emails, ...(prevEmail ? [prevEmail] : [])]);
+        lead.all_emails = [...emailSet].filter(Boolean).join('; ');
+        lead.linkedin = c.linkedin || lead.linkedin || '';
+        lead.facebook = c.facebook || lead.facebook || '';
+        lead.instagram = c.instagram || lead.instagram || '';
       } catch {
-        /* leave fields empty */
+        /* leave fields as-is on error */
       }
       done++;
       process.stdout.write(`  Enriched ${done} websites...\r`);

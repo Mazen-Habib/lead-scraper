@@ -5,7 +5,17 @@ import { scrapeGoogleMaps } from './scrapers/googleMaps.js';
 import { scrapeOpenStreetMap } from './scrapers/openStreetMap.js';
 import { scrapeClutch } from './scrapers/clutch.js';
 import { scrapeGoodFirms } from './scrapers/goodFirms.js';
+import { scrapeGithubOrgs } from './scrapers/githubOrgs.js';
+import { scrapeOpenCorporates } from './scrapers/openCorporates.js';
+import { scrapePseb } from './scrapers/pseb.js';
+import { scrapeTopDevelopers } from './scrapers/topDevelopers.js';
+import { scrapeSortlist } from './scrapers/sortlist.js';
+import { scrapeEventbrite } from './scrapers/eventbrite.js';
+import { scrapeDesignRush } from './scrapers/designRush.js';
 import { enrichLeads } from './scrapers/emailFinder.js';
+import { dedupeKey } from './lib/normalizeUrl.js';
+import { filterByIcp, filterByContactPoint } from './quality/qualityFilter.js';
+import { verifyLeads } from './quality/emailVerifier.js';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const config = JSON.parse(readFileSync(resolve(root, 'config.json'), 'utf8'));
@@ -32,6 +42,7 @@ const CSV_COLUMNS = [
   ['maps_url', 'profile_url'],
   ['source', 'source'], // which data source: google_maps, openstreetmap, clutch, goodfirms
   ['engine', 'engine'], // which tool fetched it: normal_scraper or cloak_browser
+  ['email_verified', 'email_verified'], // alive/dead/unknown MX check on the email domain
   ['scraped_at', 'scraped_at'],
 ];
 
@@ -75,14 +86,27 @@ async function writeCsv(records, outPath, attempts = 8) {
   }
 }
 
+// Merge-dedup: for each unique company key, merge all scraped versions so
+// the final lead has the richest possible set of fields (e.g. Clutch provides
+// rating/company_size while GitHub provides email — both survive).
 function dedupe(leads) {
-  const seen = new Set();
-  return leads.filter((lead) => {
-    const key = (lead.website || lead.name).toLowerCase().replace(/\/$/, '');
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+  const byKey = new Map();
+  for (const lead of leads) {
+    const key = dedupeKey(lead);
+    if (!key) continue;
+    if (!byKey.has(key)) {
+      byKey.set(key, { ...lead });
+    } else {
+      const base = byKey.get(key);
+      for (const [field] of CSV_COLUMNS) {
+        if (!base[field] && lead[field]) base[field] = lead[field];
+      }
+    }
+  }
+  const merged = [...byKey.values()];
+  const dropped = leads.length - merged.length;
+  if (dropped > 0) console.log(`  ${dropped} duplicate leads merged`);
+  return merged;
 }
 
 // Stamps provenance on each lead: the data source and the engine that fetched it.
@@ -134,6 +158,82 @@ async function main() {
     }
   }
 
+  // Source: GitHub Organizations (free REST API)
+  const githubOrgs = config.githubOrgs || {};
+  if (githubOrgs.enabled) {
+    for (const location of githubOrgs.locations || []) {
+      console.log(`[normal] GitHub Orgs: "${location}"`);
+      try {
+        const leads = await scrapeGithubOrgs(location, { token: githubOrgs.token, maxResults: githubOrgs.maxResults });
+        allLeads.push(...tag(leads, { source: 'github_orgs', engine: 'normal_scraper', query: location }));
+        console.log(`  -> ${leads.length} leads\n`);
+      } catch (err) {
+        console.error(`  !! GitHub Orgs failed: ${err.message.split('\n')[0]}\n`);
+      }
+    }
+  }
+
+  // Source: OpenCorporates (opt-in, needs config.openCorporates.apiToken)
+  const openCorporates = config.openCorporates || {};
+  if (openCorporates.enabled) {
+    for (const query of openCorporates.searches || []) {
+      console.log(`[normal] OpenCorporates: "${query}"`);
+      try {
+        const leads = await scrapeOpenCorporates(openCorporates.jurisdiction || 'pk', query, {
+          apiToken: openCorporates.apiToken,
+          maxResults: openCorporates.maxResults,
+        });
+        allLeads.push(...tag(leads, { source: 'opencorporates', engine: 'normal_scraper', query }));
+        console.log(`  -> ${leads.length} leads\n`);
+      } catch (err) {
+        console.error(`  !! OpenCorporates failed: ${err.message.split('\n')[0]}\n`);
+      }
+    }
+  }
+
+  // Source: PSEB / TechDestination member directory
+  const pseb = config.pseb || {};
+  if (pseb.enabled) {
+    console.log('[normal] PSEB/TechDestination');
+    try {
+      const leads = await scrapePseb();
+      allLeads.push(...tag(leads, { source: 'pseb', engine: 'normal_scraper', query: 'techdestination profiles' }));
+      console.log(`  -> ${leads.length} leads\n`);
+    } catch (err) {
+      console.error(`  !! PSEB failed: ${err.message.split('\n')[0]}\n`);
+    }
+  }
+
+  // Source: TopDevelopers.co
+  const topDevelopers = config.topDevelopers || {};
+  if (topDevelopers.enabled) {
+    for (const category of topDevelopers.categories || []) {
+      console.log(`[normal] TopDevelopers: "${category}"`);
+      try {
+        const leads = await scrapeTopDevelopers(category, topDevelopers.maxPages || 2);
+        allLeads.push(...tag(leads, { source: 'topdevelopers', engine: 'normal_scraper', query: category }));
+        console.log(`  -> ${leads.length} leads\n`);
+      } catch (err) {
+        console.error(`  !! TopDevelopers failed: ${err.message.split('\n')[0]}\n`);
+      }
+    }
+  }
+
+  // Source: Eventbrite tech-event organizers
+  const eventbrite = config.eventbrite || {};
+  if (eventbrite.enabled) {
+    for (const search of eventbrite.searches || []) {
+      console.log(`[normal] Eventbrite: "${search.query}" / "${search.location}"`);
+      try {
+        const leads = await scrapeEventbrite(search.query, search.location, { concurrency: eventbrite.concurrency });
+        allLeads.push(...tag(leads, { source: 'eventbrite', engine: 'normal_scraper', query: `${search.query}/${search.location}` }));
+        console.log(`  -> ${leads.length} leads\n`);
+      } catch (err) {
+        console.error(`  !! Eventbrite failed: ${err.message.split('\n')[0]}\n`);
+      }
+    }
+  }
+
   // === CLOAK BROWSER (stealth Chromium for anti-bot-protected directories) ===
 
   // Source: Clutch.co
@@ -166,15 +266,57 @@ async function main() {
     }
   }
 
+  // Source: Sortlist
+  const sortlist = config.sortlist || {};
+  if (sortlist.enabled) {
+    for (const category of sortlist.categories || []) {
+      console.log(`[cloak] Sortlist: "${category}"`);
+      try {
+        const leads = await scrapeSortlist(category, cloak);
+        allLeads.push(...tag(leads, { source: 'sortlist', engine: 'cloak_browser', query: category }));
+        console.log(`  -> ${leads.length} leads\n`);
+      } catch (err) {
+        console.error(`  !! Sortlist failed: ${err.message.split('\n')[0]}\n`);
+      }
+    }
+  }
+
+  // Source: DesignRush
+  const designRush = config.designRush || {};
+  if (designRush.enabled) {
+    for (const category of designRush.categories || []) {
+      console.log(`[cloak] DesignRush: "${category}"`);
+      try {
+        const leads = await scrapeDesignRush(category, cloak);
+        allLeads.push(...tag(leads, { source: 'designrush', engine: 'cloak_browser', query: category }));
+        console.log(`  -> ${leads.length} leads\n`);
+      } catch (err) {
+        console.error(`  !! DesignRush failed: ${err.message.split('\n')[0]}\n`);
+      }
+    }
+  }
+
   allLeads = dedupe(allLeads);
   console.log(`${allLeads.length} unique leads after dedupe`);
 
+  allLeads = filterByIcp(allLeads, config);
+  console.log(`${allLeads.length} leads after ICP/category filter`);
+
   if (config.findEmails) {
     console.log('Crawling company websites for emails and social links...');
-    await enrichLeads(allLeads);
+    await enrichLeads(allLeads, 15);
     const withEmail = allLeads.filter((l) => l.email).length;
     console.log(`  -> ${withEmail}/${allLeads.length} leads have an email`);
+
+    console.log('Verifying email domains (MX check)...');
+    await verifyLeads(allLeads);
+    const alive = allLeads.filter((l) => l.email_verified === 'alive').length;
+    const dead = allLeads.filter((l) => l.email_verified === 'dead').length;
+    console.log(`  -> ${alive} alive, ${dead} dead, ${withEmail - alive - dead} unknown`);
   }
+
+  allLeads = filterByContactPoint(allLeads);
+  console.log(`${allLeads.length} leads after contact-point filter`);
 
   const outPath = resolve(root, config.outputFile);
   mkdirSync(dirname(outPath), { recursive: true });

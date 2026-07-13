@@ -1,40 +1,66 @@
 # Free Lead Scraper (Node.js)
 
-Scrapes tech-industry business leads from **four free sources** via **two engines** — our
-own normal scrapers and the CloakBrowser stealth engine — then crawls each company's website
-for **emails and social links**. Every lead is marked with its `source` and `engine`.
-Outputs a scoring-ready CSV. No API keys, no paid services.
+Scrapes tech-industry business leads from **eleven free sources** (plus one opt-in API) via
+**two engines** — our own normal scrapers and the CloakBrowser stealth engine — then crawls
+each company's website for **emails and social links**, verifies email domains are actually
+mail-capable (free MX/DNS check), and filters out off-ICP or contact-less leads before
+anything hits the CSV. Every lead is marked with its `source` and `engine`. No API keys, no
+paid services required.
 
-> Full strategy, engine rationale, and how to add sources: **[SOURCES.md](SOURCES.md)**.
+> Full strategy, engine rationale, quality/dead-email filtering, and how to add sources:
+> **[SOURCES.md](SOURCES.md)**.
 
 ## Sources & engines
 
-| Source | Engine | What it gives | Anti-bot? |
-|---|---|---|---|
-| **Google Maps** | `normal_scraper` | name, category, website, phone, address, rating, reviews | scroll/pacing |
-| **OpenStreetMap** (Overpass) | `normal_scraper` | name, category, website, phone, sometimes email | none — open data |
-| **Clutch.co** | `cloak_browser` | name, website, location, rating, reviews, **company size, hourly rate, min project** | Cloudflare (CloakBrowser passes) |
-| **GoodFirms** | `cloak_browser` | name, **website (~100%)**, location, rating, reviews | Cloudflare (CloakBrowser passes) |
+| Source | Engine | What it gives |
+|---|---|---|
+| **Google Maps** | `normal_scraper` | name, category, website, phone, address, rating, reviews |
+| **OpenStreetMap** (Overpass) | `normal_scraper` | name, category, website, phone, sometimes email |
+| **Clutch.co** | `cloak_browser` | name, website, location, rating, reviews, **company size, hourly rate, min project** |
+| **GoodFirms** | `cloak_browser` | name, **website (~100%)**, location, rating, reviews |
+| **GitHub Organizations** (API) | `normal_scraper` | name, website, email, bio, repo count |
+| **PSEB / TechDestination** | `normal_scraper` | name, category, website or LinkedIn, location |
+| **TopDevelopers.co** | `normal_scraper` | name, website, rating, reviews, company size, hourly rate, min project |
+| **Sortlist** | `cloak_browser` | name, website, reviews count, team size |
+| **Eventbrite** | `normal_scraper` | organizer name, website, socials, event venue |
+| **DesignRush** | `cloak_browser` | name, website, rating, reviews, top service category |
+| **OpenCorporates** (API, opt-in) | `normal_scraper` | name, company type, address — needs your own `apiToken` |
 
-**Two engines:** our normal Playwright scraper gets `403` on Cloudflare-protected directories
-(Clutch, GoodFirms) — even `patchright` fails. [CloakBrowser](https://github.com/CloakHQ/CloakBrowser)
-(stealth Chromium with C++-patched fingerprints) passes them, unlocking richer firmographic
-data. Each lead's `engine` column records which tool fetched it. YellowPages still needs a
-residential proxy even with CloakBrowser — add one in `config.cloak.proxy` to enable harder sites.
+**Two engines:** our normal Playwright/`fetch` scraper gets `403` on Cloudflare-protected
+directories (Clutch, GoodFirms, Sortlist, DesignRush) — even `patchright` fails, and in
+Sortlist's case even plain Node `fetch` gets TLS-fingerprinted and blocked while `curl` on
+the identical URL succeeds. [CloakBrowser](https://github.com/CloakHQ/CloakBrowser) (stealth
+Chromium with C++-patched fingerprints) passes them, unlocking richer firmographic data.
+Each lead's `engine` column records which tool fetched it.
+
+Several other sources were evaluated and found not viable (YellowPages, Upwork, Fiverr,
+PeoplePerHour, Crunchbase, G2, Product Hunt, Rozee.pk, and more) — see the "Evaluated, not
+viable" table in [SOURCES.md](SOURCES.md) for why each was ruled out rather than shipped
+as a non-functional scraper.
 
 ## How it works
 
 ```
 config.json (sources + engines)
    │
-   ├── NORMAL:  Google Maps (Playwright) + OpenStreetMap (HTTP)
-   └── CLOAK:   Clutch + GoodFirms (CloakBrowser stealth Chromium)
+   ├── NORMAL:  Google Maps, OpenStreetMap, GitHub Orgs, OpenCorporates,
+   │            PSEB, TopDevelopers, Eventbrite
+   └── CLOAK:   Clutch, GoodFirms, Sortlist, DesignRush (CloakBrowser stealth Chromium)
    │
    ▼
-Dedupe across ALL sources (by website/name)
+Dedupe across ALL sources (normalized website/name key)
+   │
+   ▼
+ICP/category filter
    │
    ▼
 Website crawler (fetch + Cheerio) ── emails, LinkedIn, Facebook, Instagram
+   │
+   ▼
+MX-based email verification (free DNS check, no API key)
+   │
+   ▼
+Contact-point filter (drops leads with no phone/LinkedIn/reachable email)
    │
    ▼
 output/leads.csv   (source + engine columns mark every row)
@@ -70,6 +96,7 @@ output/leads.csv   (source + engine columns mark every row)
        "maxPages": 2
      },
      "cloak": { "headless": true, "humanize": true, "proxy": "" },
+     "qualityFilter": { "categoryKeywords": ["software", "technology", "..."] },
      "findEmails": true,
      "outputFile": "output/leads.csv"
    }
@@ -77,7 +104,13 @@ output/leads.csv   (source + engine columns mark every row)
    - OSM `cities` must be real place names (resolved to map areas).
    - Clutch slugs: `pk/developers`, `ae/developers`, `us/developers/mobile-app`, …
    - GoodFirms uses the **full country name** (`.../pakistan`, not `/pk`).
-   - See [SOURCES.md](SOURCES.md) for the full source/engine reference.
+   - Sortlist/DesignRush use `categories` (e.g. `software-development`); GitHub Orgs uses
+     `locations` (free-text); Eventbrite uses `searches: [{ query, location }]`.
+   - `qualityFilter.categoryKeywords` controls the ICP filter — leads whose category/name
+     doesn't match any keyword are dropped before enrichment.
+   - `openCorporates` is disabled by default — set `apiToken` and `enabled: true` to use it.
+   - See [SOURCES.md](SOURCES.md) for the full source/engine reference and why some
+     evaluated sources (Upwork, Fiverr, YellowPages, Crunchbase, G2, …) aren't wired in.
 2. **Run:**
    ```
    npm run scrape
@@ -90,14 +123,21 @@ Set `"headless": false` to watch the browser work (useful for debugging).
 
 `company_name, category, website, email, all_emails, phone, address, linkedin,
 facebook, instagram, rating, review_count, company_size, hourly_rate, min_project,
-search_query, profile_url, source, engine, scraped_at`
+search_query, profile_url, source, engine, email_verified, scraped_at`
 
 **Provenance:** `source` = data source (`google_maps`, `openstreetmap`, `clutch`,
-`goodfirms`); `engine` = tool that fetched it (`normal_scraper` or `cloak_browser`).
+`goodfirms`, `github_orgs`, `pseb`, `topdevelopers`, `sortlist`, `eventbrite`,
+`designrush`, `opencorporates`); `engine` = tool that fetched it (`normal_scraper` or
+`cloak_browser`).
+
+**Quality:** every row that reaches the CSV already passed the ICP/category filter and the
+contact-point filter (see [SOURCES.md](SOURCES.md)). `email_verified` records the free
+MX/DNS check on the email's domain: `alive`, `dead`, or `unknown` (DNS hiccup — not treated
+as dead so a flaky lookup never wrongly drops a good lead).
 
 Columns useful for scoring: `category` (industry fit), `rating` / `review_count`
-(maturity), `company_size` / `hourly_rate` (firm profile, from Clutch/GoodFirms),
-`email` present (reachability), `linkedin` present (B2B presence).
+(maturity), `company_size` / `hourly_rate` (firm profile, from Clutch/GoodFirms/TopDevelopers),
+`email` + `email_verified=alive` (reachability), `linkedin` present (B2B presence).
 
 ## Notes & limits
 
