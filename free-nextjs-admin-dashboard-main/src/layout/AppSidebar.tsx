@@ -243,15 +243,15 @@ const AppSidebar: React.FC = () => {
                 className="dark:hidden"
                 src="/images/logo/logo.svg"
                 alt="Lead Portal"
-                width={150}
-                height={40}
+                width={160}
+                height={29}
               />
               <Image
                 className="hidden dark:block"
                 src="/images/logo/logo-dark.svg"
                 alt="Lead Portal"
-                width={150}
-                height={40}
+                width={160}
+                height={29}
               />
             </>
           ) : (
