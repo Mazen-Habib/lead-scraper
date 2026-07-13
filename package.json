@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "cheerio": "^1.0.0",
-    "cloakbrowser": "^0.4.9",
+    "cloakbrowser": "^0.4.10",
     "csv-writer": "^1.6.0",
     "patchright": "^1.61.1",
     "playwright": "^1.45.0",

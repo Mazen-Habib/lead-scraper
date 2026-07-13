@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, mkdirSync } from 'fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
 import { dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
 import { scrapeGoogleMaps } from './scrapers/googleMaps.js';
@@ -57,6 +57,57 @@ function toCsv(records) {
     CSV_COLUMNS.map(([id]) => csvCell(rec[id])).join(',')
   );
   return [header, ...rows].join('\r\n') + '\r\n';
+}
+
+function runTimestamp() {
+  const n = new Date();
+  const pad = (x) => String(x).padStart(2, '0');
+  return `${n.getFullYear()}-${pad(n.getMonth() + 1)}-${pad(n.getDate())}-${pad(n.getHours())}${pad(n.getMinutes())}`;
+}
+
+function loadMasterJson(jsonPath) {
+  if (!existsSync(jsonPath)) return [];
+  try {
+    return JSON.parse(readFileSync(jsonPath, 'utf8'));
+  } catch {
+    console.warn('  Warning: could not parse master.json, starting fresh.');
+    return [];
+  }
+}
+
+function pruneExpired(leads, days = 30) {
+  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+  const pruned = leads.filter((l) => {
+    if (!l.scraped_at) return true;
+    return new Date(l.scraped_at).getTime() > cutoff;
+  });
+  const dropped = leads.length - pruned.length;
+  if (dropped > 0) console.log(`  Pruned ${dropped} leads older than ${days} days from master`);
+  return pruned;
+}
+
+function mergeMaster(existing, newLeads) {
+  const byKey = new Map();
+  for (const lead of existing) {
+    const key = dedupeKey(lead);
+    if (key) byKey.set(key, { ...lead });
+  }
+  let added = 0;
+  for (const lead of newLeads) {
+    const key = dedupeKey(lead);
+    if (!key) continue;
+    if (!byKey.has(key)) {
+      byKey.set(key, { ...lead });
+      added++;
+    } else {
+      const base = byKey.get(key);
+      for (const [field] of CSV_COLUMNS) {
+        if (!base[field] && lead[field]) base[field] = lead[field];
+      }
+    }
+  }
+  console.log(`  +${added} new leads added to master (${byKey.size} total unique)`);
+  return [...byKey.values()];
 }
 
 // OneDrive can hold a sync lock on the target for several seconds (EBUSY).
@@ -266,14 +317,18 @@ async function main() {
     }
   }
 
-  // Source: Sortlist
+  // Source: Sortlist — supports { queries: [{category, country}] } or legacy { categories: [...] }
   const sortlist = config.sortlist || {};
   if (sortlist.enabled) {
-    for (const category of sortlist.categories || []) {
-      console.log(`[cloak] Sortlist: "${category}"`);
+    const sortlistQueries = sortlist.queries
+      ? sortlist.queries
+      : (sortlist.categories || []).map((c) => ({ category: c, country: '' }));
+    for (const q of sortlistQueries) {
+      const label = q.country ? `${q.country}/${q.category}` : q.category;
+      console.log(`[cloak] Sortlist: "${label}"`);
       try {
-        const leads = await scrapeSortlist(category, cloak);
-        allLeads.push(...tag(leads, { source: 'sortlist', engine: 'cloak_browser', query: category }));
+        const leads = await scrapeSortlist(q.category, cloak, q.country || '');
+        allLeads.push(...tag(leads, { source: 'sortlist', engine: 'cloak_browser', query: label }));
         console.log(`  -> ${leads.length} leads\n`);
       } catch (err) {
         console.error(`  !! Sortlist failed: ${err.message.split('\n')[0]}\n`);
@@ -281,14 +336,18 @@ async function main() {
     }
   }
 
-  // Source: DesignRush
+  // Source: DesignRush — supports { queries: [{category, country}] } or legacy { categories: [...] }
   const designRush = config.designRush || {};
   if (designRush.enabled) {
-    for (const category of designRush.categories || []) {
-      console.log(`[cloak] DesignRush: "${category}"`);
+    const designRushQueries = designRush.queries
+      ? designRush.queries
+      : (designRush.categories || []).map((c) => ({ category: c, country: '' }));
+    for (const q of designRushQueries) {
+      const label = q.country ? `${q.category}?country=${q.country}` : q.category;
+      console.log(`[cloak] DesignRush: "${label}"`);
       try {
-        const leads = await scrapeDesignRush(category, cloak);
-        allLeads.push(...tag(leads, { source: 'designrush', engine: 'cloak_browser', query: category }));
+        const leads = await scrapeDesignRush(q.category, cloak, q.country || '');
+        allLeads.push(...tag(leads, { source: 'designrush', engine: 'cloak_browser', query: label }));
         console.log(`  -> ${leads.length} leads\n`);
       } catch (err) {
         console.error(`  !! DesignRush failed: ${err.message.split('\n')[0]}\n`);
@@ -318,11 +377,21 @@ async function main() {
   allLeads = filterByContactPoint(allLeads);
   console.log(`${allLeads.length} leads after contact-point filter`);
 
-  const outPath = resolve(root, config.outputFile);
-  mkdirSync(dirname(outPath), { recursive: true });
+  // --- Per-run file ---
+  const label = config.runLabel ? `-${config.runLabel}` : '';
+  const runFile = resolve(root, `output/runs/leads-${runTimestamp()}${label}.csv`);
+  mkdirSync(dirname(runFile), { recursive: true });
+  const runWritten = await writeCsv(allLeads, runFile);
+  console.log(`\nRun file:    ${allLeads.length} leads → ${runWritten}`);
 
-  const written = await writeCsv(allLeads, outPath);
-  console.log(`\nDone. ${allLeads.length} leads written to ${written}`);
+  // --- Master file (all runs merged + deduped) ---
+  const masterJson = resolve(root, 'output/master.json');
+  const masterCsv  = resolve(root, 'output/leads-master.csv');
+  const existing   = pruneExpired(loadMasterJson(masterJson), 30);
+  const merged     = mergeMaster(existing, allLeads);
+  writeFileSync(masterJson, JSON.stringify(merged, null, 2), 'utf8');
+  const masterWritten = await writeCsv(merged, masterCsv);
+  console.log(`Master file: ${merged.length} total leads → ${masterWritten}`);
 }
 
 main().catch((err) => {

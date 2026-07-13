@@ -4,8 +4,8 @@ CLoak Browser/
 # Dependencies
 node_modules/
 
-# Scraped output (contains business contact data — not committed)
-output/
+# Scraped output — CSVs committed and tracked for growth; master.json is internal state
+output/master.json
 *.log
 
 # Playwright browser cache

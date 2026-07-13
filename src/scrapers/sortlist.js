@@ -1,19 +1,16 @@
 import { openCloakPage } from '../engines/cloakEngine.js';
 
 /**
- * Sortlist.com agency directory (e.g. "software-development", "web-development").
- * Plain `fetch`/curl gets a 200 with real HTML, but Node's fetch client is
- * fingerprinted and blocked with 403 — confirmed by testing curl (200) vs.
- * Node fetch (403) against the identical URL. Runs on the cloak engine
- * instead. The page is Next.js SSR and embeds full agency data as JSON in
- * a `<script id="__NEXT_DATA__">` tag — reading that JSON directly is far
- * more reliable than DOM scraping. Pagination isn't needed: a single
- * category page already returns the full organic+paid agency set (~20-30
- * agencies) via `data.organicAgencies`/`data.paidAgencies`, each with an
- * `included` array of the actual agency records (JSON:API style).
+ * Sortlist.com agency directory.
+ * Supports global: https://www.sortlist.com/{category}
+ * and country-specific: https://www.sortlist.com/{country}/{category}
+ * Uses __NEXT_DATA__ JSON embedded in the page — more reliable than DOM scraping.
  */
-export async function scrapeSortlist(category, cloak = {}) {
-  const url = `https://www.sortlist.com/${category}`;
+export async function scrapeSortlist(category, cloak = {}, country = '') {
+  const url = country
+    ? `https://www.sortlist.com/${country}/${category}`
+    : `https://www.sortlist.com/${category}`;
+
   const { browser, page } = await openCloakPage(cloak);
   let html;
 
@@ -51,9 +48,6 @@ export async function scrapeSortlist(category, cloak = {}) {
     }
   }
 
-  // Note: `sectors` on the agency record is the *client industries served*
-  // (e.g. "Healthcare", "Retail"), not the agency's own service category —
-  // using the query category itself is more accurate here.
   const leads = [];
   for (const a of agencies.values()) {
     const address = a.address?.en || Object.values(a.address || {})[0] || '';
@@ -71,6 +65,7 @@ export async function scrapeSortlist(category, cloak = {}) {
     });
   }
 
-  console.log(`  Sortlist ${category}: ${leads.length} agencies`);
+  const label = country ? `${country}/${category}` : category;
+  console.log(`  Sortlist ${label}: ${leads.length} agencies`);
   return leads.filter((l) => l.name);
 }

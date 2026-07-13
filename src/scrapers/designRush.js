@@ -2,16 +2,14 @@ import * as cheerio from 'cheerio';
 import { openCloakPage } from '../engines/cloakEngine.js';
 
 /**
- * DesignRush agency directory (e.g. "software-development", "web-development-companies").
- * Cloudflare/bot-protected — cloak engine required (verified: plain fetch/curl
- * gets 200 with a bot-check shell in some cases, plain Playwright still gets
- * challenged). Cards are `article.js-agency-item`, tagged with reliable
- * `data-agency-name`/`data-gtm-agency-category` attributes — no location
- * field is present on the listing card (only on individual profile pages,
- * not worth a second request per agency for this field).
+ * DesignRush agency directory.
+ * Supports global: https://www.designrush.com/agency/{category}
+ * and country-filtered: https://www.designrush.com/agency/{category}?country={COUNTRY}
+ * Cloudflare/bot-protected — cloak engine required.
  */
-export async function scrapeDesignRush(category, cloak = {}) {
-  const url = `https://www.designrush.com/agency/${category}`;
+export async function scrapeDesignRush(category, cloak = {}, country = '') {
+  const base = `https://www.designrush.com/agency/${category}`;
+  const url = country ? `${base}?country=${country}` : base;
   const { browser, page } = await openCloakPage(cloak);
   let html;
 
@@ -54,6 +52,7 @@ export async function scrapeDesignRush(category, cloak = {}) {
     });
   });
 
-  console.log(`  DesignRush ${category}: ${leads.length} agencies`);
+  const label = country ? `${category}?country=${country}` : category;
+  console.log(`  DesignRush ${label}: ${leads.length} agencies`);
   return leads;
 }

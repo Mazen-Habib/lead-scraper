@@ -3,11 +3,16 @@
     "enabled": true,
     "engine": "normal_scraper",
     "searches": [
-      "software companies in Karachi",
-      "software companies in Lahore",
-      "software companies in Islamabad",
-      "IT services companies in Karachi",
-      "web development agencies in Lahore"
+      "software companies in Dubai",
+      "IT companies in Dubai",
+      "web development agencies in Dubai",
+      "tech companies in Dubai",
+      "software development companies in Abu Dhabi",
+      "IT services companies in Abu Dhabi",
+      "tech companies in Abu Dhabi",
+      "software companies in Sharjah",
+      "IT companies in Sharjah",
+      "web development agencies in Sharjah"
     ],
     "maxResultsPerSearch": 30,
     "headless": true
@@ -15,65 +20,72 @@
   "openStreetMap": {
     "enabled": false,
     "engine": "normal_scraper",
-    "cities": ["Karachi", "Lahore", "Islamabad"]
+    "cities": []
   },
   "clutch": {
     "enabled": true,
     "engine": "cloak_browser",
-    "directories": ["pk/developers", "pk/it-services", "pk/web-developers"],
+    "directories": [
+      "ae/developers",
+      "ae/it-services",
+      "ae/web-designers"
+    ],
     "maxPages": 2
   },
   "goodFirms": {
     "enabled": true,
     "engine": "cloak_browser",
     "directories": [
-      "directory/country/top-software-development-companies/pakistan"
+      "directory/country/top-software-development-companies/united-arab-emirates"
     ],
     "maxPages": 2
   },
   "githubOrgs": {
-    "enabled": true,
+    "enabled": false,
     "engine": "normal_scraper",
-    "locations": ["Karachi", "Lahore", "Islamabad", "Pakistan"],
+    "locations": [],
     "token": "",
     "maxResults": 50
   },
   "openCorporates": {
     "enabled": false,
     "engine": "normal_scraper",
-    "jurisdiction": "pk",
+    "jurisdiction": "ae",
     "searches": ["software", "technology"],
     "apiToken": "",
     "maxResults": 30
   },
   "pseb": {
-    "enabled": true,
+    "enabled": false,
     "engine": "normal_scraper"
   },
   "topDevelopers": {
-    "enabled": true,
+    "enabled": false,
     "engine": "normal_scraper",
-    "categories": ["app-development", "web-development"],
+    "categories": [],
     "maxPages": 2
   },
   "sortlist": {
     "enabled": true,
     "engine": "cloak_browser",
-    "categories": ["software-development", "web-development"]
+    "queries": [
+      { "category": "software-development", "country": "ae" },
+      { "category": "web-development", "country": "ae" }
+    ]
   },
   "eventbrite": {
-    "enabled": true,
+    "enabled": false,
     "engine": "normal_scraper",
-    "searches": [
-      { "query": "software development", "location": "pakistan" },
-      { "query": "tech", "location": "pakistan" }
-    ],
+    "searches": [],
     "concurrency": 5
   },
   "designRush": {
     "enabled": true,
     "engine": "cloak_browser",
-    "categories": ["software-development", "web-development-companies"]
+    "queries": [
+      { "category": "software-development", "country": "AE" },
+      { "category": "web-development-companies", "country": "AE" }
+    ]
   },
   "cloak": {
     "headless": true,
@@ -85,9 +97,12 @@
       "software", "technology", "tech", "it services", "information technology",
       "web", "app", "developer", "development", "digital", "systems", "solutions",
       "computer", "network", "cyber", "cloud", "saas", "mobile", "data",
-      "electronics", "telecommunication"
+      "electronics", "telecommunication", "artificial intelligence", "ai",
+      "machine learning", "blockchain", "fintech", "startup", "agency", "studio",
+      "engineering", "automation", "devops", "ecommerce", "iot", "analytics"
     ]
   },
   "findEmails": true,
+  "runLabel": "",
   "outputFile": "output/leads.csv"
 }

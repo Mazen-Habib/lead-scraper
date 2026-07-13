@@ -1,0 +1,58 @@
+name: Nightly Lead Scrape
+
+on:
+  schedule:
+    - cron: '0 19 * * *'   # midnight PKT (UTC+5) every night
+  workflow_dispatch:        # manual trigger from GitHub UI anytime
+
+permissions:
+  contents: write           # needed to commit CSVs back to repo
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180    # 3h cap — well above typical ~45min run
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright + Chromium system deps
+        run: npx playwright install chromium --with-deps
+
+      - name: Run scraper
+        run: node src/index.js
+        env:
+          NODE_ENV: production
+
+      - name: Commit updated lead files
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add output/
+          if git diff --staged --quiet; then
+            echo "No new leads — nothing to commit."
+          else
+            TOTAL=$(wc -l < output/leads-master.csv || echo "?")
+            git commit -m "scrape: nightly run $(date -u +'%Y-%m-%d') — ${TOTAL} total leads in master"
+            git push
+          fi
+
+      - name: Upload run CSV as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: leads-${{ github.run_id }}
+          path: output/runs/*.csv
+          retention-days: 90
