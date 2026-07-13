@@ -377,13 +377,12 @@ async function main() {
     console.log(`  -> ${alive} alive, ${dead} dead, ${withEmail - alive - dead} unknown`);
   }
 
-  console.log('Scoring leads...');
-  scoreLeads(allLeads);
-
   allLeads = filterByContactPoint(allLeads);
   console.log(`${allLeads.length} leads after contact-point filter`);
 
-  // Sort: highest score first so the top of the CSV is immediately actionable
+  // Score the current batch (for the per-run CSV)
+  console.log('Scoring leads...');
+  scoreLeads(allLeads);
   allLeads.sort((a, b) => (b.score || 0) - (a.score || 0));
 
   // --- Per-run file ---
@@ -393,11 +392,16 @@ async function main() {
   const runWritten = await writeCsv(allLeads, runFile);
   console.log(`\nRun file:    ${allLeads.length} leads → ${runWritten}`);
 
-  // --- Master file (all runs merged + deduped) ---
+  // --- Master file (all runs merged + deduped + re-scored) ---
+  // Re-score the ENTIRE master after merge so existing leads always reflect
+  // the latest scorer logic and never keep stale/empty scores from old runs.
   const masterJson = resolve(root, 'output/master.json');
   const masterCsv  = resolve(root, 'output/leads-master.csv');
   const existing   = pruneExpired(loadMasterJson(masterJson), 30);
   const merged     = mergeMaster(existing, allLeads);
+  console.log('Re-scoring master...');
+  scoreLeads(merged);
+  merged.sort((a, b) => (b.score || 0) - (a.score || 0));
   writeFileSync(masterJson, JSON.stringify(merged, null, 2), 'utf8');
   const masterWritten = await writeCsv(merged, masterCsv);
   console.log(`Master file: ${merged.length} total leads → ${masterWritten}`);
