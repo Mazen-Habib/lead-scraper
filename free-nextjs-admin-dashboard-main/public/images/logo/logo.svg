@@ -1,11 +1,10 @@
-<svg width="180" height="32" viewBox="0 0 180 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- IntegCubes hexagonal icon (32x32) -->
+<svg width="176" height="32" viewBox="0 0 176 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- IntegCubes icon: flat-top hexagon, left bar + right D-ring -->
   <!-- Left bar — dark blue -->
-  <path d="M0,16 L8,2 L10,2 L10,30 L8,30 Z" fill="#1B75BC"/>
-  <!-- Right D-frame — light cyan-blue -->
-  <path d="M10,2 L24,2 L32,16 L24,30 L10,30 L10,24 L20,24 L26,16 L20,8 L10,8 Z" fill="#29ABE2"/>
-  <!-- Text: Integ (dark gray) -->
-  <text x="40" y="23" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif" font-size="19" font-weight="400" fill="#4A5568">Integ</text>
-  <!-- Text: Cubes (blue) -->
-  <text x="91" y="23" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif" font-size="19" font-weight="700" fill="#1B75BC">Cubes</text>
+  <path d="M1,16 L7,2 L12,2 L12,30 L7,30 Z" fill="#1B75BC"/>
+  <!-- Right D-ring — cyan-blue, evenodd cuts inner D -->
+  <path fill-rule="evenodd" d="M12,2 L25,2 L31,16 L25,30 L12,30 Z M12,9 L20,9 L25,16 L20,23 L12,23 Z" fill="#29ABE2"/>
+  <!-- Wordmark -->
+  <text x="40" y="22" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif" font-size="18" font-weight="500" letter-spacing="-0.3" fill="#4A5568">Integ</text>
+  <text x="88" y="22" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif" font-size="18" font-weight="700" letter-spacing="-0.3" fill="#1B75BC">Cubes</text>
 </svg>
