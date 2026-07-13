@@ -11,6 +11,54 @@ import {
   TableIcon,
 } from "../icons/index";
 
+function SidebarUserWidget({ expanded }: { expanded: boolean }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative">
+      {open && (
+        <div className="absolute bottom-full left-0 mb-2 w-[220px] rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900 shadow-lg p-3 z-50">
+          <p className="text-sm font-semibold text-gray-800 dark:text-white px-1">Musharof Chowdhury</p>
+          <p className="text-xs text-gray-400 px-1 mb-3">randomuser@pimjo.com</p>
+          <Link href="/signin"
+            className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            Sign out
+          </Link>
+        </div>
+      )}
+      <button
+        onClick={() => setOpen((p) => !p)}
+        className={`flex items-center gap-3 w-full rounded-xl px-2 py-2.5 hover:bg-gray-100 dark:hover:bg-white/[0.05] transition-colors ${!expanded ? "justify-center" : ""}`}
+      >
+        <span className="shrink-0 overflow-hidden rounded-full h-9 w-9 ring-2 ring-gray-200 dark:ring-gray-700">
+          <Image src="/images/user/owner.jpg" alt="User" width={36} height={36} />
+        </span>
+        {expanded && (
+          <>
+            <div className="flex-1 text-left min-w-0">
+              <p className="text-sm font-semibold text-gray-800 dark:text-white truncate">Musharof</p>
+              <p className="text-xs text-gray-400 truncate">Admin</p>
+            </div>
+            <ChevronDownIcon className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+          </>
+        )}
+      </button>
+    </div>
+  );
+}
+
 type NavItem = {
   name: string;
   icon: React.ReactNode;
@@ -182,6 +230,7 @@ const AppSidebar: React.FC = () => {
       onMouseEnter={() => !isExpanded && setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
+      {/* Logo */}
       <div
         className={`py-8 flex ${
           !isExpanded && !isHovered ? "lg:justify-center" : "justify-start"
@@ -216,7 +265,8 @@ const AppSidebar: React.FC = () => {
         </Link>
       </div>
 
-      <div className="flex flex-col overflow-y-auto duration-300 ease-linear no-scrollbar">
+      {/* Nav — grows to fill space */}
+      <div className="flex-1 flex flex-col overflow-y-auto duration-300 ease-linear no-scrollbar">
         <nav className="mb-6">
           <div>
             <h2
@@ -229,6 +279,11 @@ const AppSidebar: React.FC = () => {
             {renderMenuItems(navItems)}
           </div>
         </nav>
+      </div>
+
+      {/* User widget pinned to bottom */}
+      <div className="pb-5 pt-3 border-t border-gray-100 dark:border-gray-800">
+        <SidebarUserWidget expanded={isExpanded || isHovered || isMobileOpen} />
       </div>
     </aside>
   );
