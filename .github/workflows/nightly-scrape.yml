@@ -46,7 +46,11 @@ jobs:
           else
             TOTAL=$(wc -l < output/leads-master.csv || echo "?")
             git commit -m "scrape: nightly run $(date -u +'%Y-%m-%d') — ${TOTAL} total leads in master"
-            git push
+            for i in 1 2 3; do
+              git pull --rebase origin main && git push && break
+              echo "Push attempt $i failed, retrying in 5s..."
+              sleep 5
+            done
           fi
 
       - name: Upload run CSV as artifact
