@@ -10,11 +10,16 @@
     "postinstall": "playwright install chromium"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.110.6",
     "cheerio": "^1.0.0",
     "cloakbrowser": "^0.4.10",
     "csv-writer": "^1.6.0",
+    "dotenv": "^17.4.2",
     "patchright": "^1.61.1",
     "playwright": "^1.45.0",
     "playwright-core": "^1.61.1"
+  },
+  "devDependencies": {
+    "pg": "^8.22.0"
   }
 }

@@ -7,6 +7,9 @@ export const metadata: Metadata = {
   description: "Browse, filter, and export all scraped leads",
 };
 
+// Leads change nightly via the scraper's cron; never statically cache this page.
+export const dynamic = "force-dynamic";
+
 export default async function LeadsPage() {
   const leads = await fetchLeads();
 
@@ -15,7 +18,7 @@ export default async function LeadsPage() {
       <div>
         <h1 className="text-2xl font-bold text-gray-800 dark:text-white">All Leads</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          {leads.length.toLocaleString()} total leads · sorted by score descending · refreshed hourly
+          {leads.length.toLocaleString()} total leads · sorted by score descending · live from Supabase
         </p>
       </div>
       <LeadsTable leads={leads} />

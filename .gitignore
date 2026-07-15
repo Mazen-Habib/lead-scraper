@@ -16,3 +16,8 @@ output/master.json
 Thumbs.db
 .vscode/
 .idea/
+
+# Secrets — never commit
+.env
+.env.local
+credentials.txt

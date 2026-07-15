@@ -18,6 +18,9 @@ export const metadata: Metadata = {
   description: "Live lead generation dashboard",
 };
 
+// Leads change nightly via the scraper's cron; never statically cache this page.
+export const dynamic = "force-dynamic";
+
 export default async function DashboardPage() {
   const leads = await fetchLeads();
 
@@ -26,10 +29,9 @@ export default async function DashboardPage() {
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center gap-4">
         <h2 className="text-2xl font-semibold text-gray-800 dark:text-white">No leads yet</h2>
         <p className="text-gray-500 dark:text-gray-400 max-w-md text-sm leading-relaxed">
-          Set <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">GITHUB_OWNER</code>,{" "}
-          <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">GITHUB_REPO</code>, and{" "}
-          <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">GITHUB_TOKEN</code> in{" "}
-          <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">.env.local</code>, then
+          Set <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">NEXT_PUBLIC_SUPABASE_URL</code>{" "}
+          and <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">NEXT_PUBLIC_SUPABASE_ANON_KEY</code>{" "}
+          in <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">.env.local</code>, then
           trigger the nightly scraper workflow on GitHub Actions.
         </p>
       </div>

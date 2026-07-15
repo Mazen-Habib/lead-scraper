@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
 import { dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
@@ -17,6 +18,7 @@ import { dedupeKey } from './lib/normalizeUrl.js';
 import { filterByIcp, filterByContactPoint } from './quality/qualityFilter.js';
 import { verifyLeads } from './quality/emailVerifier.js';
 import { scoreLeads } from './quality/scorer.js';
+import { syncLeadsToSupabase } from './lib/pushToSupabase.js';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const config = JSON.parse(readFileSync(resolve(root, 'config.json'), 'utf8'));
@@ -405,6 +407,10 @@ async function main() {
   writeFileSync(masterJson, JSON.stringify(merged, null, 2), 'utf8');
   const masterWritten = await writeCsv(merged, masterCsv);
   console.log(`Master file: ${merged.length} total leads → ${masterWritten}`);
+
+  // --- Sync full deduped master to Supabase (frontend reads from here) ---
+  console.log('Syncing leads to Supabase...');
+  await syncLeadsToSupabase(merged);
 }
 
 main().catch((err) => {
