@@ -16,6 +16,128 @@ const TIER_BAR: Record<string, string> = {
 
 const PAGE_SIZE = 50;
 
+// ── Region groups: matched against address + search_query ─────────────────────
+const REGIONS: Record<string, string[]> = {
+  "Middle East": [
+    "uae","dubai","abu dhabi","sharjah","ajman","ras al","fujairah",
+    "saudi","riyadh","jeddah","dammam","mecca","medina","khobar",
+    "qatar","doha","kuwait","bahrain","manama","oman","muscat",
+    "jordan","amman","lebanon","beirut","iraq","baghdad",
+    "israel","tel aviv","haifa","palestine","egypt","cairo","alexandria",
+    "yemen","syria","united arab","gcc",
+  ],
+  "South Asia": [
+    "pakistan","karachi","lahore","islamabad","faisalabad","peshawar","quetta","multan",
+    "india","bangalore","bengaluru","mumbai","delhi","hyderabad","pune","chennai",
+    "kolkata","ahmedabad","surat","jaipur","lucknow","kochi",
+    "bangladesh","dhaka","chittagong",
+    "sri lanka","colombo","nepal","kathmandu",
+  ],
+  "Southeast Asia": [
+    "singapore","philippines","manila","cebu","davao",
+    "malaysia","kuala lumpur","kl","penang","johor",
+    "vietnam","ho chi minh","hanoi","da nang",
+    "indonesia","jakarta","bali","surabaya",
+    "thailand","bangkok","chiang mai",
+    "myanmar","rangoon","cambodia","phnom penh",
+  ],
+  "Africa": [
+    "nigeria","lagos","abuja","port harcourt",
+    "kenya","nairobi","mombasa",
+    "south africa","cape town","johannesburg","durban","pretoria",
+    "ghana","accra","ethiopia","addis ababa",
+    "tanzania","dar es salaam","uganda","kampala",
+    "morocco","casablanca","rabat","senegal","dakar","ivory coast",
+  ],
+  "Europe": [
+    "uk","united kingdom","london","manchester","birmingham","glasgow","edinburgh",
+    "germany","berlin","munich","hamburg","frankfurt","cologne","düsseldorf",
+    "netherlands","amsterdam","rotterdam","the hague",
+    "france","paris","lyon","marseille",
+    "spain","madrid","barcelona","sweden","stockholm","norway","oslo",
+    "denmark","copenhagen","finland","helsinki","poland","warsaw",
+    "ukraine","kyiv","czech","prague","austria","vienna","switzerland","zurich",
+    "italy","rome","milan","portugal","lisbon","belgium","brussels",
+  ],
+  "North America": [
+    "usa","united states","new york","san francisco","silicon valley","los angeles",
+    "seattle","austin","chicago","boston","miami","dallas","denver","atlanta",
+    "canada","toronto","vancouver","montreal","calgary","ottawa",
+    "mexico","mexico city","guadalajara",
+  ],
+  "APAC / ANZ": [
+    "australia","sydney","melbourne","brisbane","perth","adelaide",
+    "new zealand","auckland","wellington",
+    "japan","tokyo","osaka","south korea","seoul","busan",
+    "taiwan","taipei","hong kong","china","beijing","shanghai","shenzhen",
+  ],
+};
+
+// ── Service keyword groups: matched against category + search_query + company_name ──
+const SERVICES: Record<string, string[]> = {
+  "Data Analytics / BI": [
+    "data","analytics","bi","power bi","powerbi","dashboard","reporting",
+    "visualization","tableau","looker","qlik","business intelligence",
+    "data science","data engineer","data warehouse","etl","snowflake",
+    "dbt","metabase","superset","grafana",
+  ],
+  "Web Development": [
+    "web","frontend","react","angular","vue","next","nuxt",
+    "wordpress","cms","portal","landing page","website",
+  ],
+  "Mobile Apps": [
+    "mobile","ios","android","flutter","react native","app development",
+    "swift","kotlin","xamarin","ionic",
+  ],
+  "AI / ML": [
+    "ai","artificial intelligence","machine learning","ml","nlp",
+    "computer vision","deep learning","llm","gpt","chatbot",
+    "generative ai","neural","predictive",
+  ],
+  "E-commerce": [
+    "ecommerce","e-commerce","shopify","magento","woocommerce",
+    "online store","marketplace","woo","prestashop","bigcommerce",
+  ],
+  "Cloud / DevOps": [
+    "cloud","devops","aws","azure","gcp","docker","kubernetes",
+    "infrastructure","ci/cd","devsecops","terraform","ansible",
+  ],
+  "Cybersecurity": [
+    "cyber","security","penetration","firewall","soc","compliance",
+    "iso 27001","siem","endpoint","threat",
+  ],
+  "ERP / SAP": [
+    "erp","sap","odoo","oracle","dynamics","netsuite",
+    "enterprise resource","accounting","erp system",
+  ],
+  "Blockchain": [
+    "blockchain","crypto","web3","nft","defi","smart contract","ethereum",
+  ],
+  "UI/UX Design": [
+    "design","ux","ui","user experience","figma","prototyping","creative",
+  ],
+  "QA / Testing": [
+    "qa","testing","quality assurance","test automation","selenium",
+    "cypress","playwright","performance testing","load testing",
+  ],
+  "Digital Marketing": [
+    "digital marketing","seo","sem","ppc","social media","content marketing",
+    "email marketing","growth hacking","performance marketing",
+  ],
+};
+
+function matchesRegion(lead: Lead, region: string): boolean {
+  const keywords = REGIONS[region];
+  const hay = `${lead.address} ${lead.search_query}`.toLowerCase();
+  return keywords.some((k) => hay.includes(k));
+}
+
+function matchesService(lead: Lead, service: string): boolean {
+  const keywords = SERVICES[service];
+  const hay = `${lead.category} ${lead.search_query} ${lead.company_name}`.toLowerCase();
+  return keywords.some((k) => hay.includes(k));
+}
+
 function exportCSV(leads: Lead[]) {
   const cols = [
     "company_name","category","email","phone","address","website",
@@ -71,12 +193,9 @@ function LeadDrawer({ lead, onClose }: { lead: Lead; onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 z-50 flex">
-      {/* backdrop */}
       <div className="flex-1 bg-black/40" onClick={onClose} />
-      {/* panel */}
       <div ref={drawerRef}
         className="w-full max-w-md bg-white dark:bg-gray-900 h-full overflow-y-auto shadow-2xl flex flex-col animate-slide-in-right">
-        {/* header */}
         <div className="sticky top-0 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 px-5 py-4 flex items-start justify-between gap-3 z-10">
           <div className="flex-1 min-w-0">
             <h2 className="text-base font-bold text-gray-900 dark:text-white truncate">{lead.company_name || "Unknown Company"}</h2>
@@ -89,7 +208,6 @@ function LeadDrawer({ lead, onClose }: { lead: Lead; onClose: () => void }) {
         </div>
 
         <div className="p-5 flex flex-col gap-6">
-          {/* Score + Tier */}
           <div className="rounded-xl border border-gray-100 dark:border-gray-800 p-4">
             <div className="flex items-center justify-between mb-3">
               <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Lead Quality</span>
@@ -111,7 +229,6 @@ function LeadDrawer({ lead, onClose }: { lead: Lead; onClose: () => void }) {
             {!score && <p className="text-xs text-gray-400 mt-1">Score populates after next scraper run</p>}
           </div>
 
-          {/* Contact */}
           <section>
             <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">Contact</h3>
             <div className="flex flex-col gap-3">
@@ -127,7 +244,6 @@ function LeadDrawer({ lead, onClose }: { lead: Lead; onClose: () => void }) {
             </div>
           </section>
 
-          {/* Location */}
           {lead.address && (
             <section>
               <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">Location</h3>
@@ -135,7 +251,6 @@ function LeadDrawer({ lead, onClose }: { lead: Lead; onClose: () => void }) {
             </section>
           )}
 
-          {/* Firmographics */}
           {(lead.rating || lead.review_count || lead.company_size || lead.hourly_rate || lead.min_project) && (
             <section>
               <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">Firmographics</h3>
@@ -168,7 +283,6 @@ function LeadDrawer({ lead, onClose }: { lead: Lead; onClose: () => void }) {
             </section>
           )}
 
-          {/* Source metadata */}
           <section>
             <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">Source Metadata</h3>
             <div className="flex flex-col gap-3">
@@ -182,7 +296,6 @@ function LeadDrawer({ lead, onClose }: { lead: Lead; onClose: () => void }) {
           </section>
         </div>
 
-        {/* footer actions */}
         <div className="sticky bottom-0 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 px-5 py-4 flex gap-3 mt-auto">
           {lead.email && (
             <a href={`mailto:${lead.email}`}
@@ -202,17 +315,35 @@ function LeadDrawer({ lead, onClose }: { lead: Lead; onClose: () => void }) {
   );
 }
 
+// ── Quick-target presets ──────────────────────────────────────────────────────
+
+type Preset = { label: string; region: string; service: string; tier: string };
+
+const QUICK_TARGETS: Preset[] = [
+  { label: "Data Analytics · ME",       region: "Middle East",    service: "Data Analytics / BI",  tier: "All" },
+  { label: "PowerBI / BI · ME",         region: "Middle East",    service: "Data Analytics / BI",  tier: "All" },
+  { label: "AI/ML · South Asia",        region: "South Asia",     service: "AI / ML",              tier: "All" },
+  { label: "Mobile Apps · SE Asia",     region: "Southeast Asia", service: "Mobile Apps",          tier: "All" },
+  { label: "E-commerce · Africa",       region: "Africa",         service: "E-commerce",           tier: "All" },
+  { label: "ERP/SAP · ME Tier A",       region: "Middle East",    service: "ERP / SAP",            tier: "A"   },
+  { label: "Web Dev · Europe",          region: "Europe",         service: "Web Development",      tier: "All" },
+  { label: "Cloud/DevOps · US",         region: "North America",  service: "Cloud / DevOps",       tier: "All" },
+];
+
 // ── Main table ────────────────────────────────────────────────────────────────
 
 export default function LeadsTable({ leads }: { leads: Lead[] }) {
-  const [search, setSearch] = useState("");
-  const [tierFilter, setTierFilter] = useState("All");
+  const [search, setSearch]           = useState("");
+  const [tierFilter, setTierFilter]   = useState("All");
   const [sourceFilter, setSourceFilter] = useState("All");
-  const [emailOnly, setEmailOnly] = useState(false);
-  const [page, setPage] = useState(1);
-  const [sortCol, setSortCol] = useState<"score" | "scraped_at">("score");
-  const [sortDir, setSortDir] = useState<"desc" | "asc">("desc");
+  const [regionFilter, setRegionFilter] = useState("All");
+  const [serviceFilter, setServiceFilter] = useState("All");
+  const [emailOnly, setEmailOnly]     = useState(false);
+  const [page, setPage]               = useState(1);
+  const [sortCol, setSortCol]         = useState<"score" | "scraped_at">("score");
+  const [sortDir, setSortDir]         = useState<"desc" | "asc">("desc");
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [showPresets, setShowPresets] = useState(false);
 
   const hasScores = leads.some((l) => l.score && l.tier);
 
@@ -221,18 +352,29 @@ export default function LeadsTable({ leads }: { leads: Lead[] }) {
     return ["All", ...Array.from(s).sort()];
   }, [leads]);
 
+  const activeFilterCount = [
+    tierFilter !== "All",
+    sourceFilter !== "All",
+    regionFilter !== "All",
+    serviceFilter !== "All",
+    emailOnly,
+    search.trim() !== "",
+  ].filter(Boolean).length;
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return leads
       .filter((l) => {
         if (tierFilter !== "All") {
-          if (!hasScores) return true; // no scores yet — show all in tier view
+          if (!hasScores) return true;
           if (l.tier !== tierFilter) return false;
         }
         if (sourceFilter !== "All" && l.source !== sourceFilter) return false;
+        if (regionFilter !== "All" && !matchesRegion(l, regionFilter)) return false;
+        if (serviceFilter !== "All" && !matchesService(l, serviceFilter)) return false;
         if (emailOnly && !l.email) return false;
         if (q) {
-          const hay = `${l.company_name} ${l.email} ${l.address} ${l.category}`.toLowerCase();
+          const hay = `${l.company_name} ${l.email} ${l.address} ${l.category} ${l.search_query}`.toLowerCase();
           if (!hay.includes(q)) return false;
         }
         return true;
@@ -245,13 +387,30 @@ export default function LeadsTable({ leads }: { leads: Lead[] }) {
         const diff = (b.scraped_at ?? "").localeCompare(a.scraped_at ?? "");
         return sortDir === "desc" ? diff : -diff;
       });
-  }, [leads, search, tierFilter, sourceFilter, emailOnly, sortCol, sortDir, hasScores]);
+  }, [leads, search, tierFilter, sourceFilter, regionFilter, serviceFilter, emailOnly, sortCol, sortDir, hasScores]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePageNum = Math.min(page, totalPages);
   const pageLeads = filtered.slice((safePageNum - 1) * PAGE_SIZE, safePageNum * PAGE_SIZE);
 
   const resetPage = () => setPage(1);
+
+  const applyPreset = (p: Preset) => {
+    setRegionFilter(p.region);
+    setServiceFilter(p.service);
+    setTierFilter(p.tier);
+    setSearch("");
+    setSourceFilter("All");
+    setEmailOnly(false);
+    setShowPresets(false);
+    resetPage();
+  };
+
+  const clearAllFilters = () => {
+    setSearch(""); setTierFilter("All"); setSourceFilter("All");
+    setRegionFilter("All"); setServiceFilter("All"); setEmailOnly(false);
+    resetPage();
+  };
 
   const toggleSort = (col: "score" | "scraped_at") => {
     if (sortCol === col) setSortDir((d) => (d === "desc" ? "asc" : "desc"));
@@ -272,12 +431,13 @@ export default function LeadsTable({ leads }: { leads: Lead[] }) {
 
   return (
     <>
-      {/* Detail drawer */}
       {selectedLead && <LeadDrawer lead={selectedLead} onClose={() => setSelectedLead(null)} />}
 
       <div className="space-y-4">
-        {/* ── Filter bar ── */}
-        <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-white/[0.03] p-4">
+        {/* ── Filter panel ── */}
+        <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-white/[0.03] p-4 space-y-3">
+
+          {/* Row 1: search + result count + presets + export */}
           <div className="flex flex-wrap gap-3 items-center">
             <div className="relative flex-1 min-w-[220px]">
               <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -285,13 +445,52 @@ export default function LeadsTable({ leads }: { leads: Lead[] }) {
               </svg>
               <input
                 type="text"
-                placeholder="Search company, email, location…"
+                placeholder="Search company, email, location, category…"
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); resetPage(); }}
                 className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 pl-9 pr-3 py-2 text-sm text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500"
               />
             </div>
 
+            <div className="flex items-center gap-2 ml-auto">
+              <span className="text-sm text-gray-400 whitespace-nowrap">
+                <span className="font-semibold text-gray-700 dark:text-gray-200">{filtered.length.toLocaleString()}</span> leads
+              </span>
+
+              {/* Quick targets button */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowPresets((v) => !v)}
+                  className="flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors whitespace-nowrap">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                  Quick Targets
+                </button>
+                {showPresets && (
+                  <div className="absolute right-0 top-full mt-1 z-30 w-64 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-xl py-1">
+                    <p className="px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-gray-400">Preset Filter Combinations</p>
+                    {QUICK_TARGETS.map((p) => (
+                      <button key={p.label} onClick={() => applyPreset(p)}
+                        className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-brand-50 dark:hover:bg-brand-900/20 hover:text-brand-600 dark:hover:text-brand-400 transition-colors">
+                        {p.label}
+                        {p.tier !== "All" && <span className="ml-1 text-xs text-emerald-600">· Tier {p.tier}</span>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <button onClick={() => exportCSV(filtered)}
+                className="rounded-lg bg-brand-500 hover:bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-colors whitespace-nowrap">
+                Export CSV
+              </button>
+            </div>
+          </div>
+
+          {/* Row 2: dropdown filters */}
+          <div className="flex flex-wrap gap-2 items-center">
+            {/* Tier */}
             <select value={tierFilter} onChange={(e) => { setTierFilter(e.target.value); resetPage(); }} className={selectCls}>
               <option value="All">All Tiers</option>
               <option value="A">Tier A — Top</option>
@@ -300,31 +499,66 @@ export default function LeadsTable({ leads }: { leads: Lead[] }) {
               <option value="D">Tier D — Weak</option>
             </select>
 
+            {/* Source */}
             <select value={sourceFilter} onChange={(e) => { setSourceFilter(e.target.value); resetPage(); }} className={selectCls}>
               {allSources.map((s) => (
                 <option key={s} value={s}>{s === "All" ? "All Sources" : (SOURCE_LABELS[s] ?? s)}</option>
               ))}
             </select>
 
+            {/* Region */}
+            <select value={regionFilter} onChange={(e) => { setRegionFilter(e.target.value); resetPage(); }}
+              className={`${selectCls} ${regionFilter !== "All" ? "border-brand-400 ring-1 ring-brand-300 text-brand-600 dark:text-brand-400" : ""}`}>
+              <option value="All">All Regions</option>
+              {Object.keys(REGIONS).map((r) => <option key={r} value={r}>{r}</option>)}
+            </select>
+
+            {/* Service / Specialty */}
+            <select value={serviceFilter} onChange={(e) => { setServiceFilter(e.target.value); resetPage(); }}
+              className={`${selectCls} ${serviceFilter !== "All" ? "border-brand-400 ring-1 ring-brand-300 text-brand-600 dark:text-brand-400" : ""}`}>
+              <option value="All">All Services</option>
+              {Object.keys(SERVICES).map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+
+            {/* Has Email */}
             <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 cursor-pointer select-none shrink-0">
               <input type="checkbox" checked={emailOnly} onChange={(e) => { setEmailOnly(e.target.checked); resetPage(); }}
                 className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-brand-500 focus:ring-brand-500 bg-white dark:bg-gray-900" />
               Has Email
             </label>
 
-            <div className="ml-auto flex items-center gap-3">
-              <span className="text-sm text-gray-400 whitespace-nowrap">
-                <span className="font-semibold text-gray-700 dark:text-gray-200">{filtered.length.toLocaleString()}</span> leads
-              </span>
-              <button onClick={() => exportCSV(filtered)}
-                className="rounded-lg bg-brand-500 hover:bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-colors">
-                Export CSV
+            {/* Clear all — only when something is active */}
+            {activeFilterCount > 0 && (
+              <button onClick={clearAllFilters}
+                className="flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors px-2 py-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20">
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                Clear {activeFilterCount} filter{activeFilterCount > 1 ? "s" : ""}
               </button>
-            </div>
+            )}
           </div>
 
+          {/* Active filter pills */}
+          {(regionFilter !== "All" || serviceFilter !== "All") && (
+            <div className="flex flex-wrap gap-2 pt-1">
+              {regionFilter !== "All" && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 dark:bg-brand-900/20 border border-brand-200 dark:border-brand-700 px-3 py-1 text-xs font-medium text-brand-700 dark:text-brand-300">
+                  📍 {regionFilter}
+                  <button onClick={() => { setRegionFilter("All"); resetPage(); }} className="hover:text-red-500 transition-colors">×</button>
+                </span>
+              )}
+              {serviceFilter !== "All" && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-700 px-3 py-1 text-xs font-medium text-violet-700 dark:text-violet-300">
+                  🔧 {serviceFilter}
+                  <button onClick={() => { setServiceFilter("All"); resetPage(); }} className="hover:text-red-500 transition-colors">×</button>
+                </span>
+              )}
+            </div>
+          )}
+
           {!hasScores && tierFilter !== "All" && (
-            <p className="mt-3 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-lg px-3 py-2">
+            <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-lg px-3 py-2">
               ⚠️ Scores are not yet computed — trigger a scraper run to populate tier data.
             </p>
           )}
@@ -357,6 +591,11 @@ export default function LeadsTable({ leads }: { leads: Lead[] }) {
                     <td colSpan={7} className="px-5 py-16 text-center text-gray-400">
                       <div className="text-3xl mb-2">🔍</div>
                       No leads match your filters.
+                      {activeFilterCount > 0 && (
+                        <button onClick={clearAllFilters} className="block mx-auto mt-2 text-sm text-brand-500 hover:underline">
+                          Clear all filters
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ) : (
@@ -417,7 +656,6 @@ export default function LeadsTable({ leads }: { leads: Lead[] }) {
             </table>
           </div>
 
-          {/* Pagination */}
           {totalPages > 1 && (
             <div className="flex items-center justify-between px-5 py-3.5 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-white/[0.01]">
               <span className="text-xs text-gray-500">
