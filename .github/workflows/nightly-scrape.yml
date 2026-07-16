@@ -11,7 +11,7 @@ permissions:
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    timeout-minutes: 360    # 6h cap — full global run (85 GM + 35 Clutch + 10 GF + 5 Sortlist + 17 DR)
+    timeout-minutes: 360    # 6h cap — expanded run (106 GM + 47 Clutch + 21 GF + 16 Sortlist + 26 DR + 35 GH + 8 TD + Eventbrite + PSEB)
 
     steps:
       - name: Checkout repo
@@ -37,6 +37,7 @@ jobs:
           NODE_ENV: production
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Commit updated lead files
         run: |

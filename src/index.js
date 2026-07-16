@@ -220,7 +220,8 @@ async function main() {
     for (const location of githubOrgs.locations || []) {
       console.log(`[normal] GitHub Orgs: "${location}"`);
       try {
-        const leads = await scrapeGithubOrgs(location, { token: githubOrgs.token, maxResults: githubOrgs.maxResults });
+        const token = githubOrgs.token || process.env.GITHUB_TOKEN || '';
+        const leads = await scrapeGithubOrgs(location, { token, maxResults: githubOrgs.maxResults });
         allLeads.push(...tag(leads, { source: 'github_orgs', engine: 'normal_scraper', query: location }));
         console.log(`  -> ${leads.length} leads\n`);
       } catch (err) {
