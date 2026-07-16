@@ -19,6 +19,7 @@ import { filterByIcp, filterByContactPoint } from './quality/qualityFilter.js';
 import { verifyLeads } from './quality/emailVerifier.js';
 import { scoreLeads } from './quality/scorer.js';
 import { syncLeadsToSupabase } from './lib/pushToSupabase.js';
+import { cleanLead } from './lib/cleanLead.js';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const config = JSON.parse(readFileSync(resolve(root, 'config.json'), 'utf8'));
@@ -361,6 +362,10 @@ async function main() {
     }
   }
 
+  // Sanitise every field: decode %20, strip HTML tags/entities, normalise whitespace
+  allLeads.forEach(cleanLead);
+  console.log('Cleaned raw scraper output.');
+
   allLeads = dedupe(allLeads);
   console.log(`${allLeads.length} unique leads after dedupe`);
 
@@ -372,6 +377,10 @@ async function main() {
     await enrichLeads(allLeads, 15);
     const withEmail = allLeads.filter((l) => l.email).length;
     console.log(`  -> ${withEmail}/${allLeads.length} leads have an email`);
+
+    // Re-clean after enrichment: emails crawled from websites can also
+    // contain URL-encoded characters or HTML entity artifacts.
+    allLeads.forEach(cleanLead);
 
     console.log('Verifying email domains (MX check)...');
     await verifyLeads(allLeads);

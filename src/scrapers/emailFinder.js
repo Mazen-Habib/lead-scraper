@@ -1,4 +1,5 @@
 import * as cheerio from 'cheerio';
+import { cleanEmail } from '../lib/cleanLead.js';
 
 const EMAIL_RE = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,}/g;
 // Paths most likely to expose a contact email
@@ -51,15 +52,16 @@ export async function findContacts(website) {
 
     // mailto: links are the most reliable signal
     $('a[href^="mailto:"]').each((_, el) => {
-      const email = $(el).attr('href').replace(/^mailto:/i, '').split('?')[0].trim().toLowerCase();
+      const raw = $(el).attr('href').replace(/^mailto:/i, '').split('?')[0];
+      const email = cleanEmail(raw); // decodes %20info@ → info@, strips HTML, validates
       if (email && !JUNK_PATTERNS.test(email)) contacts.emails.add(email);
     });
 
     // Fall back to regex over visible text + raw HTML
     const matches = html.match(EMAIL_RE) || [];
     for (const m of matches) {
-      const email = m.toLowerCase();
-      if (!JUNK_PATTERNS.test(email)) contacts.emails.add(email);
+      const email = cleanEmail(m); // normalise before adding
+      if (email && !JUNK_PATTERNS.test(email)) contacts.emails.add(email);
     }
 
     // Social profiles (LinkedIn is the valuable one for B2B scoring)
