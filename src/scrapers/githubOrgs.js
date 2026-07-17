@@ -60,6 +60,8 @@ export async function scrapeGithubOrgs(location, opts = {}) {
         rating: '',
         reviews: org.public_repos != null ? String(org.public_repos) : '',
         maps_url: org.html_url,
+        source: 'github_orgs',
+        engine: 'normal_scraper',
       });
     } catch (err) {
       console.warn(`  ! Skipped org "${item.login}": ${err.message.split('\n')[0]}`);

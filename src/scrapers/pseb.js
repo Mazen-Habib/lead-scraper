@@ -53,6 +53,8 @@ export async function scrapePseb() {
       rating: '',
       reviews: '',
       maps_url: '',
+      source: 'pseb',
+      engine: 'normal_scraper',
     });
   });
 
@@ -81,6 +83,8 @@ export async function scrapePseb() {
       rating: '',
       reviews: '',
       maps_url: '',
+      source: 'pseb',
+      engine: 'normal_scraper',
     });
   });
 
