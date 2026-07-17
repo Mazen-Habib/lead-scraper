@@ -174,7 +174,7 @@
       "us/it-services",
       "us/mobile-app-developers"
     ],
-    "maxPages": 3
+    "maxPages": 5
   },
   "goodFirms": {
     "enabled": true,
@@ -355,6 +355,9 @@
       "machine learning", "blockchain", "fintech", "startup", "agency", "studio",
       "engineering", "automation", "devops", "ecommerce", "iot", "analytics"
     ]
+  },
+  "quality": {
+    "minScore": 35
   },
   "findEmails": true,
   "runLabel": "",

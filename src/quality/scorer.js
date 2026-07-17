@@ -34,7 +34,9 @@ export function scoreLead(lead) {
 
   // ── Reachability (max 35) ────────────────────────────────────────────────
   if (lead.email) {
-    score += lead.email_verified === 'alive' ? 20 : 12;
+    if      (lead.email_verified === 'alive') score += 22; // MX-confirmed — highest confidence
+    else if (lead.email_verified !== 'dead')  score += 12; // unverified — plausible
+    // dead MX: 0 pts — treat as no email for scoring purposes
   }
   if (lead.phone)    score += 8;
   if (lead.linkedin) score += 7;

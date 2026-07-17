@@ -15,7 +15,7 @@ import { scrapeEventbrite } from './scrapers/eventbrite.js';
 import { scrapeDesignRush } from './scrapers/designRush.js';
 import { enrichLeads } from './scrapers/emailFinder.js';
 import { dedupeKey } from './lib/normalizeUrl.js';
-import { filterByIcp, filterByContactPoint } from './quality/qualityFilter.js';
+import { filterByIcp, filterByContactPoint, filterByDeadEmailOnly, filterByScore } from './quality/qualityFilter.js';
 import { verifyLeads } from './quality/emailVerifier.js';
 import { scoreLeads } from './quality/scorer.js';
 import { syncLeadsToSupabase } from './lib/pushToSupabase.js';
@@ -392,9 +392,18 @@ async function main() {
   allLeads = filterByContactPoint(allLeads);
   console.log(`${allLeads.length} leads after contact-point filter`);
 
+  allLeads = filterByDeadEmailOnly(allLeads);
+  console.log(`${allLeads.length} leads after dead-email-only filter`);
+
   // Score the current batch (for the per-run CSV)
   console.log('Scoring leads...');
   scoreLeads(allLeads);
+
+  // Drop Tier D noise — leads with score < 35 have too little data to be actionable
+  const minScore = config.quality?.minScore ?? 35;
+  allLeads = filterByScore(allLeads, minScore);
+  console.log(`${allLeads.length} leads after score floor (>= ${minScore})`);
+
   allLeads.sort((a, b) => (b.score || 0) - (a.score || 0));
 
   // --- Per-run file ---
@@ -413,14 +422,17 @@ async function main() {
   const merged     = mergeMaster(existing, allLeads);
   console.log('Re-scoring master...');
   scoreLeads(merged);
-  merged.sort((a, b) => (b.score || 0) - (a.score || 0));
-  writeFileSync(masterJson, JSON.stringify(merged, null, 2), 'utf8');
-  const masterWritten = await writeCsv(merged, masterCsv);
-  console.log(`Master file: ${merged.length} total leads → ${masterWritten}`);
+  const masterFiltered = filterByScore(merged, minScore);
+  if (masterFiltered.length < merged.length)
+    console.log(`  Pruned ${merged.length - masterFiltered.length} Tier D records from master.`);
+  masterFiltered.sort((a, b) => (b.score || 0) - (a.score || 0));
+  writeFileSync(masterJson, JSON.stringify(masterFiltered, null, 2), 'utf8');
+  const masterWritten = await writeCsv(masterFiltered, masterCsv);
+  console.log(`Master file: ${masterFiltered.length} total leads → ${masterWritten}`);
 
   // --- Sync full deduped master to Supabase (frontend reads from here) ---
   console.log('Syncing leads to Supabase...');
-  await syncLeadsToSupabase(merged);
+  await syncLeadsToSupabase(masterFiltered);
 }
 
 main().catch((err) => {

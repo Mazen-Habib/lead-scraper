@@ -45,3 +45,26 @@ export function filterByIcp(leads, config = {}) {
 export function filterByContactPoint(leads) {
   return applyFilter(leads, hasContactPoint, 'no usable contact point (no email/phone/linkedin)');
 }
+
+/**
+ * Drops leads whose only contact point is a confirmed-dead email.
+ * A lead with phone or LinkedIn is kept even if its email bounces.
+ */
+export function filterByDeadEmailOnly(leads) {
+  return applyFilter(leads, (lead) => {
+    if (lead.email_verified !== 'dead') return true;
+    return !!(lead.phone || lead.linkedin); // dead email is ok if there's another way in
+  }, 'dead email with no fallback contact (phone/linkedin)');
+}
+
+/**
+ * Drops leads below a minimum score threshold.
+ * Eliminates Tier D noise before it reaches the DB or the frontend.
+ */
+export function filterByScore(leads, minScore = 35) {
+  return applyFilter(
+    leads,
+    (lead) => (parseInt(lead.score) || 0) >= minScore,
+    `score below ${minScore} (Tier D noise)`
+  );
+}
