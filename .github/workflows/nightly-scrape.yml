@@ -48,12 +48,23 @@ jobs:
             echo "No new leads — nothing to commit."
           else
             TOTAL=$(wc -l < output/leads-master.csv || echo "?")
+            RUN_CSV=$(ls -t output/runs/*.csv 2>/dev/null | head -1)
+            RUN_TOTAL=$([ -n "$RUN_CSV" ] && wc -l < "$RUN_CSV" || echo "?")
+            echo "Run scraped: ${RUN_TOTAL} leads (pre-filter). Master: ${TOTAL} total."
             git commit -m "scrape: nightly run $(date -u +'%Y-%m-%d') — ${TOTAL} total leads in master"
+            PUSHED=0
             for i in 1 2 3; do
-              git pull --rebase origin main && git push && break
-              echo "Push attempt $i failed, retrying in 5s..."
+              if git pull --rebase origin main && git push; then
+                PUSHED=1
+                break
+              fi
+              echo "Push attempt $i/3 failed, retrying in 5s..."
               sleep 5
             done
+            if [ "$PUSHED" -eq 0 ]; then
+              echo "ERROR: all 3 push attempts failed — commit exists locally but was not pushed."
+              exit 1
+            fi
           fi
 
       - name: Upload run CSV as artifact
