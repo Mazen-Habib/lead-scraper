@@ -23,10 +23,20 @@ def log(msg):
 GROQ_KEYS    = [k for k in [os.environ.get(f'GROQ_KEY_{i}')    for i in range(1, 4)] if k]
 MISTRAL_KEYS = [k for k in [os.environ.get(f'MISTRAL_KEY_{i}') for i in range(1, 4)] if k]
 
-KEY_POOL = (
-    [{'model': 'groq/llama-3.1-8b-instant', 'api_key': k} for k in GROQ_KEYS]  +
-    [{'model': 'mistral/open-mistral-7b', 'api_key': k} for k in MISTRAL_KEYS]
-)
+def _build_pool():
+    pool = []
+    for k in GROQ_KEYS:
+        pool.append({'llm_cfg': {'model': 'groq/llama-3.3-70b-versatile', 'api_key': k}, 'label': 'groq'})
+    for k in MISTRAL_KEYS:
+        try:
+            from langchain_mistralai import ChatMistralAI
+            pool.append({'llm_cfg': {'model_instance': ChatMistralAI(model='open-mistral-7b', api_key=k),
+                                     'model_tokens': 32000}, 'label': 'mistral'})
+        except ImportError:
+            pass
+    return pool
+
+KEY_POOL = _build_pool()
 
 _cursor = 0  # global key cursor — advances on rate-limit, wraps around pool
 
@@ -45,25 +55,25 @@ def smart_scrape(url, prompt, schema=None):
 
     max_attempts = len(KEY_POOL) * 2  # allow two full rotations before giving up
     for _ in range(max_attempts):
-        cfg = KEY_POOL[_cursor % len(KEY_POOL)]
-        provider = cfg['model'].split('/')[0]
+        entry    = KEY_POOL[_cursor % len(KEY_POOL)]
+        label    = entry['label']
         key_num  = (_cursor % len(KEY_POOL)) + 1
         try:
             result = SmartScraperGraph(
                 prompt=prompt,
                 source=url,
-                config={'llm': cfg, 'verbose': False, 'headless': True},
+                config={'llm': entry['llm_cfg'], 'verbose': False, 'headless': True},
                 schema=schema,
             ).run()
             return result
         except Exception as e:
             msg = str(e).lower()
             if any(x in msg for x in ['429', 'rate limit', 'quota', 'too many', 'exceeded', 'throttl']):
-                log(f'Rate limit [{provider} key {key_num}] → rotating to next key')
+                log(f'Rate limit [{label} key {key_num}] → rotating to next key')
                 _cursor += 1
                 time.sleep(2)
             else:
-                log(f'Error on {url} [{provider} key {key_num}]: {type(e).__name__}: {str(e)[:120]}')
+                log(f'Error on {url} [{label} key {key_num}]: {type(e).__name__}: {str(e)[:120]}')
                 return None
 
     log(f'All {len(KEY_POOL)} keys exhausted for {url}')
