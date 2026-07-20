@@ -1,0 +1,19 @@
+- Groq_1 = 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
+- Groq_2 = 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
+- Groq_3 = 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
+
+
+- Mistral_1 = kKsyMjjY3flstQVPt4MUBXIde5fivlKj
+- Mistral_2 = k3kqVO3dH0ph4IJNnRfoSIujuachwfyP
+- Mistral_3 = 0qxKNayz3E39CWL4sSM1HVcabyK3zC5Z
+
+
+
+
+
+
+GROQ_KEY_1
+
+
+
+MISTRAL_KEY_1
