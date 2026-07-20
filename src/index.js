@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
+import { spawnSync } from 'child_process';
 import { dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
 import { scrapeGoogleMaps } from './scrapers/googleMaps.js';
@@ -362,6 +363,32 @@ async function main() {
     }
   }
 
+  // === SCRAPEGRAPH-AI — new directory leads (runs before dedupe so they flow through full pipeline) ===
+  const sg = config.scrapegraph || {};
+  if (sg.enabled) {
+    console.log('[scrapegraph] Scraping new directories (TechBehemoths, Manifest)...');
+    const sgScrape = spawnSync('python3', ['src/scrapers/scrapegraph_enricher.py', 'scrape'], {
+      encoding: 'utf8',
+      maxBuffer: 50 * 1024 * 1024,
+      timeout: 20 * 60 * 1000,
+      env: { ...process.env },
+    });
+    if (sgScrape.stderr) process.stderr.write(sgScrape.stderr);
+    if (sgScrape.status === 0 && sgScrape.stdout?.trim()) {
+      try {
+        const now = new Date().toISOString();
+        const sgLeads = JSON.parse(sgScrape.stdout);
+        sgLeads.forEach((l) => { if (!l.scraped_at) l.scraped_at = now; });
+        allLeads.push(...sgLeads);
+        console.log(`[scrapegraph] +${sgLeads.length} leads from new directories\n`);
+      } catch (e) {
+        console.error('[scrapegraph] directory JSON parse error:', e.message);
+      }
+    } else if (sgScrape.status !== 0) {
+      console.error('[scrapegraph] directory scraper exited with status', sgScrape.status);
+    }
+  }
+
   // Sanitise every field: decode %20, strip HTML tags/entities, normalise whitespace
   allLeads.forEach(cleanLead);
   console.log('Cleaned raw scraper output.');
@@ -381,6 +408,36 @@ async function main() {
     // Re-clean after enrichment: emails crawled from websites can also
     // contain URL-encoded characters or HTML entity artifacts.
     allLeads.forEach(cleanLead);
+
+    // ScrapegraphAI enrichment — for leads emailFinder couldn't find an email for.
+    // Sends the full lead array; Python returns the same array with gaps filled.
+    if (sg.enabled && sg.enrichment?.enabled !== false) {
+      const stillMissing = allLeads.filter((l) => l.website && !l.email).length;
+      console.log(`[scrapegraph] Enriching ${stillMissing} leads still without email...`);
+      const sgEnrich = spawnSync('python3', ['src/scrapers/scrapegraph_enricher.py', 'enrich'], {
+        input: JSON.stringify(allLeads),
+        encoding: 'utf8',
+        maxBuffer: 50 * 1024 * 1024,
+        timeout: 30 * 60 * 1000,
+        env: { ...process.env },
+      });
+      if (sgEnrich.stderr) process.stderr.write(sgEnrich.stderr);
+      if (sgEnrich.status === 0 && sgEnrich.stdout?.trim()) {
+        try {
+          const enriched = JSON.parse(sgEnrich.stdout);
+          if (Array.isArray(enriched) && enriched.length === allLeads.length) {
+            allLeads = enriched;
+            allLeads.forEach(cleanLead); // clean any LLM artifacts
+            const gotEmail = allLeads.filter((l) => l.email).length;
+            console.log(`[scrapegraph] Enrichment done — ${gotEmail}/${allLeads.length} leads now have email\n`);
+          }
+        } catch (e) {
+          console.error('[scrapegraph] enrichment JSON parse error:', e.message);
+        }
+      } else if (sgEnrich.status !== 0) {
+        console.error('[scrapegraph] enricher exited with status', sgEnrich.status);
+      }
+    }
 
     console.log('Verifying email domains (MX check)...');
     await verifyLeads(allLeads);

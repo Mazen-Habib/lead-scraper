@@ -359,6 +359,44 @@
   "quality": {
     "minScore": 35
   },
+  "scrapegraph": {
+    "enabled": true,
+    "techbehemoths": {
+      "enabled": true,
+      "maxPages": 2,
+      "queries": [
+        { "service": "software-development",   "country": "united-arab-emirates" },
+        { "service": "web-development",         "country": "united-arab-emirates" },
+        { "service": "mobile-app-development",  "country": "united-arab-emirates" },
+        { "service": "it-services",             "country": "united-arab-emirates" },
+        { "service": "software-development",    "country": "india" },
+        { "service": "web-development",         "country": "india" },
+        { "service": "mobile-app-development",  "country": "india" },
+        { "service": "software-development",    "country": "pakistan" },
+        { "service": "software-development",    "country": "singapore" },
+        { "service": "software-development",    "country": "saudi-arabia" },
+        { "service": "software-development",    "country": "united-states" },
+        { "service": "software-development",    "country": "united-kingdom" }
+      ]
+    },
+    "manifest": {
+      "enabled": true,
+      "queries": [
+        { "category": "software-development",  "country": "ae" },
+        { "category": "web-development",       "country": "ae" },
+        { "category": "mobile-app-development","country": "ae" },
+        { "category": "software-development",  "country": "in" },
+        { "category": "web-development",       "country": "in" },
+        { "category": "software-development",  "country": "pk" },
+        { "category": "software-development",  "country": "sg" },
+        { "category": "software-development",  "country": "sa" },
+        { "category": "software-development",  "country": "us" }
+      ]
+    },
+    "enrichment": {
+      "enabled": true
+    }
+  },
   "findEmails": true,
   "runLabel": "",
   "outputFile": "output/leads.csv"

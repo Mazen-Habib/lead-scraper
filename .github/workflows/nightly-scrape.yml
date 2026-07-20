@@ -31,6 +31,9 @@ jobs:
       - name: Install Playwright + Chromium system deps
         run: npx playwright install chromium --with-deps
 
+      - name: Install Python deps (ScrapegraphAI)
+        run: pip install "scrapegraphai>=1.0" --quiet
+
       - name: Run scraper
         run: node src/index.js
         env:
@@ -38,6 +41,12 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GROQ_KEY_1: ${{ secrets.GROQ_KEY_1 }}
+          GROQ_KEY_2: ${{ secrets.GROQ_KEY_2 }}
+          GROQ_KEY_3: ${{ secrets.GROQ_KEY_3 }}
+          MISTRAL_KEY_1: ${{ secrets.MISTRAL_KEY_1 }}
+          MISTRAL_KEY_2: ${{ secrets.MISTRAL_KEY_2 }}
+          MISTRAL_KEY_3: ${{ secrets.MISTRAL_KEY_3 }}
 
       - name: Commit updated lead files
         run: |
