@@ -24,7 +24,7 @@ GROQ_KEYS    = [k for k in [os.environ.get(f'GROQ_KEY_{i}')    for i in range(1,
 MISTRAL_KEYS = [k for k in [os.environ.get(f'MISTRAL_KEY_{i}') for i in range(1, 4)] if k]
 
 KEY_POOL = (
-    [{'model': 'groq/llama3-8b-8192',     'api_key': k} for k in GROQ_KEYS]  +
+    [{'model': 'groq/llama-3.1-8b-instant', 'api_key': k} for k in GROQ_KEYS]  +
     [{'model': 'mistral/open-mistral-7b', 'api_key': k} for k in MISTRAL_KEYS]
 )
 
