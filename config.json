@@ -359,40 +359,48 @@
   "quality": {
     "minScore": 35
   },
+  "techBehemoths": {
+    "enabled": true,
+    "engine": "cloak_browser",
+    "maxPages": 1,
+    "maxProfileVisits": 15,
+    "queries": [
+      { "service": "software-development",   "country": "united-arab-emirates" },
+      { "service": "web-development",         "country": "united-arab-emirates" },
+      { "service": "mobile-app-development",  "country": "united-arab-emirates" },
+      { "service": "it-services",             "country": "united-arab-emirates" },
+      { "service": "software-development",    "country": "india" },
+      { "service": "web-development",         "country": "india" },
+      { "service": "mobile-app-development",  "country": "india" },
+      { "service": "software-development",    "country": "pakistan" },
+      { "service": "software-development",    "country": "singapore" },
+      { "service": "software-development",    "country": "saudi-arabia" },
+      { "service": "software-development",    "country": "united-states" },
+      { "service": "software-development",    "country": "united-kingdom" }
+    ]
+  },
+  "selectedFirms": {
+    "enabled": true,
+    "engine": "cloak_browser",
+    "maxPages": 2,
+    "queries": [
+      { "category": "software-development",   "country": "uae" },
+      { "category": "web-development",        "country": "uae" },
+      { "category": "mobile-app-development",  "country": "uae" },
+      { "category": "software-development",   "country": "india" },
+      { "category": "web-development",        "country": "india" },
+      { "category": "mobile-app-development",  "country": "india" },
+      { "category": "software-development",   "country": "" },
+      { "category": "web-development",        "country": "" },
+      { "category": "mobile-app-development",  "country": "" },
+      { "category": "software-development",   "country": "usa" },
+      { "category": "software-development",   "country": "uk" },
+      { "category": "software-development",   "country": "canada" },
+      { "category": "software-development",   "country": "australia" }
+    ]
+  },
   "scrapegraph": {
     "enabled": true,
-    "techbehemoths": {
-      "enabled": true,
-      "maxPages": 2,
-      "queries": [
-        { "service": "software-development",   "country": "united-arab-emirates" },
-        { "service": "web-development",         "country": "united-arab-emirates" },
-        { "service": "mobile-app-development",  "country": "united-arab-emirates" },
-        { "service": "it-services",             "country": "united-arab-emirates" },
-        { "service": "software-development",    "country": "india" },
-        { "service": "web-development",         "country": "india" },
-        { "service": "mobile-app-development",  "country": "india" },
-        { "service": "software-development",    "country": "pakistan" },
-        { "service": "software-development",    "country": "singapore" },
-        { "service": "software-development",    "country": "saudi-arabia" },
-        { "service": "software-development",    "country": "united-states" },
-        { "service": "software-development",    "country": "united-kingdom" }
-      ]
-    },
-    "manifest": {
-      "enabled": true,
-      "queries": [
-        { "category": "software-development",  "country": "ae" },
-        { "category": "web-development",       "country": "ae" },
-        { "category": "mobile-app-development","country": "ae" },
-        { "category": "software-development",  "country": "in" },
-        { "category": "web-development",       "country": "in" },
-        { "category": "software-development",  "country": "pk" },
-        { "category": "software-development",  "country": "sg" },
-        { "category": "software-development",  "country": "sa" },
-        { "category": "software-development",  "country": "us" }
-      ]
-    },
     "enrichment": {
       "enabled": true
     }

@@ -11,7 +11,7 @@ permissions:
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    timeout-minutes: 360    # 6h cap — expanded run (106 GM + 47 Clutch + 21 GF + 16 Sortlist + 26 DR + 35 GH + 8 TD + Eventbrite + PSEB)
+    timeout-minutes: 360    # 6h cap — expanded run (106 GM + 47 Clutch + 21 GF + 16 Sortlist + 26 DR + 35 GH + 8 TD + 12 TechBehemoths + 13 SelectedFirms + Eventbrite + PSEB)
 
     steps:
       - name: Checkout repo

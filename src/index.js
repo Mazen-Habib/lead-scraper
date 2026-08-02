@@ -14,6 +14,8 @@ import { scrapeTopDevelopers } from './scrapers/topDevelopers.js';
 import { scrapeSortlist } from './scrapers/sortlist.js';
 import { scrapeEventbrite } from './scrapers/eventbrite.js';
 import { scrapeDesignRush } from './scrapers/designRush.js';
+import { scrapeTechBehemoths } from './scrapers/techBehemoths.js';
+import { scrapeSelectedFirms } from './scrapers/selectedFirms.js';
 import { enrichLeads } from './scrapers/emailFinder.js';
 import { dedupeKey } from './lib/normalizeUrl.js';
 import { filterByIcp, filterByContactPoint, filterByDeadEmailOnly, filterByScore } from './quality/qualityFilter.js';
@@ -363,31 +365,40 @@ async function main() {
     }
   }
 
-  // === SCRAPEGRAPH-AI — new directory leads (runs before dedupe so they flow through full pipeline) ===
-  const sg = config.scrapegraph || {};
-  if (sg.enabled) {
-    console.log('[scrapegraph] Scraping new directories (TechBehemoths, Manifest)...');
-    const sgScrape = spawnSync('python3', ['src/scrapers/scrapegraph_enricher.py', 'scrape'], {
-      encoding: 'utf8',
-      maxBuffer: 50 * 1024 * 1024,
-      timeout: 20 * 60 * 1000,
-      env: { ...process.env },
-    });
-    if (sgScrape.stderr) process.stderr.write(sgScrape.stderr);
-    if (sgScrape.status === 0 && sgScrape.stdout?.trim()) {
+  // Source: TechBehemoths — heavily JS-rendered directory, needs the real Chromium DOM
+  const techBehemoths = config.techBehemoths || {};
+  if (techBehemoths.enabled) {
+    for (const q of techBehemoths.queries || []) {
+      const label = q.country ? `${q.country}/${q.service}` : q.service;
+      console.log(`[cloak] TechBehemoths: "${label}"`);
       try {
-        const now = new Date().toISOString();
-        const sgLeads = JSON.parse(sgScrape.stdout);
-        sgLeads.forEach((l) => { if (!l.scraped_at) l.scraped_at = now; });
-        allLeads.push(...sgLeads);
-        console.log(`[scrapegraph] +${sgLeads.length} leads from new directories\n`);
-      } catch (e) {
-        console.error('[scrapegraph] directory JSON parse error:', e.message);
+        const leads = await scrapeTechBehemoths(q, cloak, techBehemoths.maxPages || 1, techBehemoths.maxProfileVisits || 15);
+        allLeads.push(...tag(leads, { source: 'techbehemoths', engine: 'cloak_browser', query: label }));
+        console.log(`  -> ${leads.length} leads\n`);
+      } catch (err) {
+        console.error(`  !! TechBehemoths failed: ${err.message.split('\n')[0]}\n`);
       }
-    } else if (sgScrape.status !== 0) {
-      console.error('[scrapegraph] directory scraper exited with status', sgScrape.status);
     }
   }
+
+  // Source: SelectedFirms — replaces the earlier "Manifest" source (which was
+  // actually a London design agency's own site, not a directory)
+  const selectedFirms = config.selectedFirms || {};
+  if (selectedFirms.enabled) {
+    for (const q of selectedFirms.queries || []) {
+      const label = q.country ? `${q.category}/${q.country}` : q.category;
+      console.log(`[cloak] SelectedFirms: "${label}"`);
+      try {
+        const leads = await scrapeSelectedFirms(q.category, cloak, q.country || '', selectedFirms.maxPages || 2);
+        allLeads.push(...tag(leads, { source: 'selectedfirms', engine: 'cloak_browser', query: label }));
+        console.log(`  -> ${leads.length} leads\n`);
+      } catch (err) {
+        console.error(`  !! SelectedFirms failed: ${err.message.split('\n')[0]}\n`);
+      }
+    }
+  }
+
+  const sg = config.scrapegraph || {};
 
   // Sanitise every field: decode %20, strip HTML tags/entities, normalise whitespace
   allLeads.forEach(cleanLead);
