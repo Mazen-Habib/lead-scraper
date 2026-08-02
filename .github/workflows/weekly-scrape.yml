@@ -1,8 +1,8 @@
-name: Nightly Lead Scrape
+name: Weekly Lead Scrape
 
 on:
   schedule:
-    - cron: '0 19 * * *'   # midnight PKT (UTC+5) every night
+    - cron: '0 19 * * 0'   # midnight PKT (UTC+5) every Sunday
   workflow_dispatch:        # manual trigger from GitHub UI anytime
 
 permissions:
@@ -60,7 +60,7 @@ jobs:
             RUN_CSV=$(ls -t output/runs/*.csv 2>/dev/null | head -1)
             RUN_TOTAL=$([ -n "$RUN_CSV" ] && wc -l < "$RUN_CSV" || echo "?")
             echo "Run scraped: ${RUN_TOTAL} leads (pre-filter). Master: ${TOTAL} total."
-            git commit -m "scrape: nightly run $(date -u +'%Y-%m-%d') — ${TOTAL} total leads in master"
+            git commit -m "scrape: weekly run $(date -u +'%Y-%m-%d') — ${TOTAL} total leads in master"
             PUSHED=0
             for i in 1 2 3; do
               if git pull --rebase origin main && git push; then

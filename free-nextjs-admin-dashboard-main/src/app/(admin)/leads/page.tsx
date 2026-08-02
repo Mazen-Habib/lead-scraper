@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   description: "Browse, filter, and export all scraped leads",
 };
 
-// Leads change nightly via the scraper's cron; never statically cache this page.
+// Leads change weekly via the scraper's cron; never statically cache this page.
 export const dynamic = "force-dynamic";
 
 export default async function LeadsPage() {

@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   description: "Live lead generation dashboard",
 };
 
-// Leads change nightly via the scraper's cron; never statically cache this page.
+// Leads change weekly via the scraper's cron; never statically cache this page.
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
@@ -32,7 +32,7 @@ export default async function DashboardPage() {
           Set <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">NEXT_PUBLIC_SUPABASE_URL</code>{" "}
           and <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">NEXT_PUBLIC_SUPABASE_ANON_KEY</code>{" "}
           in <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">.env.local</code>, then
-          trigger the nightly scraper workflow on GitHub Actions.
+          trigger the weekly scraper workflow on GitHub Actions.
         </p>
       </div>
     );

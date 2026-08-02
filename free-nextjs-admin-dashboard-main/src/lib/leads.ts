@@ -129,7 +129,7 @@ async function fetchAllLeadRows(
 }
 
 export async function fetchLeads(): Promise<Lead[]> {
-  // ── Primary: Supabase (populated by the nightly scraper's upsert) ───────────
+  // ── Primary: Supabase (populated by the weekly scraper's upsert) ────────────
   const supabase = getSupabaseClient();
   if (supabase) {
     const rows = await fetchAllLeadRows(supabase);

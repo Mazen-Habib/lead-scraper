@@ -41,7 +41,7 @@ The dashboard shows nothing until `leads` has rows. Two ways to fill it:
   `node scripts/backfill-supabase.js output/leads-master.csv` re-scores and upserts what you
   already have.
 
-> The nightly GitHub Action (`.github/workflows/nightly-scrape.yml`) can also do this on a
+> The weekly GitHub Action (`.github/workflows/weekly-scrape.yml`) can also do this on a
 > schedule — it needs `SUPABASE_SERVICE_ROLE_KEY` added as a **GitHub repo secret**.
 
 ---
