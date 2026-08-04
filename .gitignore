@@ -21,3 +21,6 @@ Thumbs.db
 .env
 .env.local
 credentials.txt
+supabase_credentials.txt
+*credentials*.txt
+*.key

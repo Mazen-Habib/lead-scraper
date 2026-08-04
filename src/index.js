@@ -29,6 +29,27 @@ const config = JSON.parse(readFileSync(resolve(root, 'config.json'), 'utf8'));
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// Resolve a working Python 3 executable. On Windows `python3` is usually just
+// the Microsoft Store stub (not real Python), so we probe candidates and pick
+// the first that actually reports Python 3. Override with PYTHON_BIN in .env.
+function resolvePythonBin() {
+  const candidates = process.env.PYTHON_BIN
+    ? [process.env.PYTHON_BIN]
+    : process.platform === 'win32'
+      ? ['python', 'python3', 'py']
+      : ['python3', 'python'];
+  for (const bin of candidates) {
+    try {
+      const r = spawnSync(bin, ['--version'], { encoding: 'utf8' });
+      if (r.status === 0 && /Python 3/.test((r.stdout || '') + (r.stderr || ''))) return bin;
+    } catch {
+      /* try next */
+    }
+  }
+  return null;
+}
+const PYTHON_BIN = resolvePythonBin();
+
 const CSV_COLUMNS = [
   ['name', 'company_name'],
   ['category', 'category'],
@@ -422,10 +443,10 @@ async function main() {
 
     // ScrapegraphAI enrichment — for leads emailFinder couldn't find an email for.
     // Sends the full lead array; Python returns the same array with gaps filled.
-    if (sg.enabled && sg.enrichment?.enabled !== false) {
+    if (sg.enabled && PYTHON_BIN && sg.enrichment?.enabled !== false) {
       const stillMissing = allLeads.filter((l) => l.website && !l.email).length;
       console.log(`[scrapegraph] Enriching ${stillMissing} leads still without email...`);
-      const sgEnrich = spawnSync('python3', ['src/scrapers/scrapegraph_enricher.py', 'enrich'], {
+      const sgEnrich = spawnSync(PYTHON_BIN, ['src/scrapers/scrapegraph_enricher.py', 'enrich'], {
         input: JSON.stringify(allLeads),
         encoding: 'utf8',
         maxBuffer: 50 * 1024 * 1024,
