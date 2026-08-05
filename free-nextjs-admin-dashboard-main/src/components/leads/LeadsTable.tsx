@@ -2,6 +2,7 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import type { Lead } from "@/lib/lead-types";
 import { SOURCE_LABELS } from "@/lib/lead-types";
+import { INDUSTRIES, REGIONS, FIRM_SIZE_BANDS } from "@/lib/facets";
 
 const TIER_COLORS: Record<string, string> = {
   A: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
@@ -15,143 +16,10 @@ const TIER_BAR: Record<string, string> = {
 };
 
 const PAGE_SIZE = 50;
+const SEARCH_DEBOUNCE_MS = 350;
 
-// ── Region groups: matched against address + search_query ─────────────────────
-const REGIONS: Record<string, string[]> = {
-  "Middle East": [
-    "uae","dubai","abu dhabi","sharjah","ajman","ras al","fujairah",
-    "saudi","riyadh","jeddah","dammam","mecca","medina","khobar",
-    "qatar","doha","kuwait","bahrain","manama","oman","muscat",
-    "jordan","amman","lebanon","beirut","iraq","baghdad",
-    "israel","tel aviv","haifa","palestine","egypt","cairo","alexandria",
-    "yemen","syria","united arab","gcc",
-  ],
-  "South Asia": [
-    "pakistan","karachi","lahore","islamabad","faisalabad","peshawar","quetta","multan",
-    "india","bangalore","bengaluru","mumbai","delhi","hyderabad","pune","chennai",
-    "kolkata","ahmedabad","surat","jaipur","lucknow","kochi",
-    "bangladesh","dhaka","chittagong",
-    "sri lanka","colombo","nepal","kathmandu",
-  ],
-  "Southeast Asia": [
-    "singapore","philippines","manila","cebu","davao",
-    "malaysia","kuala lumpur","kl","penang","johor",
-    "vietnam","ho chi minh","hanoi","da nang",
-    "indonesia","jakarta","bali","surabaya",
-    "thailand","bangkok","chiang mai",
-    "myanmar","rangoon","cambodia","phnom penh",
-  ],
-  "Africa": [
-    "nigeria","lagos","abuja","port harcourt",
-    "kenya","nairobi","mombasa",
-    "south africa","cape town","johannesburg","durban","pretoria",
-    "ghana","accra","ethiopia","addis ababa",
-    "tanzania","dar es salaam","uganda","kampala",
-    "morocco","casablanca","rabat","senegal","dakar","ivory coast",
-  ],
-  "Europe": [
-    "uk","united kingdom","london","manchester","birmingham","glasgow","edinburgh",
-    "germany","berlin","munich","hamburg","frankfurt","cologne","düsseldorf",
-    "netherlands","amsterdam","rotterdam","the hague",
-    "france","paris","lyon","marseille",
-    "spain","madrid","barcelona","sweden","stockholm","norway","oslo",
-    "denmark","copenhagen","finland","helsinki","poland","warsaw",
-    "ukraine","kyiv","czech","prague","austria","vienna","switzerland","zurich",
-    "italy","rome","milan","portugal","lisbon","belgium","brussels",
-  ],
-  "North America": [
-    "usa","united states","new york","san francisco","silicon valley","los angeles",
-    "seattle","austin","chicago","boston","miami","dallas","denver","atlanta",
-    "canada","toronto","vancouver","montreal","calgary","ottawa",
-    "mexico","mexico city","guadalajara",
-  ],
-  "APAC / ANZ": [
-    "australia","sydney","melbourne","brisbane","perth","adelaide",
-    "new zealand","auckland","wellington",
-    "japan","tokyo","osaka","south korea","seoul","busan",
-    "taiwan","taipei","hong kong","china","beijing","shanghai","shenzhen",
-  ],
-};
-
-// ── Service keyword groups: matched against category + search_query + company_name ──
-const SERVICES: Record<string, string[]> = {
-  "Data Analytics / BI": [
-    "data","analytics","bi","power bi","powerbi","dashboard","reporting",
-    "visualization","tableau","looker","qlik","business intelligence",
-    "data science","data engineer","data warehouse","etl","snowflake",
-    "dbt","metabase","superset","grafana",
-  ],
-  "Web Development": [
-    "web","frontend","react","angular","vue","next","nuxt",
-    "wordpress","cms","portal","landing page","website",
-  ],
-  "Mobile Apps": [
-    "mobile","ios","android","flutter","react native","app development",
-    "swift","kotlin","xamarin","ionic",
-  ],
-  "AI / ML": [
-    "ai","artificial intelligence","machine learning","ml","nlp",
-    "computer vision","deep learning","llm","gpt","chatbot",
-    "generative ai","neural","predictive",
-  ],
-  "E-commerce": [
-    "ecommerce","e-commerce","shopify","magento","woocommerce",
-    "online store","marketplace","woo","prestashop","bigcommerce",
-  ],
-  "Cloud / DevOps": [
-    "cloud","devops","aws","azure","gcp","docker","kubernetes",
-    "infrastructure","ci/cd","devsecops","terraform","ansible",
-  ],
-  "Cybersecurity": [
-    "cyber","security","penetration","firewall","soc","compliance",
-    "iso 27001","siem","endpoint","threat",
-  ],
-  "ERP / SAP": [
-    "erp","sap","odoo","oracle","dynamics","netsuite",
-    "enterprise resource","accounting","erp system",
-  ],
-  "Blockchain": [
-    "blockchain","crypto","web3","nft","defi","smart contract","ethereum",
-  ],
-  "UI/UX Design": [
-    "design","ux","ui","user experience","figma","prototyping","creative",
-  ],
-  "QA / Testing": [
-    "qa","testing","quality assurance","test automation","selenium",
-    "cypress","playwright","performance testing","load testing",
-  ],
-  "Digital Marketing": [
-    "digital marketing","seo","sem","ppc","social media","content marketing",
-    "email marketing","growth hacking","performance marketing",
-  ],
-};
-
-function matchesRegion(lead: Lead, region: string): boolean {
-  const keywords = REGIONS[region];
-  const hay = `${lead.address} ${lead.search_query}`.toLowerCase();
-  return keywords.some((k) => hay.includes(k));
-}
-
-function matchesService(lead: Lead, service: string): boolean {
-  const keywords = SERVICES[service];
-  const hay = `${lead.category} ${lead.search_query} ${lead.company_name}`.toLowerCase();
-  return keywords.some((k) => hay.includes(k));
-}
-
-function exportCSV(leads: Lead[]) {
-  const cols = [
-    "company_name","category","email","phone","address","website",
-    "linkedin","source","score","tier","rating","review_count",
-    "company_size","hourly_rate","email_verified","scraped_at",
-  ] as (keyof Lead)[];
-  const esc = (v: string) => (/[",\n\r]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
-  const blob = new Blob(
-    [[cols.join(","), ...leads.map((l) => cols.map((c) => esc(l[c] ?? "")).join(","))].join("\r\n")],
-    { type: "text/csv" }
-  );
-  const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: "leads.csv" });
-  a.click(); URL.revokeObjectURL(a.href);
-}
+const REGION_LABELS: Record<string, string> = Object.fromEntries(REGIONS.map((r) => [r.slug, r.label]));
+const INDUSTRY_LABELS: Record<string, string> = Object.fromEntries(INDUSTRIES.map((i) => [i.slug, i.label]));
 
 // ── Lead detail drawer ────────────────────────────────────────────────────────
 
@@ -248,6 +116,33 @@ function LeadDrawer({ lead, onClose }: { lead: Lead; onClose: () => void }) {
             <section>
               <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">Location</h3>
               <Field label="Address" value={lead.address} />
+              {lead.region && <Field label="Region" value={REGION_LABELS[lead.region] ?? lead.region} />}
+            </section>
+          )}
+
+          {(lead.industry || (lead.tags && lead.tags.length > 0) || lead.firm_size_band) && (
+            <section>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">Classification</h3>
+              <div className="flex flex-wrap gap-1.5">
+                {lead.industry && (
+                  <span className="inline-flex items-center rounded-full bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-700 px-2.5 py-0.5 text-xs font-medium text-violet-700 dark:text-violet-300">
+                    {INDUSTRY_LABELS[lead.industry] ?? lead.industry}
+                  </span>
+                )}
+                {(lead.tags ?? [])
+                  .filter((t) => t !== lead.industry)
+                  .map((t) => (
+                    <span key={t} className="inline-flex items-center rounded-full bg-gray-100 dark:bg-gray-800 px-2.5 py-0.5 text-xs font-medium text-gray-600 dark:text-gray-300">
+                      {INDUSTRY_LABELS[t] ?? t}
+                    </span>
+                  ))}
+                {lead.firm_size_band && (
+                  <span className="inline-flex items-center rounded-full bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 px-2.5 py-0.5 text-xs font-medium text-blue-700 dark:text-blue-300">
+                    {lead.is_enterprise ? "Enterprise" : lead.firm_size_band}
+                    {lead.employee_count ? ` · ${lead.employee_count.toLocaleString()} employees` : ""}
+                  </span>
+                )}
+              </div>
             </section>
           )}
 
@@ -315,113 +210,172 @@ function LeadDrawer({ lead, onClose }: { lead: Lead; onClose: () => void }) {
   );
 }
 
-// ── Quick-target presets ──────────────────────────────────────────────────────
+// ── Quick-target presets (industry/region slugs match the shared taxonomy) ────
 
-type Preset = { label: string; region: string; service: string; tier: string };
+type Preset = { label: string; region: string; industry: string; tier: string };
 
 const QUICK_TARGETS: Preset[] = [
-  { label: "Data Analytics · ME",       region: "Middle East",    service: "Data Analytics / BI",  tier: "All" },
-  { label: "PowerBI / BI · ME",         region: "Middle East",    service: "Data Analytics / BI",  tier: "All" },
-  { label: "AI/ML · South Asia",        region: "South Asia",     service: "AI / ML",              tier: "All" },
-  { label: "Mobile Apps · SE Asia",     region: "Southeast Asia", service: "Mobile Apps",          tier: "All" },
-  { label: "E-commerce · Africa",       region: "Africa",         service: "E-commerce",           tier: "All" },
-  { label: "ERP/SAP · ME Tier A",       region: "Middle East",    service: "ERP / SAP",            tier: "A"   },
-  { label: "Web Dev · Europe",          region: "Europe",         service: "Web Development",      tier: "All" },
-  { label: "Cloud/DevOps · US",         region: "North America",  service: "Cloud / DevOps",       tier: "All" },
+  { label: "Data Analytics · ME",       region: "middle-east",     industry: "data-analytics-bi", tier: "All" },
+  { label: "AI/ML · South Asia",        region: "south-asia",      industry: "ai-ml",             tier: "All" },
+  { label: "Mobile Apps · SE Asia",     region: "southeast-asia",  industry: "mobile-apps",       tier: "All" },
+  { label: "E-commerce · Africa",       region: "africa",          industry: "ecommerce",         tier: "All" },
+  { label: "ERP/SAP · ME Tier A",       region: "middle-east",     industry: "erp-sap",           tier: "A"   },
+  { label: "Web Dev · Europe",          region: "europe",          industry: "web-development",   tier: "All" },
+  { label: "Cloud/DevOps · US",         region: "north-america",   industry: "cloud-devops",      tier: "All" },
+  { label: "Digital Marketing · Global", region: "All",            industry: "digital-marketing", tier: "All" },
 ];
+
+// ── Fetch helpers ───────────────────────────────────────────────────────────
+
+type Filters = {
+  search: string;
+  tier: string;
+  source: string;
+  region: string;
+  industry: string;
+  firmSizeBand: string;
+  emailOnly: boolean;
+  minScore: string;
+  maxScore: string;
+  sortCol: "score" | "scraped_at";
+  sortDir: "desc" | "asc";
+};
+
+const DEFAULT_FILTERS: Filters = {
+  search: "", tier: "All", source: "All", region: "All", industry: "All",
+  firmSizeBand: "All", emailOnly: false, minScore: "", maxScore: "",
+  sortCol: "score", sortDir: "desc",
+};
+
+function buildParams(filters: Filters, page: number): URLSearchParams {
+  const params = new URLSearchParams();
+  if (filters.tier !== "All") params.set("tier", filters.tier);
+  if (filters.source !== "All") params.set("source", filters.source);
+  if (filters.region !== "All") params.set("region", filters.region);
+  if (filters.industry !== "All") params.set("industry", filters.industry);
+  if (filters.firmSizeBand !== "All") params.set("firmSizeBand", filters.firmSizeBand);
+  if (filters.emailOnly) params.set("hasEmail", "1");
+  if (filters.minScore) params.set("minScore", filters.minScore);
+  if (filters.maxScore) params.set("maxScore", filters.maxScore);
+  if (filters.search.trim()) params.set("search", filters.search.trim());
+  params.set("sortCol", filters.sortCol);
+  params.set("sortDir", filters.sortDir);
+  params.set("page", String(page));
+  params.set("pageSize", String(PAGE_SIZE));
+  return params;
+}
 
 // ── Main table ────────────────────────────────────────────────────────────────
 
-export default function LeadsTable({ leads }: { leads: Lead[] }) {
-  const [search, setSearch]           = useState("");
-  const [tierFilter, setTierFilter]   = useState("All");
-  const [sourceFilter, setSourceFilter] = useState("All");
-  const [regionFilter, setRegionFilter] = useState("All");
-  const [serviceFilter, setServiceFilter] = useState("All");
-  const [emailOnly, setEmailOnly]     = useState(false);
-  const [page, setPage]               = useState(1);
-  const [sortCol, setSortCol]         = useState<"score" | "scraped_at">("score");
-  const [sortDir, setSortDir]         = useState<"desc" | "asc">("desc");
+export default function LeadsTable({
+  initialLeads,
+  initialTotal,
+  sources,
+}: {
+  initialLeads: Lead[];
+  initialTotal: number;
+  sources: string[];
+}) {
+  const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
+  const [searchInput, setSearchInput] = useState("");
+  const [page, setPage] = useState(1);
+  const [leads, setLeads] = useState<Lead[]>(initialLeads);
+  const [total, setTotal] = useState(initialTotal);
+  const [loading, setLoading] = useState(false);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [showPresets, setShowPresets] = useState(false);
 
-  const hasScores = leads.some((l) => l.score && l.tier);
+  const isFirstRun = useRef(true);
+  const requestIdRef = useRef(0);
 
-  const allSources = useMemo(() => {
-    const s = new Set(leads.map((l) => l.source).filter(Boolean));
-    return ["All", ...Array.from(s).sort()];
-  }, [leads]);
+  const allSources = useMemo(() => ["All", ...sources], [sources]);
+
+  // Debounce the search box into filters.search
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setFilters((f) => (f.search === searchInput ? f : { ...f, search: searchInput }));
+      setPage(1);
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [searchInput]);
+
+  // Fetch whenever filters or page change (skip the very first run — the
+  // server component already fetched the default first page).
+  useEffect(() => {
+    if (isFirstRun.current) { isFirstRun.current = false; return; }
+    const requestId = ++requestIdRef.current;
+    setLoading(true);
+    const params = buildParams(filters, page);
+    fetch(`/api/leads?${params.toString()}`)
+      .then((res) => res.json())
+      .then((data: { leads: Lead[]; total: number }) => {
+        if (requestId !== requestIdRef.current) return; // a newer request superseded this one
+        setLeads(data.leads);
+        setTotal(data.total);
+      })
+      .catch((err) => console.error("Failed to fetch leads:", err))
+      .finally(() => {
+        if (requestId === requestIdRef.current) setLoading(false);
+      });
+  }, [filters, page]);
 
   const activeFilterCount = [
-    tierFilter !== "All",
-    sourceFilter !== "All",
-    regionFilter !== "All",
-    serviceFilter !== "All",
-    emailOnly,
-    search.trim() !== "",
+    filters.tier !== "All",
+    filters.source !== "All",
+    filters.region !== "All",
+    filters.industry !== "All",
+    filters.firmSizeBand !== "All",
+    filters.emailOnly,
+    !!filters.minScore,
+    !!filters.maxScore,
+    filters.search.trim() !== "",
   ].filter(Boolean).length;
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return leads
-      .filter((l) => {
-        if (tierFilter !== "All") {
-          if (!hasScores) return true;
-          if (l.tier !== tierFilter) return false;
-        }
-        if (sourceFilter !== "All" && l.source !== sourceFilter) return false;
-        if (regionFilter !== "All" && !matchesRegion(l, regionFilter)) return false;
-        if (serviceFilter !== "All" && !matchesService(l, serviceFilter)) return false;
-        if (emailOnly && !l.email) return false;
-        if (q) {
-          const hay = `${l.company_name} ${l.email} ${l.address} ${l.category} ${l.search_query}`.toLowerCase();
-          if (!hay.includes(q)) return false;
-        }
-        return true;
-      })
-      .sort((a, b) => {
-        if (sortCol === "score") {
-          const diff = (parseInt(b.score) || 0) - (parseInt(a.score) || 0);
-          return sortDir === "desc" ? diff : -diff;
-        }
-        const diff = (b.scraped_at ?? "").localeCompare(a.scraped_at ?? "");
-        return sortDir === "desc" ? diff : -diff;
-      });
-  }, [leads, search, tierFilter, sourceFilter, regionFilter, serviceFilter, emailOnly, sortCol, sortDir, hasScores]);
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const safePageNum = Math.min(page, totalPages);
-  const pageLeads = filtered.slice((safePageNum - 1) * PAGE_SIZE, safePageNum * PAGE_SIZE);
-
-  const resetPage = () => setPage(1);
+  const setFilter = <K extends keyof Filters>(key: K, value: Filters[K]) => {
+    setFilters((f) => ({ ...f, [key]: value }));
+    setPage(1);
+  };
 
   const applyPreset = (p: Preset) => {
-    setRegionFilter(p.region);
-    setServiceFilter(p.service);
-    setTierFilter(p.tier);
-    setSearch("");
-    setSourceFilter("All");
-    setEmailOnly(false);
+    setFilters({
+      ...DEFAULT_FILTERS,
+      region: p.region,
+      industry: p.industry,
+      tier: p.tier,
+    });
+    setSearchInput("");
     setShowPresets(false);
-    resetPage();
+    setPage(1);
   };
 
   const clearAllFilters = () => {
-    setSearch(""); setTierFilter("All"); setSourceFilter("All");
-    setRegionFilter("All"); setServiceFilter("All"); setEmailOnly(false);
-    resetPage();
+    setFilters(DEFAULT_FILTERS);
+    setSearchInput("");
+    setPage(1);
   };
 
   const toggleSort = (col: "score" | "scraped_at") => {
-    if (sortCol === col) setSortDir((d) => (d === "desc" ? "asc" : "desc"));
-    else { setSortCol(col); setSortDir("desc"); }
-    resetPage();
+    setFilters((f) => ({
+      ...f,
+      sortCol: col,
+      sortDir: f.sortCol === col ? (f.sortDir === "desc" ? "asc" : "desc") : "desc",
+    }));
+    setPage(1);
+  };
+
+  const exportCSV = () => {
+    const params = buildParams(filters, 1);
+    params.delete("page");
+    params.delete("pageSize");
+    window.location.href = `/api/leads/export?${params.toString()}`;
   };
 
   const SortArrow = ({ col }: { col: "score" | "scraped_at" }) =>
-    sortCol !== col ? (
+    filters.sortCol !== col ? (
       <span className="text-gray-300">↕</span>
-    ) : sortDir === "desc" ? (
+    ) : filters.sortDir === "desc" ? (
       <span className="text-brand-500">↓</span>
     ) : (
       <span className="text-brand-500">↑</span>
@@ -446,15 +400,16 @@ export default function LeadsTable({ leads }: { leads: Lead[] }) {
               <input
                 type="text"
                 placeholder="Search company, email, location, category…"
-                value={search}
-                onChange={(e) => { setSearch(e.target.value); resetPage(); }}
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
                 className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 pl-9 pr-3 py-2 text-sm text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500"
               />
             </div>
 
             <div className="flex items-center gap-2 ml-auto">
               <span className="text-sm text-gray-400 whitespace-nowrap">
-                <span className="font-semibold text-gray-700 dark:text-gray-200">{filtered.length.toLocaleString()}</span> leads
+                <span className="font-semibold text-gray-700 dark:text-gray-200">{total.toLocaleString()}</span> leads
+                {loading && <span className="ml-1.5 inline-block animate-pulse text-brand-400">·</span>}
               </span>
 
               {/* Quick targets button */}
@@ -481,7 +436,7 @@ export default function LeadsTable({ leads }: { leads: Lead[] }) {
                 )}
               </div>
 
-              <button onClick={() => exportCSV(filtered)}
+              <button onClick={exportCSV}
                 className="rounded-lg bg-brand-500 hover:bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-colors whitespace-nowrap">
                 Export CSV
               </button>
@@ -491,7 +446,7 @@ export default function LeadsTable({ leads }: { leads: Lead[] }) {
           {/* Row 2: dropdown filters */}
           <div className="flex flex-wrap gap-2 items-center">
             {/* Tier */}
-            <select value={tierFilter} onChange={(e) => { setTierFilter(e.target.value); resetPage(); }} className={selectCls}>
+            <select value={filters.tier} onChange={(e) => setFilter("tier", e.target.value)} className={selectCls}>
               <option value="All">All Tiers</option>
               <option value="A">Tier A — Top</option>
               <option value="B">Tier B — Strong</option>
@@ -500,29 +455,46 @@ export default function LeadsTable({ leads }: { leads: Lead[] }) {
             </select>
 
             {/* Source */}
-            <select value={sourceFilter} onChange={(e) => { setSourceFilter(e.target.value); resetPage(); }} className={selectCls}>
+            <select value={filters.source} onChange={(e) => setFilter("source", e.target.value)} className={selectCls}>
               {allSources.map((s) => (
                 <option key={s} value={s}>{s === "All" ? "All Sources" : (SOURCE_LABELS[s] ?? s)}</option>
               ))}
             </select>
 
             {/* Region */}
-            <select value={regionFilter} onChange={(e) => { setRegionFilter(e.target.value); resetPage(); }}
-              className={`${selectCls} ${regionFilter !== "All" ? "border-brand-400 ring-1 ring-brand-300 text-brand-600 dark:text-brand-400" : ""}`}>
+            <select value={filters.region} onChange={(e) => setFilter("region", e.target.value)}
+              className={`${selectCls} ${filters.region !== "All" ? "border-brand-400 ring-1 ring-brand-300 text-brand-600 dark:text-brand-400" : ""}`}>
               <option value="All">All Regions</option>
-              {Object.keys(REGIONS).map((r) => <option key={r} value={r}>{r}</option>)}
+              {REGIONS.map((r) => <option key={r.slug} value={r.slug}>{r.label}</option>)}
             </select>
 
-            {/* Service / Specialty */}
-            <select value={serviceFilter} onChange={(e) => { setServiceFilter(e.target.value); resetPage(); }}
-              className={`${selectCls} ${serviceFilter !== "All" ? "border-brand-400 ring-1 ring-brand-300 text-brand-600 dark:text-brand-400" : ""}`}>
-              <option value="All">All Services</option>
-              {Object.keys(SERVICES).map((s) => <option key={s} value={s}>{s}</option>)}
+            {/* Industry */}
+            <select value={filters.industry} onChange={(e) => setFilter("industry", e.target.value)}
+              className={`${selectCls} ${filters.industry !== "All" ? "border-brand-400 ring-1 ring-brand-300 text-brand-600 dark:text-brand-400" : ""}`}>
+              <option value="All">All Industries</option>
+              {INDUSTRIES.map((i) => <option key={i.slug} value={i.slug}>{i.label}</option>)}
             </select>
+
+            {/* Firm size */}
+            <select value={filters.firmSizeBand} onChange={(e) => setFilter("firmSizeBand", e.target.value)} className={selectCls}>
+              <option value="All">All Sizes</option>
+              {FIRM_SIZE_BANDS.map((b) => <option key={b.band} value={b.band}>{b.label}</option>)}
+            </select>
+
+            {/* Score range */}
+            <div className="flex items-center gap-1.5">
+              <input type="number" min={0} max={100} placeholder="Min score" value={filters.minScore}
+                onChange={(e) => setFilter("minScore", e.target.value)}
+                className="w-24 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2.5 py-2 text-sm text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500" />
+              <span className="text-gray-300 text-sm">–</span>
+              <input type="number" min={0} max={100} placeholder="Max score" value={filters.maxScore}
+                onChange={(e) => setFilter("maxScore", e.target.value)}
+                className="w-24 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2.5 py-2 text-sm text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500" />
+            </div>
 
             {/* Has Email */}
             <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 cursor-pointer select-none shrink-0">
-              <input type="checkbox" checked={emailOnly} onChange={(e) => { setEmailOnly(e.target.checked); resetPage(); }}
+              <input type="checkbox" checked={filters.emailOnly} onChange={(e) => setFilter("emailOnly", e.target.checked)}
                 className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-brand-500 focus:ring-brand-500 bg-white dark:bg-gray-900" />
               Has Email
             </label>
@@ -540,27 +512,21 @@ export default function LeadsTable({ leads }: { leads: Lead[] }) {
           </div>
 
           {/* Active filter pills */}
-          {(regionFilter !== "All" || serviceFilter !== "All") && (
+          {(filters.region !== "All" || filters.industry !== "All") && (
             <div className="flex flex-wrap gap-2 pt-1">
-              {regionFilter !== "All" && (
+              {filters.region !== "All" && (
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 dark:bg-brand-900/20 border border-brand-200 dark:border-brand-700 px-3 py-1 text-xs font-medium text-brand-700 dark:text-brand-300">
-                  📍 {regionFilter}
-                  <button onClick={() => { setRegionFilter("All"); resetPage(); }} className="hover:text-red-500 transition-colors">×</button>
+                  📍 {REGION_LABELS[filters.region] ?? filters.region}
+                  <button onClick={() => setFilter("region", "All")} className="hover:text-red-500 transition-colors">×</button>
                 </span>
               )}
-              {serviceFilter !== "All" && (
+              {filters.industry !== "All" && (
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-700 px-3 py-1 text-xs font-medium text-violet-700 dark:text-violet-300">
-                  🔧 {serviceFilter}
-                  <button onClick={() => { setServiceFilter("All"); resetPage(); }} className="hover:text-red-500 transition-colors">×</button>
+                  🔧 {INDUSTRY_LABELS[filters.industry] ?? filters.industry}
+                  <button onClick={() => setFilter("industry", "All")} className="hover:text-red-500 transition-colors">×</button>
                 </span>
               )}
             </div>
-          )}
-
-          {!hasScores && tierFilter !== "All" && (
-            <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-lg px-3 py-2">
-              ⚠️ Scores are not yet computed — trigger a scraper run to populate tier data.
-            </p>
           )}
         </div>
 
@@ -586,12 +552,12 @@ export default function LeadsTable({ leads }: { leads: Lead[] }) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50 dark:divide-gray-800/60">
-                {pageLeads.length === 0 ? (
+                {leads.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="px-5 py-16 text-center text-gray-400">
                       <div className="text-3xl mb-2">🔍</div>
-                      No leads match your filters.
-                      {activeFilterCount > 0 && (
+                      {loading ? "Loading…" : "No leads match your filters."}
+                      {!loading && activeFilterCount > 0 && (
                         <button onClick={clearAllFilters} className="block mx-auto mt-2 text-sm text-brand-500 hover:underline">
                           Clear all filters
                         </button>
@@ -599,7 +565,7 @@ export default function LeadsTable({ leads }: { leads: Lead[] }) {
                     </td>
                   </tr>
                 ) : (
-                  pageLeads.map((lead, i) => {
+                  leads.map((lead, i) => {
                     const tier = lead.tier as keyof typeof TIER_COLORS;
                     const scrapeDate = lead.scraped_at
                       ? new Date(lead.scraped_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })
@@ -659,23 +625,23 @@ export default function LeadsTable({ leads }: { leads: Lead[] }) {
           {totalPages > 1 && (
             <div className="flex items-center justify-between px-5 py-3.5 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-white/[0.01]">
               <span className="text-xs text-gray-500">
-                Showing {((safePageNum - 1) * PAGE_SIZE + 1).toLocaleString()}–{Math.min(safePageNum * PAGE_SIZE, filtered.length).toLocaleString()} of {filtered.length.toLocaleString()}
+                Showing {((page - 1) * PAGE_SIZE + 1).toLocaleString()}–{Math.min(page * PAGE_SIZE, total).toLocaleString()} of {total.toLocaleString()}
               </span>
               <div className="flex items-center gap-1">
-                <button onClick={() => setPage(1)} disabled={safePageNum === 1}
+                <button onClick={() => setPage(1)} disabled={page === 1}
                   className="rounded px-2 py-1 text-xs text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30">«</button>
-                <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={safePageNum === 1}
+                <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
                   className="rounded px-3 py-1 text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30">
                   Prev
                 </button>
                 <span className="px-3 py-1 text-xs text-gray-700 dark:text-gray-300 font-semibold">
-                  {safePageNum} / {totalPages}
+                  {page} / {totalPages}
                 </span>
-                <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={safePageNum === totalPages}
+                <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}
                   className="rounded px-3 py-1 text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30">
                   Next
                 </button>
-                <button onClick={() => setPage(totalPages)} disabled={safePageNum === totalPages}
+                <button onClick={() => setPage(totalPages)} disabled={page === totalPages}
                   className="rounded px-2 py-1 text-xs text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30">»</button>
               </div>
             </div>

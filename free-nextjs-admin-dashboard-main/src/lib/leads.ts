@@ -27,6 +27,17 @@ type LeadRow = {
   score: number | null;
   tier: string | null;
   scraped_at: string | null;
+  first_seen_at: string | null;
+  last_seen_at: string | null;
+  industry: string | null;
+  tags: string[] | null;
+  sub_industries: string[] | null;
+  employee_count: number | null;
+  firm_size_band: string | null;
+  is_enterprise: boolean | null;
+  tag_confidence: number | null;
+  tag_source: string | null;
+  region: string | null;
 };
 
 // DB columns are properly typed (numeric/int); the rest of the app expects
@@ -56,6 +67,17 @@ function rowToLead(row: LeadRow): Lead {
     score: row.score != null ? String(row.score) : "",
     tier: row.tier ?? "",
     scraped_at: row.scraped_at ?? "",
+    first_seen_at: row.first_seen_at ?? "",
+    last_seen_at: row.last_seen_at ?? "",
+    industry: row.industry ?? null,
+    tags: row.tags ?? [],
+    sub_industries: row.sub_industries ?? [],
+    employee_count: row.employee_count ?? null,
+    firm_size_band: row.firm_size_band ?? null,
+    is_enterprise: row.is_enterprise ?? false,
+    tag_confidence: row.tag_confidence ?? null,
+    tag_source: row.tag_source ?? null,
+    region: row.region ?? null,
   };
 }
 
@@ -98,11 +120,14 @@ function parseCSV(csv: string): Lead[] {
     });
     if (!obj.score) obj.score = "";
     if (!obj.tier) obj.tier = "";
-    return obj as Lead;
+    return obj as unknown as Lead;
   });
 }
 
 const SUPABASE_PAGE_SIZE = 1000; // PostgREST's default/max row cap per request
+
+const LEAD_SELECT_COLUMNS =
+  "company_name, category, website, email, all_emails, phone, address, linkedin, facebook, instagram, rating, review_count, company_size, hourly_rate, min_project, search_query, profile_url, source, engine, email_verified, score, tier, scraped_at, first_seen_at, last_seen_at, industry, tags, sub_industries, employee_count, firm_size_band, is_enterprise, tag_confidence, tag_source, region";
 
 async function fetchAllLeadRows(
   supabase: NonNullable<ReturnType<typeof getSupabaseClient>>
@@ -111,9 +136,7 @@ async function fetchAllLeadRows(
   for (let from = 0; ; from += SUPABASE_PAGE_SIZE) {
     const { data, error } = await supabase
       .from("leads")
-      .select(
-        "company_name, category, website, email, all_emails, phone, address, linkedin, facebook, instagram, rating, review_count, company_size, hourly_rate, min_project, search_query, profile_url, source, engine, email_verified, score, tier, scraped_at"
-      )
+      .select(LEAD_SELECT_COLUMNS)
       .order("score", { ascending: false, nullsFirst: false })
       .range(from, from + SUPABASE_PAGE_SIZE - 1);
 
@@ -171,4 +194,204 @@ export async function fetchLeads(): Promise<Lead[]> {
   } catch {
     return [];
   }
+}
+
+// ── Server-side filtered/paginated/sorted query (roadmap Phase 4.1) ──────────
+// Every filter here is a plain WHERE clause when Supabase is configured, so
+// the whole thing is expressible as a URL/query object the backend executes
+// (GET /api/leads route below). When Supabase isn't configured, the same
+// filters are applied in memory over the CSV fallback so local dev / the
+// GitHub-raw production fallback keep working identically, just without the
+// DB doing the heavy lifting.
+export type LeadsQuery = {
+  tier?: string;
+  source?: string;
+  industry?: string;
+  tag?: string;
+  region?: string;
+  firmSizeBand?: string;
+  minScore?: number;
+  maxScore?: number;
+  hasEmail?: boolean;
+  search?: string;
+  page?: number;
+  pageSize?: number;
+  sortCol?: "score" | "scraped_at";
+  sortDir?: "asc" | "desc";
+};
+
+export type LeadsQueryResult = {
+  leads: Lead[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
+const MAX_PAGE_SIZE = 200;
+const DEFAULT_PAGE_SIZE = 50;
+
+function normalizeQuery(q: LeadsQuery) {
+  return {
+    ...q,
+    page: Math.max(1, q.page ?? 1),
+    pageSize: Math.min(MAX_PAGE_SIZE, Math.max(1, q.pageSize ?? DEFAULT_PAGE_SIZE)),
+    sortCol: q.sortCol === "scraped_at" ? ("scraped_at" as const) : ("score" as const),
+    sortDir: q.sortDir === "asc" ? ("asc" as const) : ("desc" as const),
+  };
+}
+
+function matchesQueryInMemory(lead: Lead, q: ReturnType<typeof normalizeQuery>): boolean {
+  if (q.tier && lead.tier !== q.tier) return false;
+  if (q.source && lead.source !== q.source) return false;
+  if (q.industry && lead.industry !== q.industry) return false;
+  if (q.tag && !(lead.tags ?? []).includes(q.tag)) return false;
+  if (q.region && lead.region !== q.region) return false;
+  if (q.firmSizeBand && lead.firm_size_band !== q.firmSizeBand) return false;
+  if (q.minScore != null && (parseInt(lead.score) || 0) < q.minScore) return false;
+  if (q.maxScore != null && (parseInt(lead.score) || 0) > q.maxScore) return false;
+  if (q.hasEmail && !lead.email) return false;
+  if (q.search) {
+    const hay = `${lead.company_name} ${lead.email} ${lead.address} ${lead.category} ${lead.search_query}`.toLowerCase();
+    if (!hay.includes(q.search.trim().toLowerCase())) return false;
+  }
+  return true;
+}
+
+function sortLeadsInMemory(leads: Lead[], q: ReturnType<typeof normalizeQuery>): Lead[] {
+  return [...leads].sort((a, b) => {
+    const diff =
+      q.sortCol === "score"
+        ? (parseInt(b.score) || 0) - (parseInt(a.score) || 0)
+        : (b.scraped_at ?? "").localeCompare(a.scraped_at ?? "");
+    return q.sortDir === "desc" ? diff : -diff;
+  });
+}
+
+export async function queryLeads(rawQuery: LeadsQuery): Promise<LeadsQueryResult> {
+  const q = normalizeQuery(rawQuery);
+
+  const supabase = getSupabaseClient();
+  if (supabase) {
+    let query = supabase.from("leads").select(LEAD_SELECT_COLUMNS, { count: "exact" });
+    if (q.tier) query = query.eq("tier", q.tier);
+    if (q.source) query = query.eq("source", q.source);
+    if (q.industry) query = query.eq("industry", q.industry);
+    if (q.tag) query = query.contains("tags", [q.tag]);
+    if (q.region) query = query.eq("region", q.region);
+    if (q.firmSizeBand) query = query.eq("firm_size_band", q.firmSizeBand);
+    if (q.minScore != null) query = query.gte("score", q.minScore);
+    if (q.maxScore != null) query = query.lte("score", q.maxScore);
+    if (q.hasEmail) query = query.not("email", "is", null).neq("email", "");
+    if (q.search) {
+      // Escape PostgREST's ilike wildcards so a literal "%"/"," in the search
+      // box can't widen the match or break the .or() filter-string syntax.
+      const s = q.search.trim().replace(/[%_,]/g, "\\$&");
+      if (s) {
+        query = query.or(
+          `company_name.ilike.%${s}%,email.ilike.%${s}%,address.ilike.%${s}%,category.ilike.%${s}%`
+        );
+      }
+    }
+    query = query
+      .order(q.sortCol, { ascending: q.sortDir === "asc", nullsFirst: false })
+      .range((q.page - 1) * q.pageSize, q.page * q.pageSize - 1);
+
+    const { data, error, count } = await query;
+    if (!error && data) {
+      return {
+        leads: (data as LeadRow[]).map(rowToLead),
+        total: count ?? data.length,
+        page: q.page,
+        pageSize: q.pageSize,
+      };
+    }
+    if (error) console.error("Supabase queryLeads failed:", error.message);
+  }
+
+  // ── Fallback: full fetch (CSV/local/GitHub), filter/sort/paginate in memory ──
+  const all = await fetchLeads();
+  const filtered = all.filter((l) => matchesQueryInMemory(l, q));
+  const sorted = sortLeadsInMemory(filtered, q);
+  const start = (q.page - 1) * q.pageSize;
+  return {
+    leads: sorted.slice(start, start + q.pageSize),
+    total: filtered.length,
+    page: q.page,
+    pageSize: q.pageSize,
+  };
+}
+
+// Same filter set as queryLeads, but returns every matching lead (no page
+// cap) — used by the CSV export route, which needs the whole filtered set
+// rather than just the currently-displayed page.
+export async function queryAllLeads(rawQuery: Omit<LeadsQuery, "page" | "pageSize">): Promise<Lead[]> {
+  const q = normalizeQuery(rawQuery);
+
+  const supabase = getSupabaseClient();
+  if (supabase) {
+    const rows: LeadRow[] = [];
+    let failed = false;
+    for (let from = 0; ; from += SUPABASE_PAGE_SIZE) {
+      let query = supabase.from("leads").select(LEAD_SELECT_COLUMNS);
+      if (q.tier) query = query.eq("tier", q.tier);
+      if (q.source) query = query.eq("source", q.source);
+      if (q.industry) query = query.eq("industry", q.industry);
+      if (q.tag) query = query.contains("tags", [q.tag]);
+      if (q.region) query = query.eq("region", q.region);
+      if (q.firmSizeBand) query = query.eq("firm_size_band", q.firmSizeBand);
+      if (q.minScore != null) query = query.gte("score", q.minScore);
+      if (q.maxScore != null) query = query.lte("score", q.maxScore);
+      if (q.hasEmail) query = query.not("email", "is", null).neq("email", "");
+      if (q.search) {
+        const s = q.search.trim().replace(/[%_,]/g, "\\$&");
+        if (s) {
+          query = query.or(
+            `company_name.ilike.%${s}%,email.ilike.%${s}%,address.ilike.%${s}%,category.ilike.%${s}%`
+          );
+        }
+      }
+      query = query
+        .order(q.sortCol, { ascending: q.sortDir === "asc", nullsFirst: false })
+        .range(from, from + SUPABASE_PAGE_SIZE - 1);
+
+      const { data, error } = await query;
+      if (error) {
+        console.error("Supabase queryAllLeads failed:", error.message);
+        failed = true;
+        break;
+      }
+      const page = data as LeadRow[];
+      rows.push(...page);
+      if (page.length < SUPABASE_PAGE_SIZE) break;
+    }
+    if (!failed) return rows.map(rowToLead);
+  }
+
+  const all = await fetchLeads();
+  return sortLeadsInMemory(
+    all.filter((l) => matchesQueryInMemory(l, q)),
+    q
+  );
+}
+
+export type LeadFacets = {
+  sources: string[];
+};
+
+// Distinct filter option lists the UI needs (source is dynamic/data-driven;
+// industry/region/firmSizeBand come from the static shared taxonomy/regions
+// files instead — see free-nextjs-admin-dashboard-main/src/lib/facets.ts).
+export async function fetchLeadFacets(): Promise<LeadFacets> {
+  const supabase = getSupabaseClient();
+  if (supabase) {
+    const { data, error } = await supabase.from("leads").select("source").not("source", "is", null);
+    if (!error && data) {
+      const rows = data as unknown as { source: string }[];
+      const sources = Array.from(new Set(rows.map((r) => r.source))).sort();
+      return { sources };
+    }
+  }
+  const all = await fetchLeads();
+  const sources = Array.from(new Set(all.map((l) => l.source).filter(Boolean))).sort();
+  return { sources };
 }

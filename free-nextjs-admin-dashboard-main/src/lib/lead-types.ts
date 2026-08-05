@@ -35,6 +35,8 @@ export type Lead = {
   is_enterprise?: boolean;
   tag_confidence?: number | null;
   tag_source?: string | null;
+  // Populated once the backend region resolver (roadmap Phase 4.2) has run.
+  region?: string | null;
 };
 
 export const SOURCE_LABELS: Record<string, string> = {

@@ -36,4 +36,5 @@ export const CSV_COLUMNS = [
   ['is_enterprise', 'is_enterprise'],
   ['tag_confidence', 'tag_confidence'],     // 0-1, confidence of the classifier pass
   ['tag_source', 'tag_source'],             // 'rules' / 'llm' / 'manual'
+  ['region', 'region'],                     // resolved region slug, e.g. 'middle-east'
 ];

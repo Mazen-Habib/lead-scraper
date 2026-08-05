@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { fetchLeads } from "@/lib/leads";
+import { queryLeads, fetchLeadFacets } from "@/lib/leads";
 import LeadsTable from "@/components/leads/LeadsTable";
 
 export const metadata: Metadata = {
@@ -11,17 +11,24 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function LeadsPage() {
-  const leads = await fetchLeads();
+  const [initial, facets] = await Promise.all([
+    queryLeads({ page: 1, pageSize: 50 }),
+    fetchLeadFacets(),
+  ]);
 
   return (
     <div className="space-y-5">
       <div>
         <h1 className="text-2xl font-bold text-gray-800 dark:text-white">All Leads</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          {leads.length.toLocaleString()} total leads · sorted by score descending · live from Supabase
+          {initial.total.toLocaleString()} total leads · sorted by score descending · live from Supabase
         </p>
       </div>
-      <LeadsTable leads={leads} />
+      <LeadsTable
+        initialLeads={initial.leads}
+        initialTotal={initial.total}
+        sources={facets.sources}
+      />
     </div>
   );
 }

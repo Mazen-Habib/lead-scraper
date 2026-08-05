@@ -10,6 +10,7 @@ import { verifyLeads } from '../quality/emailVerifier.js';
 import { scoreLeads } from '../quality/scorer.js';
 import { classifyLeads } from '../quality/classifier.js';
 import { normalizeFirmographics } from '../quality/firmographics.js';
+import { resolveRegions } from '../quality/geography.js';
 import { cleanLead } from '../lib/cleanLead.js';
 import { dedupeKey } from '../lib/normalizeUrl.js';
 import { CSV_COLUMNS } from '../lib/leadFields.js';
@@ -121,6 +122,7 @@ export async function runPipeline(rawLeads, opts = {}) {
   console.log('Classifying leads (rules pass)...');
   classifyLeads(leads);
   normalizeFirmographics(leads);
+  resolveRegions(leads);
 
   // Score the current batch
   console.log('Scoring leads...');

@@ -5,7 +5,7 @@ const BATCH_SIZE = 500;
 const SUPABASE_PAGE_SIZE = 1000; // PostgREST's default/max row cap per request
 
 const MASTER_SELECT_COLUMNS =
-  'company_name, category, website, email, all_emails, phone, address, linkedin, facebook, instagram, rating, review_count, company_size, hourly_rate, min_project, search_query, profile_url, source, engine, email_verified, score, tier, scraped_at, first_seen_at, last_seen_at, industry, tags, sub_industries, employee_count, firm_size_band, is_enterprise, tag_confidence, tag_source';
+  'company_name, category, website, email, all_emails, phone, address, linkedin, facebook, instagram, rating, review_count, company_size, hourly_rate, min_project, search_query, profile_url, source, engine, email_verified, score, tier, scraped_at, first_seen_at, last_seen_at, industry, tags, sub_industries, employee_count, firm_size_band, is_enterprise, tag_confidence, tag_source, region';
 
 function toRow(lead) {
   const key = dedupeKey(lead);
@@ -45,6 +45,7 @@ function toRow(lead) {
     is_enterprise: !!lead.is_enterprise,
     tag_confidence: lead.tag_confidence != null ? Number(lead.tag_confidence) : null,
     tag_source: lead.tag_source || null,
+    region: lead.region || null,
   };
 }
 
@@ -85,6 +86,7 @@ function fromRow(row) {
     is_enterprise: !!row.is_enterprise,
     tag_confidence: row.tag_confidence != null ? row.tag_confidence : null,
     tag_source: row.tag_source || null,
+    region: row.region || null,
   };
 }
 
