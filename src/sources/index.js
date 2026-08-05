@@ -1,0 +1,280 @@
+// Declarative source registry: each entry knows how to turn its slice of
+// config.json into a list of scrape jobs. Replaces ~25 lines of near-identical
+// try/catch per source that used to live inline in src/index.js's main().
+//
+// A caller can select a subset of sources by `key` (see gatherLeads's `only`
+// option) — needed by on-demand/per-user runs later without touching this file.
+import { scrapeGoogleMaps } from '../scrapers/googleMaps.js';
+import { scrapeOpenStreetMap } from '../scrapers/openStreetMap.js';
+import { scrapeClutch } from '../scrapers/clutch.js';
+import { scrapeGoodFirms } from '../scrapers/goodFirms.js';
+import { scrapeGithubOrgs } from '../scrapers/githubOrgs.js';
+import { scrapeOpenCorporates } from '../scrapers/openCorporates.js';
+import { scrapePseb } from '../scrapers/pseb.js';
+import { scrapeTopDevelopers } from '../scrapers/topDevelopers.js';
+import { scrapeSortlist } from '../scrapers/sortlist.js';
+import { scrapeEventbrite } from '../scrapers/eventbrite.js';
+import { scrapeDesignRush } from '../scrapers/designRush.js';
+import { scrapeTechBehemoths } from '../scrapers/techBehemoths.js';
+import { scrapeSelectedFirms } from '../scrapers/selectedFirms.js';
+
+// buildJobs(config, cloak) -> [{ query, announce, run }]
+//   query    - stamped onto lead.search_query (same string tag() used inline before)
+//   announce - the exact console.log line to print before running the job
+//   run      - () => Promise<lead[]>
+export const SOURCE_REGISTRY = [
+  {
+    key: 'googleMaps',
+    source: 'google_maps',
+    engine: 'normal_scraper',
+    errorName: 'Google Maps',
+    buildJobs(config) {
+      const c = config.googleMaps || {};
+      if (!c.enabled) return [];
+      return (c.searches || []).map((query) => ({
+        query,
+        announce: `[normal] Google Maps: "${query}"`,
+        run: () => scrapeGoogleMaps(query, c.maxResultsPerSearch, c.headless),
+      }));
+    },
+  },
+  {
+    key: 'openStreetMap',
+    source: 'openstreetmap',
+    engine: 'normal_scraper',
+    errorName: 'OSM',
+    buildJobs(config) {
+      const c = config.openStreetMap || {};
+      if (!c.enabled) return [];
+      return (c.cities || []).map((city) => ({
+        query: city,
+        announce: `[normal] OpenStreetMap: "${city}"`,
+        run: () => scrapeOpenStreetMap(city),
+      }));
+    },
+  },
+  {
+    key: 'githubOrgs',
+    source: 'github_orgs',
+    engine: 'normal_scraper',
+    errorName: 'GitHub Orgs',
+    buildJobs(config) {
+      const c = config.githubOrgs || {};
+      if (!c.enabled) return [];
+      return (c.locations || []).map((location) => ({
+        query: location,
+        announce: `[normal] GitHub Orgs: "${location}"`,
+        run: () =>
+          scrapeGithubOrgs(location, {
+            token: c.token || process.env.GITHUB_TOKEN || '',
+            maxResults: c.maxResults,
+          }),
+      }));
+    },
+  },
+  {
+    key: 'openCorporates',
+    source: 'opencorporates',
+    engine: 'normal_scraper',
+    errorName: 'OpenCorporates',
+    buildJobs(config) {
+      const c = config.openCorporates || {};
+      if (!c.enabled) return [];
+      return (c.searches || []).map((query) => ({
+        query,
+        announce: `[normal] OpenCorporates: "${query}"`,
+        run: () =>
+          scrapeOpenCorporates(c.jurisdiction || 'pk', query, {
+            apiToken: c.apiToken,
+            maxResults: c.maxResults,
+          }),
+      }));
+    },
+  },
+  {
+    key: 'pseb',
+    source: 'pseb',
+    engine: 'normal_scraper',
+    errorName: 'PSEB',
+    buildJobs(config) {
+      const c = config.pseb || {};
+      if (!c.enabled) return [];
+      return [
+        {
+          query: 'techdestination profiles',
+          announce: '[normal] PSEB/TechDestination',
+          run: () => scrapePseb(),
+        },
+      ];
+    },
+  },
+  {
+    key: 'topDevelopers',
+    source: 'topdevelopers',
+    engine: 'normal_scraper',
+    errorName: 'TopDevelopers',
+    buildJobs(config) {
+      const c = config.topDevelopers || {};
+      if (!c.enabled) return [];
+      return (c.categories || []).map((category) => ({
+        query: category,
+        announce: `[normal] TopDevelopers: "${category}"`,
+        run: () => scrapeTopDevelopers(category, c.maxPages || 2),
+      }));
+    },
+  },
+  {
+    key: 'eventbrite',
+    source: 'eventbrite',
+    engine: 'normal_scraper',
+    errorName: 'Eventbrite',
+    buildJobs(config) {
+      const c = config.eventbrite || {};
+      if (!c.enabled) return [];
+      return (c.searches || []).map((search) => ({
+        query: `${search.query}/${search.location}`,
+        announce: `[normal] Eventbrite: "${search.query}" / "${search.location}"`,
+        run: () => scrapeEventbrite(search.query, search.location, { concurrency: c.concurrency }),
+      }));
+    },
+  },
+  {
+    key: 'clutch',
+    source: 'clutch',
+    engine: 'cloak_browser',
+    errorName: 'Clutch',
+    buildJobs(config, cloak) {
+      const c = config.clutch || {};
+      if (!c.enabled) return [];
+      return (c.directories || []).map((dir) => ({
+        query: dir,
+        announce: `[cloak] Clutch: "${dir}"`,
+        run: () => scrapeClutch(dir, cloak, c.maxPages || 2),
+      }));
+    },
+  },
+  {
+    key: 'goodFirms',
+    source: 'goodfirms',
+    engine: 'cloak_browser',
+    errorName: 'GoodFirms',
+    buildJobs(config, cloak) {
+      const c = config.goodFirms || {};
+      if (!c.enabled) return [];
+      return (c.directories || []).map((dir) => ({
+        query: dir,
+        announce: `[cloak] GoodFirms: "${dir}"`,
+        run: () => scrapeGoodFirms(dir, cloak, c.maxPages || 2),
+      }));
+    },
+  },
+  {
+    key: 'sortlist',
+    source: 'sortlist',
+    engine: 'cloak_browser',
+    errorName: 'Sortlist',
+    buildJobs(config, cloak) {
+      const c = config.sortlist || {};
+      if (!c.enabled) return [];
+      const queries = c.queries ? c.queries : (c.categories || []).map((cat) => ({ category: cat, country: '' }));
+      return queries.map((q) => {
+        const label = q.country ? `${q.country}/${q.category}` : q.category;
+        return {
+          query: label,
+          announce: `[cloak] Sortlist: "${label}"`,
+          run: () => scrapeSortlist(q.category, cloak, q.country || ''),
+        };
+      });
+    },
+  },
+  {
+    key: 'designRush',
+    source: 'designrush',
+    engine: 'cloak_browser',
+    errorName: 'DesignRush',
+    buildJobs(config, cloak) {
+      const c = config.designRush || {};
+      if (!c.enabled) return [];
+      const queries = c.queries ? c.queries : (c.categories || []).map((cat) => ({ category: cat, country: '' }));
+      return queries.map((q) => {
+        const label = q.country ? `${q.category}?country=${q.country}` : q.category;
+        return {
+          query: label,
+          announce: `[cloak] DesignRush: "${label}"`,
+          run: () => scrapeDesignRush(q.category, cloak, q.country || ''),
+        };
+      });
+    },
+  },
+  {
+    key: 'techBehemoths',
+    source: 'techbehemoths',
+    engine: 'cloak_browser',
+    errorName: 'TechBehemoths',
+    buildJobs(config, cloak) {
+      const c = config.techBehemoths || {};
+      if (!c.enabled) return [];
+      return (c.queries || []).map((q) => {
+        const label = q.country ? `${q.country}/${q.service}` : q.service;
+        return {
+          query: label,
+          announce: `[cloak] TechBehemoths: "${label}"`,
+          run: () => scrapeTechBehemoths(q, cloak, c.maxPages || 1, c.maxProfileVisits || 15),
+        };
+      });
+    },
+  },
+  {
+    key: 'selectedFirms',
+    source: 'selectedfirms',
+    engine: 'cloak_browser',
+    errorName: 'SelectedFirms',
+    buildJobs(config, cloak) {
+      const c = config.selectedFirms || {};
+      if (!c.enabled) return [];
+      return (c.queries || []).map((q) => {
+        const label = q.country ? `${q.category}/${q.country}` : q.category;
+        return {
+          query: label,
+          announce: `[cloak] SelectedFirms: "${label}"`,
+          run: () => scrapeSelectedFirms(q.category, cloak, q.country || '', c.maxPages || 2),
+        };
+      });
+    },
+  },
+];
+
+// Stamps provenance on each lead: the data source and the engine that fetched it.
+function tag(leads, { source, engine, query }) {
+  const now = new Date().toISOString();
+  for (const lead of leads) {
+    lead.source = source;
+    lead.engine = engine;
+    lead.search_query = query;
+    lead.scraped_at = now;
+  }
+  return leads;
+}
+
+// Runs every enabled source in the registry (or only `opts.only` keys) and
+// returns the combined raw lead array, tagged with provenance. A failing
+// source is logged and skipped — one broken directory never aborts the run.
+export async function gatherLeads(config, cloak, opts = {}) {
+  const { only } = opts;
+  let allLeads = [];
+  for (const entry of SOURCE_REGISTRY) {
+    if (only && !only.includes(entry.key)) continue;
+    const jobs = entry.buildJobs(config, cloak);
+    for (const job of jobs) {
+      console.log(job.announce);
+      try {
+        const leads = await job.run();
+        allLeads.push(...tag(leads, { source: entry.source, engine: entry.engine, query: job.query }));
+        console.log(`  -> ${leads.length} leads\n`);
+      } catch (err) {
+        console.error(`  !! ${entry.errorName} failed: ${err.message.split('\n')[0]}\n`);
+      }
+    }
+  }
+  return allLeads;
+}
