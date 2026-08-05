@@ -1,0 +1,3 @@
+I have pasted a folder named as "Agent-Reach-main" analyse it and tell me how can we utilize it to make our scrapper and all the things related to it more robust and good.
+
+First plan then when I tell only then start implementing. And for gods sake store it in ur core memory to never run any previews ever again until and unless I say so.

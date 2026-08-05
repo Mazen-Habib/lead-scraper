@@ -1,0 +1,16 @@
+==============
+Leads Scrapper
+==============
+
+- source made
+- leads for company (url-to-scrape)
+
+- tech leads (names of firms entered)
+- can be time taking but totally doable
+
+- digital marketing leads
+- filters need to be upscaled
+
+- big tech firms, we need better tags
+- personalized leads as in the per the person's search, runtime live leads come in, then that cron job brings those specific leads, specifically for that person
+- top leads, run time leads,  
