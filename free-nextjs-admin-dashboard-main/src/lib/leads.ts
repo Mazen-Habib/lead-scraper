@@ -4,6 +4,8 @@ export type { Lead } from "./lead-types";
 export { SOURCE_LABELS } from "./lead-types";
 
 type LeadRow = {
+  id: number | null;
+  status: string | null;
   company_name: string | null;
   category: string | null;
   website: string | null;
@@ -44,6 +46,8 @@ type LeadRow = {
 // the CSV-era string shape, so normalize here rather than touching every consumer.
 function rowToLead(row: LeadRow): Lead {
   return {
+    id: row.id ?? null,
+    status: row.status ?? "new",
     company_name: row.company_name ?? "",
     category: row.category ?? "",
     website: row.website ?? "",
@@ -120,6 +124,7 @@ function parseCSV(csv: string): Lead[] {
     });
     if (!obj.score) obj.score = "";
     if (!obj.tier) obj.tier = "";
+    if (!obj.status) obj.status = "new";
     return obj as unknown as Lead;
   });
 }
@@ -127,7 +132,7 @@ function parseCSV(csv: string): Lead[] {
 const SUPABASE_PAGE_SIZE = 1000; // PostgREST's default/max row cap per request
 
 const LEAD_SELECT_COLUMNS =
-  "company_name, category, website, email, all_emails, phone, address, linkedin, facebook, instagram, rating, review_count, company_size, hourly_rate, min_project, search_query, profile_url, source, engine, email_verified, score, tier, scraped_at, first_seen_at, last_seen_at, industry, tags, sub_industries, employee_count, firm_size_band, is_enterprise, tag_confidence, tag_source, region";
+  "id, status, company_name, category, website, email, all_emails, phone, address, linkedin, facebook, instagram, rating, review_count, company_size, hourly_rate, min_project, search_query, profile_url, source, engine, email_verified, score, tier, scraped_at, first_seen_at, last_seen_at, industry, tags, sub_industries, employee_count, firm_size_band, is_enterprise, tag_confidence, tag_source, region";
 
 async function fetchAllLeadRows(
   supabase: NonNullable<Awaited<ReturnType<typeof getSupabaseServerClient>>>

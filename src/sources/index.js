@@ -244,6 +244,30 @@ export const SOURCE_REGISTRY = [
   },
 ];
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Retries a source job on transient failures (network blips, momentary
+// anti-bot rate limits) before giving up. Backoff: 2s, then 5s. Errors that
+// are clearly permanent (bad selector, programmer error) still just fail
+// after burning the retries — there's no reliable way to distinguish them
+// from here, and 2 retries is cheap relative to a 6h run.
+async function withRetry(run, { attempts = 3, delaysMs = [2000, 5000] } = {}) {
+  let lastErr;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await run();
+    } catch (err) {
+      lastErr = err;
+      if (i < attempts - 1) {
+        const wait = delaysMs[i] ?? delaysMs[delaysMs.length - 1];
+        console.warn(`  retrying in ${wait / 1000}s (attempt ${i + 2}/${attempts})...`);
+        await sleep(wait);
+      }
+    }
+  }
+  throw lastErr;
+}
+
 // Stamps provenance on each lead: the data source and the engine that fetched it.
 function tag(leads, { source, engine, query }) {
   const now = new Date().toISOString();
@@ -268,11 +292,11 @@ export async function gatherLeads(config, cloak, opts = {}) {
     for (const job of jobs) {
       console.log(job.announce);
       try {
-        const leads = await job.run();
+        const leads = await withRetry(job.run);
         allLeads.push(...tag(leads, { source: entry.source, engine: entry.engine, query: job.query }));
         console.log(`  -> ${leads.length} leads\n`);
       } catch (err) {
-        console.error(`  !! ${entry.errorName} failed: ${err.message.split('\n')[0]}\n`);
+        console.error(`  !! ${entry.errorName} failed after retries: ${err.message.split('\n')[0]}\n`);
       }
     }
   }

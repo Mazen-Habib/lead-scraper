@@ -1,4 +1,6 @@
 export type Lead = {
+  id: number | null;
+  status: string;
   company_name: string;
   category: string;
   website: string;

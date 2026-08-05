@@ -2,8 +2,9 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useSidebar } from "../context/SidebarContext";
+import { getSupabaseBrowserClient } from "../lib/supabase/client";
 import {
   ChevronDownIcon,
   GridIcon,
@@ -14,7 +15,9 @@ import {
 
 function SidebarUserWidget({ expanded }: { expanded: boolean }) {
   const [open, setOpen] = useState(false);
+  const [email, setEmail] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -24,19 +27,37 @@ function SidebarUserWidget({ expanded }: { expanded: boolean }) {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  useEffect(() => {
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) return;
+    (async () => {
+      const { data } = await supabase.auth.getUser();
+      setEmail(data.user?.email ?? null);
+    })();
+  }, []);
+
+  const handleSignOut = async () => {
+    setOpen(false);
+    const supabase = getSupabaseBrowserClient();
+    if (supabase) await supabase.auth.signOut();
+    router.push("/signin");
+    router.refresh();
+  };
+
   return (
     <div ref={ref} className="relative">
       {open && (
         <div className="absolute bottom-full left-0 mb-2 w-[220px] rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900 shadow-lg p-3 z-50">
-          <p className="text-sm font-semibold text-gray-800 dark:text-white px-1">Musharof Chowdhury</p>
-          <p className="text-xs text-gray-400 px-1 mb-3">randomuser@pimjo.com</p>
-          <Link href="/signin"
-            className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors">
+          <p className="text-sm font-semibold text-gray-800 dark:text-white px-1 truncate">{email ?? "Signed in"}</p>
+          <p className="text-xs text-gray-400 px-1 mb-3">Account</p>
+          <button
+            onClick={handleSignOut}
+            className="flex items-center gap-2 w-full rounded-lg px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
             Sign out
-          </Link>
+          </button>
         </div>
       )}
       <button
@@ -49,8 +70,8 @@ function SidebarUserWidget({ expanded }: { expanded: boolean }) {
         {expanded && (
           <>
             <div className="flex-1 text-left min-w-0">
-              <p className="text-sm font-semibold text-gray-800 dark:text-white truncate">Musharof</p>
-              <p className="text-xs text-gray-400 truncate">Admin</p>
+              <p className="text-sm font-semibold text-gray-800 dark:text-white truncate">{email ?? "Account"}</p>
+              <p className="text-xs text-gray-400 truncate">Signed in</p>
             </div>
             <ChevronDownIcon className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
           </>

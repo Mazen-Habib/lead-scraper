@@ -15,6 +15,22 @@ const TIER_BAR: Record<string, string> = {
   A: "bg-emerald-500", B: "bg-blue-500", C: "bg-amber-400", D: "bg-gray-400",
 };
 
+const STATUS_LABELS: Record<string, string> = {
+  new: "New",
+  contacted: "Contacted",
+  qualified: "Qualified",
+  converted: "Converted",
+  rejected: "Rejected",
+};
+
+const STATUS_COLORS: Record<string, string> = {
+  new: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300",
+  contacted: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+  qualified: "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400",
+  converted: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
+  rejected: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+};
+
 const PAGE_SIZE = 50;
 const SEARCH_DEBOUNCE_MS = 350;
 
@@ -48,16 +64,62 @@ function Field({ label, value, href, mono }: { label: string; value?: string; hr
   );
 }
 
-function LeadDrawer({ lead, onClose }: { lead: Lead; onClose: () => void }) {
+function LeadDrawer({
+  lead,
+  onClose,
+  onStatusChange,
+  onDelete,
+}: {
+  lead: Lead;
+  onClose: () => void;
+  onStatusChange: (id: number, status: string) => void;
+  onDelete: (id: number) => void;
+}) {
   const drawerRef = useRef<HTMLDivElement>(null);
   const tier = lead.tier as keyof typeof TIER_COLORS;
   const score = parseInt(lead.score) || 0;
+  const [statusSaving, setStatusSaving] = useState(false);
+  const [removing, setRemoving] = useState(false);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
+
+  const handleStatusChange = async (status: string) => {
+    if (!lead.id) return;
+    setStatusSaving(true);
+    try {
+      const res = await fetch(`/api/leads/${lead.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      if (res.ok) onStatusChange(lead.id, status);
+    } catch (err) {
+      console.error("Failed to update status:", err);
+    } finally {
+      setStatusSaving(false);
+    }
+  };
+
+  const handleRemove = async () => {
+    if (!lead.id) return;
+    if (!window.confirm(`Remove ${lead.company_name || "this lead"} from the list?`)) return;
+    setRemoving(true);
+    try {
+      const res = await fetch(`/api/leads/${lead.id}`, { method: "DELETE" });
+      if (res.ok) {
+        onDelete(lead.id);
+        onClose();
+      }
+    } catch (err) {
+      console.error("Failed to remove lead:", err);
+    } finally {
+      setRemoving(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex">
@@ -76,6 +138,21 @@ function LeadDrawer({ lead, onClose }: { lead: Lead; onClose: () => void }) {
         </div>
 
         <div className="p-5 flex flex-col gap-6">
+          <div className="rounded-xl border border-gray-100 dark:border-gray-800 p-4">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Status</span>
+              <select
+                value={lead.status}
+                disabled={statusSaving || !lead.id}
+                onChange={(e) => handleStatusChange(e.target.value)}
+                className={`text-xs font-bold px-2.5 py-1 rounded-full border-0 cursor-pointer disabled:opacity-50 ${STATUS_COLORS[lead.status] ?? STATUS_COLORS.new}`}>
+                {Object.entries(STATUS_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
           <div className="rounded-xl border border-gray-100 dark:border-gray-800 p-4">
             <div className="flex items-center justify-between mb-3">
               <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Lead Quality</span>
@@ -204,6 +281,10 @@ function LeadDrawer({ lead, onClose }: { lead: Lead; onClose: () => void }) {
               Visit Website
             </a>
           )}
+          <button onClick={handleRemove} disabled={removing || !lead.id}
+            className="shrink-0 rounded-lg border border-red-200 dark:border-red-800 px-4 py-2.5 text-sm font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50">
+            {removing ? "Removing…" : "Remove"}
+          </button>
         </div>
       </div>
     </div>
@@ -459,7 +540,20 @@ export default function LeadsTable({
 
   return (
     <>
-      {selectedLead && <LeadDrawer lead={selectedLead} onClose={() => setSelectedLead(null)} />}
+      {selectedLead && (
+        <LeadDrawer
+          lead={selectedLead}
+          onClose={() => setSelectedLead(null)}
+          onStatusChange={(id, status) => {
+            setLeads((prev) => prev.map((l) => (l.id === id ? { ...l, status } : l)));
+            setSelectedLead((prev) => (prev && prev.id === id ? { ...prev, status } : prev));
+          }}
+          onDelete={(id) => {
+            setLeads((prev) => prev.filter((l) => l.id !== id));
+            setTotal((t) => Math.max(0, t - 1));
+          }}
+        />
+      )}
 
       <div className="space-y-4">
         {/* ── Filter panel ── */}
@@ -711,11 +805,18 @@ export default function LeadsTable({
                           {lead.score || <span className="text-gray-300 dark:text-gray-600 text-xs font-normal">—</span>}
                         </td>
                         <td className="px-5 py-3.5">
-                          {tier ? (
-                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${TIER_COLORS[tier] ?? TIER_COLORS.D}`}>{tier}</span>
-                          ) : (
-                            <span className="text-gray-300 dark:text-gray-600 text-xs">—</span>
-                          )}
+                          <div className="flex items-center gap-1.5">
+                            {tier ? (
+                              <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${TIER_COLORS[tier] ?? TIER_COLORS.D}`}>{tier}</span>
+                            ) : (
+                              <span className="text-gray-300 dark:text-gray-600 text-xs">—</span>
+                            )}
+                            {lead.status && lead.status !== "new" && (
+                              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap ${STATUS_COLORS[lead.status] ?? STATUS_COLORS.new}`}>
+                                {STATUS_LABELS[lead.status] ?? lead.status}
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-5 py-3.5 text-xs text-gray-400 whitespace-nowrap hidden xl:table-cell">{scrapeDate}</td>
                       </tr>
