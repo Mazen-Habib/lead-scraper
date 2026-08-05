@@ -14,6 +14,7 @@ import { CSV_COLUMNS } from './lib/leadFields.js';
 import { scrapeUrl } from './commands/scrapeUrl.js';
 import { scrapeFirms } from './commands/scrapeFirms.js';
 import { runSavedSearches } from './personalized/runSavedSearches.js';
+import { runLlmClassification } from './jobs/runLlmClassification.js';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const config = JSON.parse(readFileSync(resolve(root, 'config.json'), 'utf8'));
@@ -213,7 +214,9 @@ async function runFirmsCommand(firmsFile) {
 // Guard so this module can be imported for unit testing (e.g. mergeMaster,
 // pruneExpired in test/mergeMaster.test.js) without kicking off a real scrape.
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const [cmd, arg] = process.argv.slice(2);
+  const [cmd, ...rest] = process.argv.slice(2);
+  const arg = rest[0];
+  const flags = new Set(rest.filter((a) => a.startsWith('--')));
   const run =
     cmd === 'url' && arg
       ? () => runUrlCommand(arg)
@@ -221,7 +224,19 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
         ? () => runFirmsCommand(arg)
         : cmd === 'saved-searches'
           ? () => runSavedSearches({ config, cloak: config.cloak || {}, pythonBin: PYTHON_BIN })
-          : main;
+          : cmd === 'classify'
+            ? () =>
+                runLlmClassification({
+                  config: {
+                    ...config,
+                    llmClassification: {
+                      ...(config.llmClassification || {}),
+                      ...(flags.has('--dry-run') ? { dryRun: true } : {}),
+                      ...(flags.has('--force') ? { forceReclassify: true } : {}),
+                    },
+                  },
+                })
+            : main;
 
   run().catch((err) => {
     console.error('Fatal:', err);

@@ -1,0 +1,53 @@
+name: LLM Classification (Layer 3)
+
+on:
+  schedule:
+    - cron: '0 4 * * *'   # 09:00 PKT daily — cleans up whatever rules+web left unclassified
+  workflow_dispatch:        # manual trigger, with optional dry-run/force inputs
+    inputs:
+      dry_run:
+        description: 'Dry run (log candidates, make no API calls or writes)'
+        required: false
+        default: 'false'
+      force:
+        description: 'Force re-classify everything (ignores confidence threshold)'
+        required: false
+        default: 'false'
+
+permissions:
+  contents: read   # writes go to Supabase only, nothing is committed
+
+jobs:
+  classify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60   # a 1000-lead cap at Groq's free-tier throughput comfortably fits
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: npm test
+
+      - name: Run Layer 3 classification
+        run: |
+          ARGS=""
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then ARGS="$ARGS --dry-run"; fi
+          if [ "${{ github.event.inputs.force }}" = "true" ]; then ARGS="$ARGS --force"; fi
+          node src/index.js classify $ARGS
+        env:
+          NODE_ENV: production
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GROQ_KEY_1: ${{ secrets.GROQ_KEY_1 }}
+          GROQ_KEY_2: ${{ secrets.GROQ_KEY_2 }}
+          GROQ_KEY_3: ${{ secrets.GROQ_KEY_3 }}
