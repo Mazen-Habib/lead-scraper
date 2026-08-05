@@ -1,5 +1,5 @@
 import type { Lead } from "./lead-types";
-import { getSupabaseClient } from "./supabaseClient";
+import { getSupabaseServerClient } from "./supabase/server";
 export type { Lead } from "./lead-types";
 export { SOURCE_LABELS } from "./lead-types";
 
@@ -130,7 +130,7 @@ const LEAD_SELECT_COLUMNS =
   "company_name, category, website, email, all_emails, phone, address, linkedin, facebook, instagram, rating, review_count, company_size, hourly_rate, min_project, search_query, profile_url, source, engine, email_verified, score, tier, scraped_at, first_seen_at, last_seen_at, industry, tags, sub_industries, employee_count, firm_size_band, is_enterprise, tag_confidence, tag_source, region";
 
 async function fetchAllLeadRows(
-  supabase: NonNullable<ReturnType<typeof getSupabaseClient>>
+  supabase: NonNullable<Awaited<ReturnType<typeof getSupabaseServerClient>>>
 ): Promise<LeadRow[] | null> {
   const rows: LeadRow[] = [];
   for (let from = 0; ; from += SUPABASE_PAGE_SIZE) {
@@ -153,7 +153,7 @@ async function fetchAllLeadRows(
 
 export async function fetchLeads(): Promise<Lead[]> {
   // ── Primary: Supabase (populated by the weekly scraper's upsert) ────────────
-  const supabase = getSupabaseClient();
+  const supabase = await getSupabaseServerClient();
   if (supabase) {
     const rows = await fetchAllLeadRows(supabase);
     if (rows) return rows.map(rowToLead);
@@ -270,7 +270,7 @@ function sortLeadsInMemory(leads: Lead[], q: ReturnType<typeof normalizeQuery>):
 export async function queryLeads(rawQuery: LeadsQuery): Promise<LeadsQueryResult> {
   const q = normalizeQuery(rawQuery);
 
-  const supabase = getSupabaseClient();
+  const supabase = await getSupabaseServerClient();
   if (supabase) {
     let query = supabase.from("leads").select(LEAD_SELECT_COLUMNS, { count: "exact" });
     if (q.tier) query = query.eq("tier", q.tier);
@@ -327,7 +327,7 @@ export async function queryLeads(rawQuery: LeadsQuery): Promise<LeadsQueryResult
 export async function queryAllLeads(rawQuery: Omit<LeadsQuery, "page" | "pageSize">): Promise<Lead[]> {
   const q = normalizeQuery(rawQuery);
 
-  const supabase = getSupabaseClient();
+  const supabase = await getSupabaseServerClient();
   if (supabase) {
     const rows: LeadRow[] = [];
     let failed = false;
@@ -382,7 +382,7 @@ export type LeadFacets = {
 // industry/region/firmSizeBand come from the static shared taxonomy/regions
 // files instead — see free-nextjs-admin-dashboard-main/src/lib/facets.ts).
 export async function fetchLeadFacets(): Promise<LeadFacets> {
-  const supabase = getSupabaseClient();
+  const supabase = await getSupabaseServerClient();
   if (supabase) {
     const { data, error } = await supabase.from("leads").select("source").not("source", "is", null);
     if (!error && data) {

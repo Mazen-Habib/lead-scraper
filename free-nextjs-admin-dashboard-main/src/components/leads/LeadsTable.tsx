@@ -247,6 +247,22 @@ const DEFAULT_FILTERS: Filters = {
   sortCol: "score", sortDir: "desc",
 };
 
+function filtersToFilterJson(filters: Filters) {
+  return {
+    tier: filters.tier !== "All" ? filters.tier : undefined,
+    source: filters.source !== "All" ? filters.source : undefined,
+    region: filters.region !== "All" ? filters.region : undefined,
+    industry: filters.industry !== "All" ? filters.industry : undefined,
+    firmSizeBand: filters.firmSizeBand !== "All" ? filters.firmSizeBand : undefined,
+    hasEmail: filters.emailOnly || undefined,
+    minScore: filters.minScore ? Number(filters.minScore) : undefined,
+    maxScore: filters.maxScore ? Number(filters.maxScore) : undefined,
+    search: filters.search.trim() || undefined,
+    sortCol: filters.sortCol,
+    sortDir: filters.sortDir,
+  };
+}
+
 function buildParams(filters: Filters, page: number): URLSearchParams {
   const params = new URLSearchParams();
   if (filters.tier !== "All") params.set("tier", filters.tier);
@@ -267,23 +283,59 @@ function buildParams(filters: Filters, page: number): URLSearchParams {
 
 // ── Main table ────────────────────────────────────────────────────────────────
 
+type InitialQuery = {
+  tier?: string;
+  source?: string;
+  industry?: string;
+  region?: string;
+  firmSizeBand?: string;
+  minScore?: number;
+  maxScore?: number;
+  hasEmail?: boolean;
+  search?: string;
+  sortCol?: "score" | "scraped_at";
+  sortDir?: "asc" | "desc";
+};
+
+function filtersFromInitialQuery(q?: InitialQuery): Filters {
+  if (!q) return DEFAULT_FILTERS;
+  return {
+    search: q.search ?? "",
+    tier: q.tier ?? "All",
+    source: q.source ?? "All",
+    region: q.region ?? "All",
+    industry: q.industry ?? "All",
+    firmSizeBand: q.firmSizeBand ?? "All",
+    emailOnly: q.hasEmail ?? false,
+    minScore: q.minScore != null ? String(q.minScore) : "",
+    maxScore: q.maxScore != null ? String(q.maxScore) : "",
+    sortCol: q.sortCol ?? "score",
+    sortDir: q.sortDir ?? "desc",
+  };
+}
+
 export default function LeadsTable({
   initialLeads,
   initialTotal,
   sources,
+  initialQuery,
 }: {
   initialLeads: Lead[];
   initialTotal: number;
   sources: string[];
+  initialQuery?: InitialQuery;
 }) {
-  const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
-  const [searchInput, setSearchInput] = useState("");
+  const [filters, setFilters] = useState<Filters>(() => filtersFromInitialQuery(initialQuery));
+  const [searchInput, setSearchInput] = useState(initialQuery?.search ?? "");
   const [page, setPage] = useState(1);
   const [leads, setLeads] = useState<Lead[]>(initialLeads);
   const [total, setTotal] = useState(initialTotal);
   const [loading, setLoading] = useState(false);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [showPresets, setShowPresets] = useState(false);
+  const [showSavePrompt, setShowSavePrompt] = useState(false);
+  const [saveName, setSaveName] = useState("");
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
 
   const isFirstRun = useRef(true);
   const requestIdRef = useRef(0);
@@ -372,6 +424,28 @@ export default function LeadsTable({
     window.location.href = `/api/leads/export?${params.toString()}`;
   };
 
+  const saveSearch = async () => {
+    if (!saveName.trim()) return;
+    setSaveStatus("saving");
+    try {
+      const res = await fetch("/api/saved-searches", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: saveName.trim(), filter_json: filtersToFilterJson(filters) }),
+      });
+      if (!res.ok) throw new Error("Failed to save search");
+      setSaveStatus("saved");
+      setSaveName("");
+      setTimeout(() => {
+        setShowSavePrompt(false);
+        setSaveStatus("idle");
+      }, 1200);
+    } catch (err) {
+      console.error(err);
+      setSaveStatus("error");
+    }
+  };
+
   const SortArrow = ({ col }: { col: "score" | "scraped_at" }) =>
     filters.sortCol !== col ? (
       <span className="text-gray-300">↕</span>
@@ -432,6 +506,36 @@ export default function LeadsTable({
                         {p.tier !== "All" && <span className="ml-1 text-xs text-emerald-600">· Tier {p.tier}</span>}
                       </button>
                     ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="relative">
+                <button onClick={() => setShowSavePrompt((v) => !v)}
+                  className="rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors whitespace-nowrap">
+                  Save Search
+                </button>
+                {showSavePrompt && (
+                  <div className="absolute right-0 top-full mt-1 z-30 w-72 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-xl p-3 space-y-2">
+                    <p className="text-xs font-semibold text-gray-500">Name this search</p>
+                    <input
+                      type="text"
+                      autoFocus
+                      value={saveName}
+                      onChange={(e) => setSaveName(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && saveSearch()}
+                      placeholder="e.g. AI/ML · South Asia · Tier A"
+                      className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-3 py-2 text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    />
+                    {saveStatus === "error" && (
+                      <p className="text-xs text-error-500">Couldn&apos;t save — are you signed in?</p>
+                    )}
+                    <button
+                      onClick={saveSearch}
+                      disabled={saveStatus === "saving" || !saveName.trim()}
+                      className="w-full rounded-lg bg-brand-500 hover:bg-brand-600 px-3 py-2 text-sm font-semibold text-white transition-colors disabled:opacity-50">
+                      {saveStatus === "saving" ? "Saving…" : saveStatus === "saved" ? "Saved ✓" : "Save"}
+                    </button>
                   </div>
                 )}
               </div>

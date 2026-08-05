@@ -8,6 +8,7 @@ import {
   ChevronDownIcon,
   GridIcon,
   HorizontaLDots,
+  ListIcon,
   TableIcon,
 } from "../icons/index";
 
@@ -76,6 +77,11 @@ const navItems: NavItem[] = [
     icon: <TableIcon />,
     name: "Leads",
     path: "/leads",
+  },
+  {
+    icon: <ListIcon />,
+    name: "Saved Searches",
+    path: "/saved-searches",
   },
 ];
 
