@@ -28,4 +28,12 @@ export const CSV_COLUMNS = [
   ['scraped_at', 'scraped_at'],       // last time this lead was confirmed present
   ['first_seen_at', 'first_seen_at'], // first time this lead was ever discovered
   ['last_seen_at', 'last_seen_at'],   // same value as scraped_at, kept explicit for clarity
+  ['industry', 'industry'],                 // primary taxonomy bucket, e.g. 'ai-ml'
+  ['tags', 'tags'],                         // every matched taxonomy bucket, semicolon-joined in CSV
+  ['sub_industries', 'sub_industries'],     // tags minus the primary industry, semicolon-joined
+  ['employee_count', 'employee_count'],     // parsed from company_size
+  ['firm_size_band', 'firm_size_band'],     // solo / small / mid / large / enterprise
+  ['is_enterprise', 'is_enterprise'],
+  ['tag_confidence', 'tag_confidence'],     // 0-1, confidence of the classifier pass
+  ['tag_source', 'tag_source'],             // 'rules' / 'llm' / 'manual'
 ];

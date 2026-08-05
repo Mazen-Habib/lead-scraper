@@ -8,6 +8,8 @@ import { enrichLeads } from '../scrapers/emailFinder.js';
 import { filterByIcp, filterByContactPoint, filterByDeadEmailOnly, filterByScore } from '../quality/qualityFilter.js';
 import { verifyLeads } from '../quality/emailVerifier.js';
 import { scoreLeads } from '../quality/scorer.js';
+import { classifyLeads } from '../quality/classifier.js';
+import { normalizeFirmographics } from '../quality/firmographics.js';
 import { cleanLead } from '../lib/cleanLead.js';
 import { dedupeKey } from '../lib/normalizeUrl.js';
 import { CSV_COLUMNS } from '../lib/leadFields.js';
@@ -115,6 +117,10 @@ export async function runPipeline(rawLeads, opts = {}) {
 
   leads = filterByDeadEmailOnly(leads);
   console.log(`${leads.length} leads after dead-email-only filter`);
+
+  console.log('Classifying leads (rules pass)...');
+  classifyLeads(leads);
+  normalizeFirmographics(leads);
 
   // Score the current batch
   console.log('Scoring leads...');

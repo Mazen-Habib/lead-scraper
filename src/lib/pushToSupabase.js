@@ -5,7 +5,7 @@ const BATCH_SIZE = 500;
 const SUPABASE_PAGE_SIZE = 1000; // PostgREST's default/max row cap per request
 
 const MASTER_SELECT_COLUMNS =
-  'company_name, category, website, email, all_emails, phone, address, linkedin, facebook, instagram, rating, review_count, company_size, hourly_rate, min_project, search_query, profile_url, source, engine, email_verified, score, tier, scraped_at, first_seen_at, last_seen_at';
+  'company_name, category, website, email, all_emails, phone, address, linkedin, facebook, instagram, rating, review_count, company_size, hourly_rate, min_project, search_query, profile_url, source, engine, email_verified, score, tier, scraped_at, first_seen_at, last_seen_at, industry, tags, sub_industries, employee_count, firm_size_band, is_enterprise, tag_confidence, tag_source';
 
 function toRow(lead) {
   const key = dedupeKey(lead);
@@ -37,6 +37,14 @@ function toRow(lead) {
     scraped_at: lead.scraped_at || null,
     first_seen_at: lead.first_seen_at || null,
     last_seen_at: lead.last_seen_at || null,
+    industry: lead.industry || null,
+    tags: Array.isArray(lead.tags) ? lead.tags : null,
+    sub_industries: Array.isArray(lead.sub_industries) ? lead.sub_industries : null,
+    employee_count: lead.employee_count != null ? parseInt(lead.employee_count, 10) || null : null,
+    firm_size_band: lead.firm_size_band || null,
+    is_enterprise: !!lead.is_enterprise,
+    tag_confidence: lead.tag_confidence != null ? Number(lead.tag_confidence) : null,
+    tag_source: lead.tag_source || null,
   };
 }
 
@@ -69,6 +77,14 @@ function fromRow(row) {
     scraped_at: row.scraped_at || '',
     first_seen_at: row.first_seen_at || '',
     last_seen_at: row.last_seen_at || '',
+    industry: row.industry || null,
+    tags: Array.isArray(row.tags) ? row.tags : [],
+    sub_industries: Array.isArray(row.sub_industries) ? row.sub_industries : [],
+    employee_count: row.employee_count != null ? row.employee_count : null,
+    firm_size_band: row.firm_size_band || null,
+    is_enterprise: !!row.is_enterprise,
+    tag_confidence: row.tag_confidence != null ? row.tag_confidence : null,
+    tag_source: row.tag_source || null,
   };
 }
 

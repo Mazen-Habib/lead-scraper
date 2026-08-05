@@ -112,7 +112,19 @@
       "tech startups in Vancouver",
       "software companies in Montreal",
       "software companies in Sydney",
-      "software development companies in Melbourne"
+      "software development companies in Melbourne",
+      "digital marketing agencies in Dubai",
+      "SEO agencies in Dubai",
+      "digital marketing agencies in Riyadh",
+      "advertising agencies in Cairo",
+      "digital marketing agencies in Karachi",
+      "SEO agencies in Lahore",
+      "digital marketing agencies in Bangalore",
+      "digital marketing agencies in London",
+      "SEO agencies in New York",
+      "digital marketing agencies in Los Angeles",
+      "branding agencies in Toronto",
+      "digital marketing agencies in Sydney"
     ],
     "maxResultsPerSearch": 20,
     "headless": true
@@ -172,7 +184,12 @@
       "nl/developers",
       "us/developers",
       "us/it-services",
-      "us/mobile-app-developers"
+      "us/mobile-app-developers",
+      "ae/digital-marketing",
+      "sa/digital-marketing",
+      "pk/digital-marketing",
+      "gb/digital-marketing",
+      "us/digital-marketing"
     ],
     "maxPages": 5
   },
@@ -353,7 +370,8 @@
       "computer", "network", "cyber", "cloud", "saas", "mobile", "data",
       "electronics", "telecommunication", "artificial intelligence", "ai",
       "machine learning", "blockchain", "fintech", "startup", "agency", "studio",
-      "engineering", "automation", "devops", "ecommerce", "iot", "analytics"
+      "engineering", "automation", "devops", "ecommerce", "iot", "analytics",
+      "marketing", "seo", "ppc", "advertising", "branding", "media", "content", "growth"
     ]
   },
   "quality": {

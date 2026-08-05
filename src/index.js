@@ -41,7 +41,7 @@ function resolvePythonBin() {
 const PYTHON_BIN = resolvePythonBin();
 
 function csvCell(value) {
-  const s = value == null ? '' : String(value);
+  const s = value == null ? '' : Array.isArray(value) ? value.join('; ') : String(value);
   return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 

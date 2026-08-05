@@ -4,6 +4,7 @@ export const DEFAULT_CATEGORY_KEYWORDS = [
   'web', 'app', 'developer', 'development', 'digital', 'systems', 'solutions',
   'computer', 'network', 'cyber', 'cloud', 'saas', 'mobile', 'data',
   'electronics', 'telecommunication',
+  'marketing', 'seo', 'ppc', 'advertising', 'branding', 'media', 'content', 'growth',
 ];
 
 /**

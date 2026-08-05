@@ -22,6 +22,19 @@ export type Lead = {
   score: string;
   tier: string;
   scraped_at: string;
+  // Optional: populated once the backend has run first_seen_at/last_seen_at
+  // (roadmap Phase 0) and the rules classifier (roadmap Phase 3). Optional
+  // so existing rows/queries that predate these columns keep typechecking.
+  first_seen_at?: string;
+  last_seen_at?: string;
+  industry?: string | null;
+  tags?: string[];
+  sub_industries?: string[];
+  employee_count?: number | null;
+  firm_size_band?: string | null;
+  is_enterprise?: boolean;
+  tag_confidence?: number | null;
+  tag_source?: string | null;
 };
 
 export const SOURCE_LABELS: Record<string, string> = {

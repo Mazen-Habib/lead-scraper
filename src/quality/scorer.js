@@ -22,8 +22,15 @@ const SOURCE_SCORES = {
   opencorporates: 6,
 };
 
-// High-value ICP keywords that indicate a premium tech company
-const PREMIUM_KEYWORDS = [
+// Taxonomy buckets (src/quality/classifier.js) that indicate a premium tech
+// company — used as the ICP bonus once a lead has been classified. Falls
+// back to a plain substring check on category/name for leads that haven't
+// been through classifyLeads() yet (e.g. older cached data, or callers using
+// scoreLead() directly outside runPipeline).
+const PREMIUM_INDUSTRIES = new Set([
+  'ai-ml', 'cloud-devops', 'cybersecurity', 'erp-sap', 'blockchain', 'data-analytics-bi',
+]);
+const PREMIUM_KEYWORDS_FALLBACK = [
   'ai', 'artificial intelligence', 'machine learning', 'fintech', 'saas',
   'blockchain', 'cloud', 'cybersecurity', 'data', 'devops', 'iot',
   'automation', 'erp', 'enterprise',
@@ -71,9 +78,19 @@ export function scoreLead(lead) {
   if (lead.min_project) score += 2;
   if (lead.facebook || lead.instagram) score += 1;
 
-  // Premium ICP bonus (+5 uncapped bonus on top)
-  const haystack = `${lead.category || ''} ${lead.name || ''}`.toLowerCase();
-  if (PREMIUM_KEYWORDS.some((kw) => haystack.includes(kw))) score += 5;
+  // Premium ICP bonus (+5 uncapped bonus on top). Prefers real classifier
+  // tags when available; falls back to the old substring hack otherwise.
+  const hasTags = Array.isArray(lead.tags) && lead.tag_source;
+  const isPremium = hasTags
+    ? lead.tags.some((t) => PREMIUM_INDUSTRIES.has(t))
+    : PREMIUM_KEYWORDS_FALLBACK.some((kw) =>
+        `${lead.category || ''} ${lead.name || ''}`.toLowerCase().includes(kw)
+      );
+  if (isPremium) score += 5;
+
+  // Enterprise firmographic bonus (+3 uncapped) — a 1,000+ employee firm is
+  // a categorically different lead than a 5-person shop with the same tags.
+  if (lead.is_enterprise) score += 3;
 
   score = Math.min(100, score);
 
