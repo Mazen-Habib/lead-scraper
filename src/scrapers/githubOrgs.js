@@ -70,3 +70,23 @@ export async function scrapeGithubOrgs(location, opts = {}) {
 
   return leads;
 }
+
+/**
+ * Firm-name resolution (roadmap 2.2, 2nd hop): looks up a single GitHub org
+ * by name and returns its website if it has one. Used as a fallback when
+ * Google Maps doesn't have a confident match.
+ */
+export async function findGithubOrgByName(name, opts = {}) {
+  const { token = '' } = opts;
+  const q = encodeURIComponent(`${name} in:name type:org`);
+  const search = await ghFetch(`${API}/search/users?q=${q}&per_page=5`, token);
+  const item = (search.items || [])[0];
+  if (!item) return null;
+
+  const org = await ghFetch(`${API}/orgs/${item.login}`, token);
+  const website =
+    org.blog && /^https?:\/\//.test(org.blog) ? org.blog : org.blog ? `https://${org.blog}` : '';
+  if (!website) return null;
+
+  return { name: org.name || org.login, website, profileUrl: org.html_url };
+}

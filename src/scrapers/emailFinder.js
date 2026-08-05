@@ -2,15 +2,17 @@ import * as cheerio from 'cheerio';
 import { cleanEmail } from '../lib/cleanLead.js';
 
 const EMAIL_RE = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,}/g;
-// Paths most likely to expose a contact email
+// Paths most likely to expose a contact email during a bulk (thousands-of-leads) run
 const CANDIDATE_PATHS = ['', '/contact', '/about'];
+// Extra paths worth the time for a single deliberate on-demand lookup (2.1)
+const DEEP_CANDIDATE_PATHS = ['/team', '/about-us', '/leadership', '/contact-us', '/company'];
 // Junk matches that regex picks up from asset filenames / trackers
 const JUNK_PATTERNS =
   /\.(png|jpe?g|gif|svg|webp|css|js)$|sentry|wixpress|example\.(com|org)|@2x|@3x|^(xxx|email|name|user|your|test|firstname|lastname)@|@(xxx|domain|yourdomain|yoursite|sentry|example)\.|placeholder/i;
 
-async function fetchPage(url) {
+async function fetchPage(url, timeoutMs) {
   const res = await fetch(url, {
-    signal: AbortSignal.timeout(6000),
+    signal: AbortSignal.timeout(timeoutMs),
     headers: {
       'User-Agent':
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
@@ -24,11 +26,39 @@ async function fetchPage(url) {
   return res.text();
 }
 
+// Pulls internal links out of a page's <footer> that look like contact/about/team
+// pages we haven't already queued — footers are where smaller sites often hide
+// their only links to those pages instead of a nav menu.
+function discoverFooterPaths($, origin, alreadyQueued) {
+  const found = [];
+  $('footer a[href], [class*="footer"] a[href]').each((_, el) => {
+    const href = $(el).attr('href') || '';
+    let path;
+    try {
+      path = new URL(href, origin).pathname;
+    } catch {
+      return;
+    }
+    if (!/(contact|about|team|leadership|company)/i.test(path)) return;
+    if (alreadyQueued.has(path)) return;
+    found.push(path);
+    alreadyQueued.add(path);
+  });
+  return found;
+}
+
 /**
- * Crawls a company website's homepage + common contact pages.
+ * Crawls a company website's homepage + contact pages for emails/socials.
  * Returns { emails: [...], linkedin: '', facebook: '', instagram: '' }
+ *
+ * opts:
+ *   deep      - bulk runs use a thin 3-path/6s-timeout crawl; a deliberate
+ *               single-company lookup (src/commands/scrapeUrl.js) sets this
+ *               to true for extra paths, footer-link discovery, and a longer timeout.
+ *   timeoutMs - per-page fetch timeout (default 6000, deep default 30000)
  */
-export async function findContacts(website) {
+export async function findContacts(website, opts = {}) {
+  const { deep = false, timeoutMs = deep ? 30000 : 6000 } = opts;
   const contacts = { emails: new Set(), linkedin: '', facebook: '', instagram: '' };
   let origin;
   try {
@@ -37,13 +67,18 @@ export async function findContacts(website) {
     return { emails: [], linkedin: '', facebook: '', instagram: '' };
   }
 
-  for (const path of CANDIDATE_PATHS) {
+  const queue = [...CANDIDATE_PATHS, ...(deep ? DEEP_CANDIDATE_PATHS : [])];
+  const queued = new Set(queue);
+  let footerChecked = false;
+
+  for (let i = 0; i < queue.length; i++) {
+    const path = queue[i];
     // Stop early once we have an email and a LinkedIn link
     if (contacts.emails.size > 0 && contacts.linkedin) break;
 
     let html;
     try {
-      html = await fetchPage(origin + path);
+      html = await fetchPage(origin + path, timeoutMs);
     } catch {
       continue;
     }
@@ -76,6 +111,13 @@ export async function findContacts(website) {
     if (!contacts.instagram) {
       const ig = $('a[href*="instagram.com/"]').first().attr('href');
       if (ig) contacts.instagram = ig.split('?')[0];
+    }
+
+    // Deep mode only: on the homepage, queue any footer links to contact/
+    // about/team pages the fixed candidate list didn't already cover.
+    if (deep && path === '' && !footerChecked) {
+      footerChecked = true;
+      queue.push(...discoverFooterPaths($, origin, queued));
     }
   }
 

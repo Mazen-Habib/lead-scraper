@@ -11,6 +11,8 @@ import { filterByScore } from './quality/qualityFilter.js';
 import { syncLeadsToSupabase, fetchMasterFromSupabase } from './lib/pushToSupabase.js';
 import { getSupabaseClient } from './lib/supabaseClient.js';
 import { CSV_COLUMNS } from './lib/leadFields.js';
+import { scrapeUrl } from './commands/scrapeUrl.js';
+import { scrapeFirms } from './commands/scrapeFirms.js';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const config = JSON.parse(readFileSync(resolve(root, 'config.json'), 'utf8'));
@@ -183,10 +185,42 @@ async function main() {
   await syncLeadsToSupabase(masterFiltered);
 }
 
+// Phase 2 on-demand entrypoints: `node src/index.js url <website>` and
+// `node src/index.js firms <file>` (one firm name per line). Both route
+// through the same runPipeline the weekly scrape uses and write a CSV under
+// output/on-demand/ instead of touching the accumulated master.
+async function runUrlCommand(website) {
+  const lead = await scrapeUrl(website, { config, pythonBin: PYTHON_BIN });
+  if (!lead) {
+    console.log('No lead produced (filtered out or no usable contact info).');
+    return;
+  }
+  const outFile = resolve(root, `output/on-demand/url-${runTimestamp()}.csv`);
+  mkdirSync(dirname(outFile), { recursive: true });
+  await writeCsv([lead], outFile);
+  console.log(`\n${JSON.stringify(lead, null, 2)}\n\nWritten to ${outFile}`);
+}
+
+async function runFirmsCommand(firmsFile) {
+  const leads = await scrapeFirms(firmsFile, { config, pythonBin: PYTHON_BIN });
+  const outFile = resolve(root, `output/on-demand/firms-${runTimestamp()}.csv`);
+  mkdirSync(dirname(outFile), { recursive: true });
+  const written = await writeCsv(leads, outFile);
+  console.log(`\n${leads.length} leads written to ${written}`);
+}
+
 // Guard so this module can be imported for unit testing (e.g. mergeMaster,
 // pruneExpired in test/mergeMaster.test.js) without kicking off a real scrape.
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  main().catch((err) => {
+  const [cmd, arg] = process.argv.slice(2);
+  const run =
+    cmd === 'url' && arg
+      ? () => runUrlCommand(arg)
+      : cmd === 'firms' && arg
+        ? () => runFirmsCommand(arg)
+        : main;
+
+  run().catch((err) => {
     console.error('Fatal:', err);
     process.exit(1);
   });

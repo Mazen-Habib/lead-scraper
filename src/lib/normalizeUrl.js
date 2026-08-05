@@ -14,6 +14,27 @@ export function normalizeUrl(value) {
   return v;
 }
 
+// Common legal-entity suffixes that make "Acme Corp" and "Acme Corporation"
+// look like different companies to a naive string match.
+const LEGAL_SUFFIXES =
+  /\b(inc|incorporated|llc|l\.l\.c|ltd|limited|corp|corporation|co|company|pvt|private|fz-llc|fze|llp|plc|gmbh|sa|srl|pty)\.?\b/gi;
+
+/**
+ * Normalizes a company name for dedupe/matching by lowercasing, stripping
+ * punctuation and legal-entity suffixes, and collapsing whitespace, so
+ * "Acme Corp." and "Acme Corporation" resolve to the same key.
+ */
+export function normalizeName(name) {
+  if (!name) return '';
+  return String(name)
+    .trim()
+    .toLowerCase()
+    .replace(/[.,]/g, '')
+    .replace(LEGAL_SUFFIXES, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 export function dedupeKey(lead) {
-  return normalizeUrl(lead.website) || (lead.name ? lead.name.trim().toLowerCase() : '');
+  return normalizeUrl(lead.website) || normalizeName(lead.name);
 }
