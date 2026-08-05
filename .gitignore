@@ -23,4 +23,6 @@ Thumbs.db
 credentials.txt
 supabase_credentials.txt
 *credentials*.txt
+creds*.txt
+*creds*.txt
 *.key

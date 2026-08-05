@@ -63,7 +63,7 @@ MX-based email verification (free DNS check, no API key)
 Contact-point filter (drops leads with no phone/LinkedIn/reachable email)
    │
    ▼
-output/leads.csv   (source + engine columns mark every row)
+output/runs/leads-<timestamp>.csv (per run) + output/leads-master.csv (cumulative)
 ```
 
 ## Usage
@@ -97,8 +97,7 @@ output/leads.csv   (source + engine columns mark every row)
      },
      "cloak": { "headless": true, "humanize": true, "proxy": "" },
      "qualityFilter": { "categoryKeywords": ["software", "technology", "..."] },
-     "findEmails": true,
-     "outputFile": "output/leads.csv"
+     "findEmails": true
    }
    ```
    - OSM `cities` must be real place names (resolved to map areas).
@@ -115,7 +114,8 @@ output/leads.csv   (source + engine columns mark every row)
    ```
    npm run scrape
    ```
-3. Results land in `output/leads.csv`.
+3. Results land in `output/runs/leads-<timestamp>.csv` for that run, and `output/leads-master.csv`
+   for the deduped, cumulative set across all runs.
 
 Set `"headless": false` to watch the browser work (useful for debugging).
 

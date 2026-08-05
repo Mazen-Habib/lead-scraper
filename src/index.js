@@ -21,7 +21,8 @@ import { dedupeKey } from './lib/normalizeUrl.js';
 import { filterByIcp, filterByContactPoint, filterByDeadEmailOnly, filterByScore } from './quality/qualityFilter.js';
 import { verifyLeads } from './quality/emailVerifier.js';
 import { scoreLeads } from './quality/scorer.js';
-import { syncLeadsToSupabase } from './lib/pushToSupabase.js';
+import { syncLeadsToSupabase, fetchMasterFromSupabase } from './lib/pushToSupabase.js';
+import { getSupabaseClient } from './lib/supabaseClient.js';
 import { cleanLead } from './lib/cleanLead.js';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -73,7 +74,9 @@ const CSV_COLUMNS = [
   ['email_verified', 'email_verified'],
   ['score', 'score'],   // 0-100 composite quality score
   ['tier', 'tier'],     // A / B / C / D — A is top tier
-  ['scraped_at', 'scraped_at'],
+  ['scraped_at', 'scraped_at'],       // last time this lead was confirmed present
+  ['first_seen_at', 'first_seen_at'], // first time this lead was ever discovered
+  ['last_seen_at', 'last_seen_at'],   // same value as scraped_at, kept explicit for clarity
 ];
 
 function csvCell(value) {
@@ -105,35 +108,44 @@ function loadMasterJson(jsonPath) {
   }
 }
 
-function pruneExpired(leads, days = 30) {
+export function pruneExpired(leads, days = 30) {
   const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
   const pruned = leads.filter((l) => {
-    if (!l.scraped_at) return true;
-    return new Date(l.scraped_at).getTime() > cutoff;
+    const seenAt = l.last_seen_at || l.scraped_at;
+    if (!seenAt) return true;
+    return new Date(seenAt).getTime() > cutoff;
   });
   const dropped = leads.length - pruned.length;
   if (dropped > 0) console.log(`  Pruned ${dropped} leads older than ${days} days from master`);
   return pruned;
 }
 
-function mergeMaster(existing, newLeads) {
+// Merges freshly-scraped leads into the accumulated master list. A lead
+// seen before keeps its original first_seen_at but always advances
+// last_seen_at/scraped_at to now — this is what makes pruneExpired() able
+// to tell "still being found every run" apart from "hasn't shown up in
+// weeks," instead of freezing every lead's timestamp at its first sighting.
+export function mergeMaster(existing, newLeads) {
   const byKey = new Map();
   for (const lead of existing) {
     const key = dedupeKey(lead);
     if (key) byKey.set(key, { ...lead });
   }
+  const now = new Date().toISOString();
   let added = 0;
   for (const lead of newLeads) {
     const key = dedupeKey(lead);
     if (!key) continue;
     if (!byKey.has(key)) {
-      byKey.set(key, { ...lead });
+      byKey.set(key, { ...lead, first_seen_at: lead.first_seen_at || now, last_seen_at: now, scraped_at: now });
       added++;
     } else {
       const base = byKey.get(key);
       for (const [field] of CSV_COLUMNS) {
         if (!base[field] && lead[field]) base[field] = lead[field];
       }
+      base.last_seen_at = now;
+      base.scraped_at = now;
     }
   }
   console.log(`  +${added} new leads added to master (${byKey.size} total unique)`);
@@ -507,7 +519,13 @@ async function main() {
   // the latest scorer logic and never keep stale/empty scores from old runs.
   const masterJson = resolve(root, 'output/master.json');
   const masterCsv  = resolve(root, 'output/leads-master.csv');
-  const existing   = pruneExpired(loadMasterJson(masterJson), 30);
+  // Supabase is the source of truth when configured: master.json is
+  // gitignored (never persists across CI runs), so reading it here would
+  // silently start every run from an empty list. Falls back to the local
+  // file only for offline/no-.env dev runs.
+  const existing = getSupabaseClient()
+    ? pruneExpired(await fetchMasterFromSupabase(), 30)
+    : pruneExpired(loadMasterJson(masterJson), 30);
   const merged     = mergeMaster(existing, allLeads);
   console.log('Re-scoring master...');
   scoreLeads(merged);
@@ -524,7 +542,11 @@ async function main() {
   await syncLeadsToSupabase(masterFiltered);
 }
 
-main().catch((err) => {
-  console.error('Fatal:', err);
-  process.exit(1);
-});
+// Guard so this module can be imported for unit testing (e.g. mergeMaster,
+// pruneExpired in test/mergeMaster.test.js) without kicking off a real scrape.
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  main().catch((err) => {
+    console.error('Fatal:', err);
+    process.exit(1);
+  });
+}

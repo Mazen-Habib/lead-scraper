@@ -406,6 +406,5 @@
     }
   },
   "findEmails": true,
-  "runLabel": "",
-  "outputFile": "output/leads.csv"
+  "runLabel": ""
 }
