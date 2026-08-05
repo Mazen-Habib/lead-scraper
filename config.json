@@ -377,6 +377,14 @@
   "quality": {
     "minScore": 35
   },
+  "webTagging": {
+    "enabled": true,
+    "concurrency": 3,
+    "requestsPerMinute": 18,
+    "maxLeads": 300,
+    "timeoutMs": 20000,
+    "minKeywordHits": 2
+  },
   "techBehemoths": {
     "enabled": true,
     "engine": "cloak_browser",

@@ -26,27 +26,57 @@ function classifierHaystack(lead) {
     .toLowerCase();
 }
 
+const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+// Word-boundary matcher, used when the haystack is full page prose rather
+// than the short metadata string. Plain substring matching is fine on
+// "acme-ai.com" but disastrous over a whole homepage: short taxonomy
+// keywords like "bi", "etl" and "erp" would hit inside "ambient",
+// "hotel" and "enterprise". Cached because the regex set is rebuilt for
+// every lead we tag from the web otherwise.
+const boundaryReCache = new Map();
+function matchesWord(haystack, keyword) {
+  let re = boundaryReCache.get(keyword);
+  if (!re) {
+    re = new RegExp(`(?:^|[^a-z0-9])${escapeRe(keyword)}(?:[^a-z0-9]|$)`, 'i');
+    boundaryReCache.set(keyword, re);
+  }
+  return re.test(haystack);
+}
+
+/**
+ * Scores a lowercased haystack against every taxonomy bucket.
+ * Returns hits sorted by keyword-match count, richest bucket first.
+ * `wordBoundary` switches from substring to whole-word matching — see
+ * matchesWord above for why long prose needs it.
+ */
+export function matchTaxonomy(haystack, { wordBoundary = false } = {}) {
+  const hits = [];
+  for (const { slug, keywords } of TAXONOMY.industries) {
+    const matched = keywords.filter((kw) =>
+      wordBoundary ? matchesWord(haystack, kw) : haystack.includes(kw)
+    );
+    if (matched.length > 0) hits.push({ slug, matchCount: matched.length });
+  }
+  hits.sort((a, b) => b.matchCount - a.matchCount);
+  return hits;
+}
+
 /**
  * Classifies a single lead against the shared taxonomy.
  * Returns { industry, tags, sub_industries, confidence, tag_source } —
  * `industry` is the highest-scoring bucket (by keyword-hit count), `tags`
  * includes every bucket slug that matched at all, `confidence` is 0 when
- * nothing matched (caller should fall back to the LLM classifier, 3.3).
+ * nothing matched (caller should fall back to the web tagger, then the LLM
+ * classifier, 3.3).
  */
 export function classifyLead(lead) {
-  const haystack = classifierHaystack(lead);
-  const hits = [];
-
-  for (const { slug, keywords } of TAXONOMY.industries) {
-    const matched = keywords.filter((kw) => haystack.includes(kw));
-    if (matched.length > 0) hits.push({ slug, matchCount: matched.length });
-  }
+  const hits = matchTaxonomy(classifierHaystack(lead));
 
   if (hits.length === 0) {
     return { industry: null, tags: [], sub_industries: [], confidence: 0, tag_source: 'rules' };
   }
 
-  hits.sort((a, b) => b.matchCount - a.matchCount);
   const industry = hits[0].slug;
   const tags = hits.map((h) => h.slug);
   const sub_industries = tags.slice(1);

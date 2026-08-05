@@ -9,6 +9,7 @@ import { filterByIcp, filterByContactPoint, filterByDeadEmailOnly, filterByScore
 import { verifyLeads } from '../quality/emailVerifier.js';
 import { scoreLeads } from '../quality/scorer.js';
 import { classifyLeads } from '../quality/classifier.js';
+import { tagLeadsFromWeb } from '../quality/webTagger.js';
 import { normalizeFirmographics } from '../quality/firmographics.js';
 import { resolveRegions } from '../quality/geography.js';
 import { cleanLead } from '../lib/cleanLead.js';
@@ -121,6 +122,17 @@ export async function runPipeline(rawLeads, opts = {}) {
 
   console.log('Classifying leads (rules pass)...');
   classifyLeads(leads);
+
+  // Second tagging pass: leads the rules pass couldn't place get classified
+  // from their own homepage prose. Runs before scoring so recovered industries
+  // feed the ICP bonus, and before the score floor so a lead isn't dropped as
+  // "unclassified noise" when its website plainly says what it does.
+  const webTagging = config.webTagging || {};
+  if (webTagging.enabled !== false) {
+    console.log('Tagging unclassified leads from their websites...');
+    await tagLeadsFromWeb(leads, webTagging);
+  }
+
   normalizeFirmographics(leads);
   resolveRegions(leads);
 
