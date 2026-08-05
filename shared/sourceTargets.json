@@ -1,0 +1,186 @@
+{
+  "_comment": "Maps taxonomy region/industry slugs onto each source's own vocabulary, so a user's saved search can be turned into real scrape jobs. Every token here is one already proven in config.json's curated, known-working targets - nothing is invented. A source that has no equivalent category for an industry is deliberately absent; targeting.js reports that as a coverage gap rather than silently scraping the wrong thing.",
+
+  "regions": {
+    "middle-east": {
+      "cities": ["Dubai", "Abu Dhabi", "Riyadh", "Doha", "Kuwait City", "Cairo"],
+      "clutch": ["ae", "sa", "qa", "kw", "bh", "om", "jo", "eg"],
+      "goodFirms": ["united-arab-emirates", "saudi-arabia"],
+      "designRush": ["AE", "SA", "EG"],
+      "techBehemoths": ["united-arab-emirates", "saudi-arabia"],
+      "selectedFirms": ["uae"],
+      "sortlist": [""]
+    },
+    "south-asia": {
+      "cities": ["Karachi", "Lahore", "Islamabad", "Bangalore", "Mumbai", "Delhi"],
+      "clutch": ["in", "pk"],
+      "goodFirms": ["india", "pakistan"],
+      "designRush": ["IN", "PK"],
+      "techBehemoths": ["india", "pakistan"],
+      "selectedFirms": ["india"],
+      "sortlist": [""]
+    },
+    "southeast-asia": {
+      "cities": ["Singapore", "Manila", "Kuala Lumpur", "Jakarta", "Bangkok", "Ho Chi Minh City"],
+      "clutch": ["sg", "ph", "my", "vn", "id", "th"],
+      "goodFirms": ["singapore", "philippines", "malaysia", "vietnam"],
+      "designRush": ["SG", "PH", "MY", "ID"],
+      "techBehemoths": ["singapore"],
+      "selectedFirms": [],
+      "sortlist": [""]
+    },
+    "africa": {
+      "cities": ["Lagos", "Nairobi", "Johannesburg", "Cape Town", "Accra"],
+      "clutch": ["ng", "za", "ma", "eg"],
+      "goodFirms": [],
+      "designRush": ["NG", "ZA", "EG"],
+      "techBehemoths": [],
+      "selectedFirms": [],
+      "sortlist": [""]
+    },
+    "europe": {
+      "cities": ["London", "Berlin", "Amsterdam", "Warsaw", "Istanbul"],
+      "clutch": ["gb", "de", "nl", "tr"],
+      "goodFirms": ["united-kingdom", "germany"],
+      "designRush": ["GB", "DE", "TR"],
+      "techBehemoths": ["united-kingdom"],
+      "selectedFirms": ["uk"],
+      "sortlist": [""]
+    },
+    "north-america": {
+      "cities": ["New York", "San Francisco", "Toronto", "Austin", "Chicago"],
+      "clutch": ["us", "ca"],
+      "goodFirms": ["united-states", "canada"],
+      "designRush": ["US", "CA"],
+      "techBehemoths": ["united-states"],
+      "selectedFirms": ["usa", "canada"],
+      "sortlist": [""]
+    },
+    "apac-anz": {
+      "cities": ["Sydney", "Melbourne", "Brisbane", "Auckland"],
+      "clutch": ["au"],
+      "goodFirms": ["australia"],
+      "designRush": ["AU"],
+      "techBehemoths": [],
+      "selectedFirms": ["australia"],
+      "sortlist": [""]
+    }
+  },
+
+  "industries": {
+    "data-analytics-bi": {
+      "gmTerm": "data analytics companies",
+      "clutch": "developers",
+      "goodFirms": "top-software-development-companies",
+      "designRush": "software-development",
+      "techBehemoths": "software-development",
+      "selectedFirms": "software-development",
+      "sortlist": "software-development"
+    },
+    "web-development": {
+      "gmTerm": "web development agencies",
+      "clutch": "web-designers",
+      "goodFirms": "top-web-development-companies",
+      "designRush": "web-development-companies",
+      "techBehemoths": "web-development",
+      "selectedFirms": "web-development",
+      "sortlist": "web-development"
+    },
+    "mobile-apps": {
+      "gmTerm": "app development companies",
+      "clutch": "mobile-app-developers",
+      "goodFirms": "top-mobile-app-development-companies",
+      "designRush": "mobile-app-development",
+      "techBehemoths": "mobile-app-development",
+      "selectedFirms": "mobile-app-development",
+      "sortlist": "mobile-app-development"
+    },
+    "ai-ml": {
+      "gmTerm": "AI companies",
+      "clutch": "developers",
+      "goodFirms": "top-software-development-companies",
+      "designRush": "software-development",
+      "techBehemoths": "software-development",
+      "selectedFirms": "software-development",
+      "sortlist": "software-development"
+    },
+    "ecommerce": {
+      "gmTerm": "ecommerce development companies",
+      "clutch": "developers",
+      "goodFirms": "top-software-development-companies",
+      "designRush": "software-development",
+      "techBehemoths": "software-development",
+      "selectedFirms": "software-development",
+      "sortlist": "software-development"
+    },
+    "cloud-devops": {
+      "gmTerm": "cloud services companies",
+      "clutch": "it-services",
+      "goodFirms": "top-it-services-companies",
+      "designRush": "it-services",
+      "techBehemoths": "it-services",
+      "sortlist": "it-services"
+    },
+    "cybersecurity": {
+      "gmTerm": "cybersecurity companies",
+      "clutch": "it-services",
+      "goodFirms": "top-it-services-companies",
+      "designRush": "it-services",
+      "techBehemoths": "it-services",
+      "sortlist": "it-services"
+    },
+    "erp-sap": {
+      "gmTerm": "ERP implementation companies",
+      "clutch": "it-services",
+      "goodFirms": "top-it-services-companies",
+      "designRush": "it-services",
+      "techBehemoths": "it-services",
+      "sortlist": "it-services"
+    },
+    "blockchain": {
+      "gmTerm": "blockchain development companies",
+      "clutch": "developers",
+      "goodFirms": "top-software-development-companies",
+      "designRush": "software-development",
+      "techBehemoths": "software-development",
+      "selectedFirms": "software-development",
+      "sortlist": "software-development"
+    },
+    "ui-ux-design": {
+      "gmTerm": "UI UX design agencies",
+      "clutch": "ux-design",
+      "goodFirms": "top-web-development-companies",
+      "designRush": "web-development-companies",
+      "techBehemoths": "web-development",
+      "selectedFirms": "web-development",
+      "sortlist": "web-development"
+    },
+    "qa-testing": {
+      "gmTerm": "software testing companies",
+      "clutch": "it-services",
+      "goodFirms": "top-it-services-companies",
+      "designRush": "it-services",
+      "techBehemoths": "it-services",
+      "sortlist": "it-services"
+    },
+    "digital-marketing": {
+      "gmTerm": "digital marketing agencies",
+      "clutch": "digital-marketing",
+      "designRush": "digital-marketing",
+      "sortlist": "digital-marketing"
+    }
+  },
+
+  "defaults": {
+    "_comment": "Used when a saved search leaves industry unset - the broadest real category each source supports.",
+    "industry": {
+      "gmTerm": "software companies",
+      "clutch": "developers",
+      "goodFirms": "top-software-development-companies",
+      "designRush": "software-development",
+      "techBehemoths": "software-development",
+      "selectedFirms": "software-development",
+      "sortlist": "software-development"
+    }
+  }
+}

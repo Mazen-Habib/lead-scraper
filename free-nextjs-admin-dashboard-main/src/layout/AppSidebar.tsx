@@ -104,6 +104,11 @@ const navItems: NavItem[] = [
     name: "Saved Searches",
     path: "/saved-searches",
   },
+  {
+    icon: <TableIcon />,
+    name: "My Leads",
+    path: "/my-leads",
+  },
 ];
 
 const AppSidebar: React.FC = () => {

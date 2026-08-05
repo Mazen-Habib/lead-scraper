@@ -1,6 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import Link from "next/link";
+import RunControls from "./RunControls";
 
 export type SavedSearch = {
   id: number;
@@ -72,7 +73,7 @@ export default function SavedSearchesList({ initialSavedSearches }: { initialSav
   return (
     <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-white/[0.03] divide-y divide-gray-100 dark:divide-gray-800">
       {items.map((item) => (
-        <div key={item.id} className="flex items-center justify-between gap-4 px-5 py-4">
+        <div key={item.id} className="flex flex-wrap items-start justify-between gap-4 px-5 py-4">
           <div className="min-w-0 flex-1">
             {renamingId === item.id ? (
               <input
@@ -87,8 +88,17 @@ export default function SavedSearchesList({ initialSavedSearches }: { initialSav
               <p className="font-semibold text-gray-800 dark:text-white truncate">{item.name}</p>
             )}
             <p className="text-xs text-gray-400 truncate mt-0.5">{filterSummary(item.filter_json)}</p>
+            <div className="mt-2.5">
+              <RunControls savedSearchId={item.id} />
+            </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            <Link
+              href={`/my-leads?savedSearchId=${item.id}`}
+              className="rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            >
+              My Leads
+            </Link>
             <Link
               href={`/leads?${filterJsonToParams(item.filter_json)}`}
               className="rounded-lg bg-brand-500 hover:bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors"

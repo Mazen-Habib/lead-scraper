@@ -13,6 +13,7 @@ import { getSupabaseClient } from './lib/supabaseClient.js';
 import { CSV_COLUMNS } from './lib/leadFields.js';
 import { scrapeUrl } from './commands/scrapeUrl.js';
 import { scrapeFirms } from './commands/scrapeFirms.js';
+import { runSavedSearches } from './personalized/runSavedSearches.js';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const config = JSON.parse(readFileSync(resolve(root, 'config.json'), 'utf8'));
@@ -218,7 +219,9 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       ? () => runUrlCommand(arg)
       : cmd === 'firms' && arg
         ? () => runFirmsCommand(arg)
-        : main;
+        : cmd === 'saved-searches'
+          ? () => runSavedSearches({ config, cloak: config.cloak || {}, pythonBin: PYTHON_BIN })
+          : main;
 
   run().catch((err) => {
     console.error('Fatal:', err);

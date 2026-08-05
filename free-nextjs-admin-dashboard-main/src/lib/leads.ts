@@ -3,7 +3,7 @@ import { getSupabaseServerClient } from "./supabase/server";
 export type { Lead } from "./lead-types";
 export { SOURCE_LABELS } from "./lead-types";
 
-type LeadRow = {
+export type LeadRow = {
   id: number | null;
   status: string | null;
   company_name: string | null;
@@ -44,7 +44,7 @@ type LeadRow = {
 
 // DB columns are properly typed (numeric/int); the rest of the app expects
 // the CSV-era string shape, so normalize here rather than touching every consumer.
-function rowToLead(row: LeadRow): Lead {
+export function rowToLead(row: LeadRow): Lead {
   return {
     id: row.id ?? null,
     status: row.status ?? "new",
@@ -131,7 +131,7 @@ function parseCSV(csv: string): Lead[] {
 
 const SUPABASE_PAGE_SIZE = 1000; // PostgREST's default/max row cap per request
 
-const LEAD_SELECT_COLUMNS =
+export const LEAD_SELECT_COLUMNS =
   "id, status, company_name, category, website, email, all_emails, phone, address, linkedin, facebook, instagram, rating, review_count, company_size, hourly_rate, min_project, search_query, profile_url, source, engine, email_verified, score, tier, scraped_at, first_seen_at, last_seen_at, industry, tags, sub_industries, employee_count, firm_size_band, is_enterprise, tag_confidence, tag_source, region";
 
 async function fetchAllLeadRows(

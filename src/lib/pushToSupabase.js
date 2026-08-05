@@ -118,24 +118,34 @@ export async function fetchMasterFromSupabase() {
 // Upserts leads into Supabase keyed on dedupe_key so re-running the scraper
 // (or backfilling old CSVs) never creates duplicate rows — matching the same
 // normalized-website/name key the in-process dedupe() uses.
+//
+// Returns { synced, skipped, idsByKey } where idsByKey maps dedupe_key -> lead
+// id. The weekly run ignores the ids, but the personalized worker
+// (src/personalized/runSavedSearches.js) needs them to write user_leads rows
+// pointing at the leads it just delivered.
 export async function syncLeadsToSupabase(leads) {
   const supabase = getSupabaseClient();
+  const idsByKey = new Map();
   if (!supabase) {
     console.log('  Supabase not configured (SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY missing) — skipping DB sync.');
-    return { synced: 0, skipped: true };
+    return { synced: 0, skipped: true, idsByKey };
   }
 
   const rows = leads.map(toRow).filter(Boolean);
   let synced = 0;
   for (let i = 0; i < rows.length; i += BATCH_SIZE) {
     const batch = rows.slice(i, i + BATCH_SIZE);
-    const { error } = await supabase.from('leads').upsert(batch, { onConflict: 'dedupe_key' });
+    const { data, error } = await supabase
+      .from('leads')
+      .upsert(batch, { onConflict: 'dedupe_key' })
+      .select('id, dedupe_key');
     if (error) {
       console.error(`  !! Supabase upsert failed for batch ${i / BATCH_SIZE + 1}: ${error.message}`);
       continue;
     }
+    for (const row of data || []) idsByKey.set(row.dedupe_key, row.id);
     synced += batch.length;
   }
   console.log(`  Supabase: upserted ${synced}/${rows.length} leads`);
-  return { synced, skipped: false };
+  return { synced, skipped: false, idsByKey };
 }

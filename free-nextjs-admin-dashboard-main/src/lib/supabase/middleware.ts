@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PROTECTED_PATHS = ["/", "/leads", "/saved-searches"];
+const PROTECTED_PATHS = ["/", "/leads", "/saved-searches", "/my-leads"];
 const AUTH_PATHS = ["/signin", "/signup"];
 
 // Refreshes the session cookie on every request and enforces route
