@@ -1,10 +1,12 @@
-// Static filter option lists sourced directly from the scraper's shared
-// taxonomy/region definitions (../../../shared/*.json) — the same files
-// src/quality/classifier.js and src/quality/geography.js use to populate
-// industry/region on every lead, so the filter UI's dropdown options can
-// never drift out of sync with what the backend actually assigns.
-import taxonomy from "../../../shared/taxonomy.json";
-import regions from "../../../shared/regions.json";
+// Static filter option lists sourced from local copies of the scraper's
+// shared taxonomy/region definitions (kept in sync with /shared/*.json at
+// the repo root — see src/quality/classifier.js and src/quality/geography.js,
+// which populate industry/region on every lead using the same source data).
+// These are copied rather than imported cross-directory because Vercel's
+// configured Root Directory for this project is this app's own folder, and
+// the build has no reliable access to files outside it.
+import taxonomy from "./shared-data/taxonomy.json";
+import regions from "./shared-data/regions.json";
 
 export type IndustryOption = { slug: string; label: string };
 export type RegionOption = { slug: string; label: string };

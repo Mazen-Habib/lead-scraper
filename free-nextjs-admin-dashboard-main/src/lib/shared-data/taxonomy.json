@@ -1,0 +1,110 @@
+{
+  "industries": [
+    {
+      "slug": "data-analytics-bi",
+      "label": "Data Analytics / BI",
+      "keywords": [
+        "data", "analytics", "bi", "power bi", "powerbi", "dashboard", "reporting",
+        "visualization", "tableau", "looker", "qlik", "business intelligence",
+        "data science", "data engineer", "data warehouse", "etl", "snowflake",
+        "dbt", "metabase", "superset", "grafana"
+      ]
+    },
+    {
+      "slug": "web-development",
+      "label": "Web Development",
+      "keywords": [
+        "web", "frontend", "react", "angular", "vue", "next", "nuxt",
+        "wordpress", "cms", "portal", "landing page", "website"
+      ]
+    },
+    {
+      "slug": "mobile-apps",
+      "label": "Mobile Apps",
+      "keywords": [
+        "mobile", "ios", "android", "flutter", "react native", "app development",
+        "swift", "kotlin", "xamarin", "ionic"
+      ]
+    },
+    {
+      "slug": "ai-ml",
+      "label": "AI / ML",
+      "keywords": [
+        "ai", "artificial intelligence", "machine learning", "ml", "nlp",
+        "computer vision", "deep learning", "llm", "gpt", "chatbot",
+        "generative ai", "neural", "predictive"
+      ]
+    },
+    {
+      "slug": "ecommerce",
+      "label": "E-commerce",
+      "keywords": [
+        "ecommerce", "e-commerce", "shopify", "magento", "woocommerce",
+        "online store", "marketplace", "woo", "prestashop", "bigcommerce"
+      ]
+    },
+    {
+      "slug": "cloud-devops",
+      "label": "Cloud / DevOps",
+      "keywords": [
+        "cloud", "devops", "aws", "azure", "gcp", "docker", "kubernetes",
+        "infrastructure", "ci/cd", "devsecops", "terraform", "ansible"
+      ]
+    },
+    {
+      "slug": "cybersecurity",
+      "label": "Cybersecurity",
+      "keywords": [
+        "cyber", "security", "penetration", "firewall", "soc", "compliance",
+        "iso 27001", "siem", "endpoint", "threat"
+      ]
+    },
+    {
+      "slug": "erp-sap",
+      "label": "ERP / SAP",
+      "keywords": [
+        "erp", "sap", "odoo", "oracle", "dynamics", "netsuite",
+        "enterprise resource", "accounting", "erp system"
+      ]
+    },
+    {
+      "slug": "blockchain",
+      "label": "Blockchain",
+      "keywords": [
+        "blockchain", "crypto", "web3", "nft", "defi", "smart contract", "ethereum"
+      ]
+    },
+    {
+      "slug": "ui-ux-design",
+      "label": "UI/UX Design",
+      "keywords": [
+        "design", "ux", "ui", "user experience", "figma", "prototyping", "creative"
+      ]
+    },
+    {
+      "slug": "qa-testing",
+      "label": "QA / Testing",
+      "keywords": [
+        "qa", "testing", "quality assurance", "test automation", "selenium",
+        "cypress", "playwright", "performance testing", "load testing"
+      ]
+    },
+    {
+      "slug": "digital-marketing",
+      "label": "Digital Marketing",
+      "keywords": [
+        "digital marketing", "seo", "sem", "ppc", "social media", "content marketing",
+        "email marketing", "growth hacking", "performance marketing", "advertising",
+        "branding", "media buying"
+      ]
+    }
+  ],
+  "firmSizeBands": [
+    { "band": "solo", "maxEmployees": 1 },
+    { "band": "small", "maxEmployees": 10 },
+    { "band": "mid", "maxEmployees": 249 },
+    { "band": "large", "maxEmployees": 999 },
+    { "band": "enterprise", "maxEmployees": null }
+  ],
+  "enterpriseEmployeeThreshold": 1000
+}

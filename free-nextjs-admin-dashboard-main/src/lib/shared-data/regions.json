@@ -1,0 +1,85 @@
+{
+  "regions": [
+    {
+      "slug": "middle-east",
+      "label": "Middle East",
+      "keywords": [
+        "uae", "dubai", "abu dhabi", "sharjah", "ajman", "ras al", "fujairah",
+        "saudi", "riyadh", "jeddah", "dammam", "mecca", "medina", "khobar",
+        "qatar", "doha", "kuwait", "bahrain", "manama", "oman", "muscat",
+        "jordan", "amman", "lebanon", "beirut", "iraq", "baghdad",
+        "israel", "tel aviv", "haifa", "palestine", "egypt", "cairo", "alexandria",
+        "yemen", "syria", "united arab", "gcc"
+      ]
+    },
+    {
+      "slug": "south-asia",
+      "label": "South Asia",
+      "keywords": [
+        "pakistan", "karachi", "lahore", "islamabad", "faisalabad", "peshawar", "quetta", "multan",
+        "india", "bangalore", "bengaluru", "mumbai", "delhi", "hyderabad", "pune", "chennai",
+        "kolkata", "ahmedabad", "surat", "jaipur", "lucknow", "kochi",
+        "bangladesh", "dhaka", "chittagong",
+        "sri lanka", "colombo", "nepal", "kathmandu"
+      ]
+    },
+    {
+      "slug": "southeast-asia",
+      "label": "Southeast Asia",
+      "keywords": [
+        "singapore", "philippines", "manila", "cebu", "davao",
+        "malaysia", "kuala lumpur", "kl", "penang", "johor",
+        "vietnam", "ho chi minh", "hanoi", "da nang",
+        "indonesia", "jakarta", "bali", "surabaya",
+        "thailand", "bangkok", "chiang mai",
+        "myanmar", "rangoon", "cambodia", "phnom penh"
+      ]
+    },
+    {
+      "slug": "africa",
+      "label": "Africa",
+      "keywords": [
+        "nigeria", "lagos", "abuja", "port harcourt",
+        "kenya", "nairobi", "mombasa",
+        "south africa", "cape town", "johannesburg", "durban", "pretoria",
+        "ghana", "accra", "ethiopia", "addis ababa",
+        "tanzania", "dar es salaam", "uganda", "kampala",
+        "morocco", "casablanca", "rabat", "senegal", "dakar", "ivory coast"
+      ]
+    },
+    {
+      "slug": "europe",
+      "label": "Europe",
+      "keywords": [
+        "uk", "united kingdom", "london", "manchester", "birmingham", "glasgow", "edinburgh",
+        "germany", "berlin", "munich", "hamburg", "frankfurt", "cologne", "düsseldorf",
+        "netherlands", "amsterdam", "rotterdam", "the hague",
+        "france", "paris", "lyon", "marseille",
+        "spain", "madrid", "barcelona", "sweden", "stockholm", "norway", "oslo",
+        "denmark", "copenhagen", "finland", "helsinki", "poland", "warsaw",
+        "ukraine", "kyiv", "czech", "prague", "austria", "vienna", "switzerland", "zurich",
+        "italy", "rome", "milan", "portugal", "lisbon", "belgium", "brussels"
+      ]
+    },
+    {
+      "slug": "north-america",
+      "label": "North America",
+      "keywords": [
+        "usa", "united states", "new york", "san francisco", "silicon valley", "los angeles",
+        "seattle", "austin", "chicago", "boston", "miami", "dallas", "denver", "atlanta",
+        "canada", "toronto", "vancouver", "montreal", "calgary", "ottawa",
+        "mexico", "mexico city", "guadalajara"
+      ]
+    },
+    {
+      "slug": "apac-anz",
+      "label": "APAC / ANZ",
+      "keywords": [
+        "australia", "sydney", "melbourne", "brisbane", "perth", "adelaide",
+        "new zealand", "auckland", "wellington",
+        "japan", "tokyo", "osaka", "south korea", "seoul", "busan",
+        "taiwan", "taipei", "hong kong", "china", "beijing", "shanghai", "shenzhen"
+      ]
+    }
+  ]
+}

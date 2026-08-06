@@ -1,5 +1,4 @@
 import type { NextConfig } from "next";
-import path from "path";
 
 const nextConfig: NextConfig = {
   /* config options here */
@@ -11,12 +10,8 @@ const nextConfig: NextConfig = {
     return config;
   },
 
-    // Root is the repo root (one level up), not this app's own directory —
-    // src/lib/facets.ts imports ../../../shared/*.json, which lives outside
-    // this Next.js project. Turbopack refuses to resolve modules outside its
-    // configured root, so the root must cover the shared taxonomy files too.
     turbopack: {
-      root: path.join(__dirname, ".."),
+      root: __dirname,
       rules: {
         '*.svg': {
           loaders: ['@svgr/webpack'],
