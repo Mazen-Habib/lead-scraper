@@ -45,6 +45,9 @@ jobs:
       - name: Run unit tests
         run: npm test
 
+      - name: Verify shared taxonomy/regions data is in sync with the dashboard
+        run: npm run sync-shared-data:check
+
       - name: Run personalized scrapes
         run: node src/index.js saved-searches
         env:
