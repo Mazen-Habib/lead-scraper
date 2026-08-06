@@ -211,7 +211,7 @@ export const SOURCE_REGISTRY = [
     source: 'techbehemoths',
     engine: 'cloak_browser',
     errorName: 'TechBehemoths',
-    buildJobs(config, cloak) {
+    buildJobs(config, cloak, pythonBin) {
       const c = config.techBehemoths || {};
       if (!c.enabled) return [];
       return (c.queries || []).map((q) => {
@@ -219,7 +219,11 @@ export const SOURCE_REGISTRY = [
         return {
           query: label,
           announce: `[cloak] TechBehemoths: "${label}"`,
-          run: () => scrapeTechBehemoths(q, cloak, c.maxPages || 1, c.maxProfileVisits || 15),
+          run: () =>
+            scrapeTechBehemoths(q, cloak, c.maxPages || 1, c.maxProfileVisits || 15, {
+              pythonBin,
+              scraplingFallback: c.scraplingFallback !== false,
+            }),
         };
       });
     },
@@ -229,7 +233,7 @@ export const SOURCE_REGISTRY = [
     source: 'selectedfirms',
     engine: 'cloak_browser',
     errorName: 'SelectedFirms',
-    buildJobs(config, cloak) {
+    buildJobs(config, cloak, pythonBin) {
       const c = config.selectedFirms || {};
       if (!c.enabled) return [];
       return (c.queries || []).map((q) => {
@@ -237,7 +241,11 @@ export const SOURCE_REGISTRY = [
         return {
           query: label,
           announce: `[cloak] SelectedFirms: "${label}"`,
-          run: () => scrapeSelectedFirms(q.category, cloak, q.country || '', c.maxPages || 2),
+          run: () =>
+            scrapeSelectedFirms(q.category, cloak, q.country || '', c.maxPages || 2, {
+              pythonBin,
+              scraplingFallback: c.scraplingFallback !== false,
+            }),
         };
       });
     },
@@ -284,11 +292,11 @@ function tag(leads, { source, engine, query }) {
 // returns the combined raw lead array, tagged with provenance. A failing
 // source is logged and skipped — one broken directory never aborts the run.
 export async function gatherLeads(config, cloak, opts = {}) {
-  const { only } = opts;
+  const { only, pythonBin = null } = opts;
   let allLeads = [];
   for (const entry of SOURCE_REGISTRY) {
     if (only && !only.includes(entry.key)) continue;
-    const jobs = entry.buildJobs(config, cloak);
+    const jobs = entry.buildJobs(config, cloak, pythonBin);
     for (const job of jobs) {
       console.log(job.announce);
       try {

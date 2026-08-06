@@ -166,7 +166,7 @@ async function executeGroup(supabase, group, { config, cloak, pythonBin }) {
     return;
   }
 
-  const raw = await gatherLeads({ ...scrapeConfig, cloak }, cloak, { only });
+  const raw = await gatherLeads({ ...scrapeConfig, cloak }, cloak, { only, pythonBin });
   console.log(`[personalized] gathered ${raw.length} raw leads`);
 
   const leads = await runPipeline(raw, { config, pythonBin });

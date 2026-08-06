@@ -146,7 +146,7 @@ async function main() {
   console.log('Lead scraper starting\n');
   const cloak = config.cloak || {};
 
-  let allLeads = await gatherLeads(config, cloak);
+  let allLeads = await gatherLeads(config, cloak, { pythonBin: PYTHON_BIN });
 
   allLeads = await runPipeline(allLeads, { config, pythonBin: PYTHON_BIN });
 

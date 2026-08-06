@@ -93,5 +93,10 @@ Run from inside `free-nextjs-admin-dashboard-main/` so the CLI treats it as the 
 - **Repo size:** the repo also contains vendored `Scrapegraph-ai-main/` and the Node scraper.
   Vercel clones the whole repo but only builds the FE subdir, so it works — just a slower clone.
   Consider removing `Scrapegraph-ai-main/` from git to slim it down.
+- **Scrapling (stealth-fetch fallback for TechBehemoths/SelectedFirms):** one-time local setup —
+  `pip install "scrapling[fetchers]"` then `scrapling install` (downloads the Camoufox browser
+  binary, no API key needed). Already wired into both GitHub Actions workflows next to the
+  ScrapegraphAI install step. `Scrapling-main/` in the repo root is a local reference copy of the
+  library only — it's gitignored, not shipped; the real dependency comes from PyPI.
 - **Local preview before deploy:** `cd free-nextjs-admin-dashboard-main && npm run dev`, then
   create `.env.local` there with the two `NEXT_PUBLIC_*` vars to test against Supabase.

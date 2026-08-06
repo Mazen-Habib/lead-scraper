@@ -1,6 +1,11 @@
 # Separate third-party project living in this folder — not part of the scraper
 CLoak Browser/
 
+# Vendored reference copy of the scrapling PyPI package (analyzed for its
+# StealthyFetcher API, not shipped — the actual runtime dependency is
+# `pip install "scrapling[fetchers]"`, same as scrapegraphai).
+Scrapling-main/
+
 # Dependencies
 node_modules/
 
@@ -10,6 +15,10 @@ output/master.json
 
 # Playwright browser cache
 .cache/
+
+# Python bytecode cache
+__pycache__/
+*.pyc
 
 # OS / editor
 .DS_Store

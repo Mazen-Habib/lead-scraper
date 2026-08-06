@@ -401,6 +401,7 @@
     "engine": "cloak_browser",
     "maxPages": 1,
     "maxProfileVisits": 15,
+    "scraplingFallback": true,
     "queries": [
       { "service": "software-development",   "country": "united-arab-emirates" },
       { "service": "web-development",         "country": "united-arab-emirates" },
@@ -420,6 +421,7 @@
     "enabled": true,
     "engine": "cloak_browser",
     "maxPages": 2,
+    "scraplingFallback": true,
     "queries": [
       { "category": "software-development",   "country": "uae" },
       { "category": "web-development",        "country": "uae" },
