@@ -97,6 +97,48 @@
         "email marketing", "growth hacking", "performance marketing", "advertising",
         "branding", "media buying"
       ]
+    },
+    {
+      "slug": "healthcare",
+      "label": "Healthcare / Medical",
+      "keywords": [
+        "dentist", "dental", "hospital", "clinic", "medical", "doctor", "physician",
+        "pharmacy", "pharmacist", "veterinary", "vet", "healthcare", "diagnostic",
+        "laboratory", "surgeon", "orthodontist", "pediatric", "cardiology"
+      ]
+    },
+    {
+      "slug": "professional-services",
+      "label": "Professional Services",
+      "keywords": [
+        "law firm", "lawyer", "attorney", "legal", "accounting", "accountant",
+        "cpa", "bookkeeping", "tax", "real estate", "realtor", "insurance",
+        "consultancy", "consulting", "notary"
+      ]
+    },
+    {
+      "slug": "hospitality-retail",
+      "label": "Hospitality & Retail",
+      "keywords": [
+        "restaurant", "cafe", "coffee", "hotel", "retail", "store", "shop",
+        "salon", "spa", "beauty", "boutique", "bakery", "catering"
+      ]
+    },
+    {
+      "slug": "home-construction",
+      "label": "Home & Construction",
+      "keywords": [
+        "contractor", "construction", "plumbing", "plumber", "electrician",
+        "renovation", "interior design", "roofing", "landscaping", "hvac"
+      ]
+    },
+    {
+      "slug": "education-training",
+      "label": "Education & Training",
+      "keywords": [
+        "school", "academy", "institute", "tutoring", "tuition", "training",
+        "college", "university", "learning center", "coaching center"
+      ]
     }
   ],
   "firmSizeBands": [

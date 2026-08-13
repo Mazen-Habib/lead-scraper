@@ -129,10 +129,221 @@
     "maxResultsPerSearch": 20,
     "headless": true
   },
-  "openStreetMap": {
-    "enabled": false,
+  "googleMapsGeneral": {
+    "enabled": true,
     "engine": "normal_scraper",
-    "cities": []
+    "searches": [
+      "Dentists in Karachi",
+      "Hospitals in Karachi",
+      "Law firms in Karachi",
+      "Real estate agencies in Karachi",
+      "Restaurants in Karachi",
+      "Private schools in Karachi",
+      "Dentists in Lahore",
+      "Hospitals in Lahore",
+      "Law firms in Lahore",
+      "Real estate agencies in Lahore",
+      "Restaurants in Lahore",
+      "Private schools in Lahore",
+      "Dentists in Islamabad",
+      "Hospitals in Islamabad",
+      "Law firms in Islamabad",
+      "Real estate agencies in Islamabad",
+      "Restaurants in Islamabad",
+      "Private schools in Islamabad",
+      "Dentists in Dubai",
+      "Hospitals in Dubai",
+      "Law firms in Dubai",
+      "Real estate agencies in Dubai",
+      "Restaurants in Dubai",
+      "Private schools in Dubai",
+      "Dentists in Riyadh",
+      "Hospitals in Riyadh",
+      "Law firms in Riyadh",
+      "Real estate agencies in Riyadh",
+      "Restaurants in Riyadh",
+      "Private schools in Riyadh",
+      "Dentists in London",
+      "Hospitals in London",
+      "Law firms in London",
+      "Real estate agencies in London",
+      "Restaurants in London",
+      "Private schools in London",
+      "Dentists in New York",
+      "Hospitals in New York",
+      "Law firms in New York",
+      "Real estate agencies in New York",
+      "Restaurants in New York",
+      "Private schools in New York",
+      "Dentists in Faisalabad",
+      "Hospitals in Faisalabad",
+      "Law firms in Faisalabad",
+      "Dentists in Rawalpindi",
+      "Hospitals in Rawalpindi",
+      "Law firms in Rawalpindi",
+      "Dentists in Peshawar",
+      "Hospitals in Peshawar",
+      "Law firms in Peshawar",
+      "Dentists in Abu Dhabi",
+      "Hospitals in Abu Dhabi",
+      "Law firms in Abu Dhabi",
+      "Dentists in Doha",
+      "Hospitals in Doha",
+      "Law firms in Doha",
+      "Dentists in Cairo",
+      "Hospitals in Cairo",
+      "Law firms in Cairo",
+      "Dentists in Mumbai",
+      "Hospitals in Mumbai",
+      "Law firms in Mumbai",
+      "Dentists in Delhi",
+      "Hospitals in Delhi",
+      "Law firms in Delhi",
+      "Dentists in Singapore",
+      "Hospitals in Singapore",
+      "Law firms in Singapore",
+      "Dentists in Toronto",
+      "Hospitals in Toronto",
+      "Law firms in Toronto",
+      "Dentists in Sydney",
+      "Hospitals in Sydney",
+      "Law firms in Sydney",
+      "Dentists in Manila",
+      "Hospitals in Manila",
+      "Law firms in Manila",
+      "Dentists in Nairobi",
+      "Hospitals in Nairobi",
+      "Law firms in Nairobi",
+      "Dentists in Lagos",
+      "Hospitals in Lagos",
+      "Law firms in Lagos",
+      "Dentists in Bangkok",
+      "Hospitals in Bangkok",
+      "Law firms in Bangkok",
+      "Dentists in Sharjah",
+      "Hospitals in Sharjah",
+      "Dentists in Jeddah",
+      "Hospitals in Jeddah",
+      "Dentists in Dammam",
+      "Hospitals in Dammam",
+      "Dentists in Kuwait City",
+      "Hospitals in Kuwait City",
+      "Dentists in Manama",
+      "Hospitals in Manama",
+      "Dentists in Muscat",
+      "Hospitals in Muscat",
+      "Dentists in Amman",
+      "Hospitals in Amman",
+      "Dentists in Alexandria",
+      "Hospitals in Alexandria",
+      "Dentists in Tel Aviv",
+      "Hospitals in Tel Aviv",
+      "Dentists in Beirut",
+      "Hospitals in Beirut",
+      "Dentists in Bangalore",
+      "Hospitals in Bangalore",
+      "Dentists in Hyderabad",
+      "Hospitals in Hyderabad",
+      "Dentists in Pune",
+      "Hospitals in Pune",
+      "Dentists in Chennai",
+      "Hospitals in Chennai",
+      "Dentists in Kuala Lumpur",
+      "Hospitals in Kuala Lumpur",
+      "Dentists in Cebu",
+      "Hospitals in Cebu",
+      "Dentists in Ho Chi Minh City",
+      "Hospitals in Ho Chi Minh City",
+      "Dentists in Hanoi",
+      "Hospitals in Hanoi",
+      "Dentists in Jakarta",
+      "Hospitals in Jakarta",
+      "Dentists in Colombo",
+      "Hospitals in Colombo",
+      "Dentists in Dhaka",
+      "Hospitals in Dhaka",
+      "Dentists in Cape Town",
+      "Hospitals in Cape Town",
+      "Dentists in Johannesburg",
+      "Hospitals in Johannesburg",
+      "Dentists in Accra",
+      "Hospitals in Accra",
+      "Dentists in San Francisco",
+      "Hospitals in San Francisco",
+      "Dentists in Austin",
+      "Hospitals in Austin",
+      "Dentists in Seattle",
+      "Hospitals in Seattle",
+      "Dentists in Chicago",
+      "Hospitals in Chicago",
+      "Dentists in Boston",
+      "Hospitals in Boston",
+      "Dentists in Los Angeles",
+      "Hospitals in Los Angeles",
+      "Dentists in Manchester",
+      "Hospitals in Manchester",
+      "Dentists in Berlin",
+      "Hospitals in Berlin",
+      "Dentists in Munich",
+      "Hospitals in Munich",
+      "Dentists in Amsterdam",
+      "Hospitals in Amsterdam",
+      "Dentists in Vancouver",
+      "Hospitals in Vancouver",
+      "Dentists in Montreal",
+      "Hospitals in Montreal",
+      "Dentists in Melbourne",
+      "Hospitals in Melbourne"
+    ],
+    "maxResultsPerSearch": 20,
+    "headless": true
+  },
+  "openStreetMap": {
+    "enabled": true,
+    "engine": "normal_scraper",
+    "verticals": [
+      {
+        "name": "tech",
+        "cities": [
+          "Karachi",
+          "Lahore",
+          "Islamabad",
+          "Dubai",
+          "London",
+          "Singapore"
+        ]
+      },
+      {
+        "name": "healthcare",
+        "cities": [
+          "Karachi",
+          "Lahore",
+          "Islamabad",
+          "Faisalabad",
+          "Rawalpindi",
+          "Dubai",
+          "Riyadh",
+          "London",
+          "New York",
+          "Singapore"
+        ]
+      },
+      {
+        "name": "general",
+        "cities": [
+          "Karachi",
+          "Lahore",
+          "Islamabad",
+          "Faisalabad",
+          "Rawalpindi",
+          "Dubai",
+          "Riyadh",
+          "London",
+          "New York",
+          "Singapore"
+        ]
+      }
+    ]
   },
   "clutch": {
     "enabled": true,
@@ -268,7 +479,10 @@
     "enabled": false,
     "engine": "normal_scraper",
     "jurisdiction": "ae",
-    "searches": ["software", "technology"],
+    "searches": [
+      "software",
+      "technology"
+    ],
     "apiToken": "",
     "maxResults": 30
   },
@@ -295,34 +509,100 @@
     "enabled": true,
     "engine": "cloak_browser",
     "queries": [
-      { "category": "software-development", "country": "" },
-      { "category": "web-development", "country": "" },
-      { "category": "mobile-app-development", "country": "" },
-      { "category": "it-services", "country": "" },
-      { "category": "digital-marketing", "country": "" },
-      { "category": "software-development", "country": "ae" },
-      { "category": "software-development", "country": "pk" },
-      { "category": "software-development", "country": "in" },
-      { "category": "software-development", "country": "sg" },
-      { "category": "software-development", "country": "ph" },
-      { "category": "software-development", "country": "ng" },
-      { "category": "web-development", "country": "ae" },
-      { "category": "web-development", "country": "in" },
-      { "category": "mobile-app-development", "country": "in" },
-      { "category": "mobile-app-development", "country": "ae" },
-      { "category": "it-services", "country": "ae" }
+      {
+        "category": "software-development",
+        "country": ""
+      },
+      {
+        "category": "web-development",
+        "country": ""
+      },
+      {
+        "category": "mobile-app-development",
+        "country": ""
+      },
+      {
+        "category": "it-services",
+        "country": ""
+      },
+      {
+        "category": "digital-marketing",
+        "country": ""
+      },
+      {
+        "category": "software-development",
+        "country": "ae"
+      },
+      {
+        "category": "software-development",
+        "country": "pk"
+      },
+      {
+        "category": "software-development",
+        "country": "in"
+      },
+      {
+        "category": "software-development",
+        "country": "sg"
+      },
+      {
+        "category": "software-development",
+        "country": "ph"
+      },
+      {
+        "category": "software-development",
+        "country": "ng"
+      },
+      {
+        "category": "web-development",
+        "country": "ae"
+      },
+      {
+        "category": "web-development",
+        "country": "in"
+      },
+      {
+        "category": "mobile-app-development",
+        "country": "in"
+      },
+      {
+        "category": "mobile-app-development",
+        "country": "ae"
+      },
+      {
+        "category": "it-services",
+        "country": "ae"
+      }
     ]
   },
   "eventbrite": {
     "enabled": true,
     "engine": "normal_scraper",
     "searches": [
-      { "query": "software development", "location": "pakistan" },
-      { "query": "technology", "location": "dubai--united-arab-emirates" },
-      { "query": "tech startup", "location": "india" },
-      { "query": "software", "location": "singapore" },
-      { "query": "web development", "location": "philippines" },
-      { "query": "fintech", "location": "nigeria" }
+      {
+        "query": "software development",
+        "location": "pakistan"
+      },
+      {
+        "query": "technology",
+        "location": "dubai--united-arab-emirates"
+      },
+      {
+        "query": "tech startup",
+        "location": "india"
+      },
+      {
+        "query": "software",
+        "location": "singapore"
+      },
+      {
+        "query": "web development",
+        "location": "philippines"
+      },
+      {
+        "query": "fintech",
+        "location": "nigeria"
+      }
     ],
     "concurrency": 5
   },
@@ -330,49 +610,116 @@
     "enabled": true,
     "engine": "cloak_browser",
     "queries": [
-      { "category": "software-development", "country": "AE" },
-      { "category": "web-development-companies", "country": "AE" },
-      { "category": "mobile-app-development", "country": "AE" },
-      { "category": "it-services", "country": "AE" },
-      { "category": "digital-marketing", "country": "AE" },
-      { "category": "software-development", "country": "SA" },
-      { "category": "web-development-companies", "country": "SA" },
-      { "category": "software-development", "country": "IN" },
-      { "category": "web-development-companies", "country": "IN" },
-      { "category": "mobile-app-development", "country": "IN" },
-      { "category": "it-services", "country": "IN" },
-      { "category": "software-development", "country": "PK" },
-      { "category": "web-development-companies", "country": "PK" },
-      { "category": "software-development", "country": "SG" },
-      { "category": "software-development", "country": "PH" },
-      { "category": "software-development", "country": "MY" },
-      { "category": "software-development", "country": "ID" },
-      { "category": "software-development", "country": "TR" },
-      { "category": "software-development", "country": "NG" },
-      { "category": "software-development", "country": "ZA" },
-      { "category": "software-development", "country": "EG" },
-      { "category": "software-development", "country": "GB" },
-      { "category": "software-development", "country": "DE" },
-      { "category": "software-development", "country": "CA" },
-      { "category": "software-development", "country": "AU" },
-      { "category": "software-development", "country": "US" }
+      {
+        "category": "software-development",
+        "country": "AE"
+      },
+      {
+        "category": "web-development-companies",
+        "country": "AE"
+      },
+      {
+        "category": "mobile-app-development",
+        "country": "AE"
+      },
+      {
+        "category": "it-services",
+        "country": "AE"
+      },
+      {
+        "category": "digital-marketing",
+        "country": "AE"
+      },
+      {
+        "category": "software-development",
+        "country": "SA"
+      },
+      {
+        "category": "web-development-companies",
+        "country": "SA"
+      },
+      {
+        "category": "software-development",
+        "country": "IN"
+      },
+      {
+        "category": "web-development-companies",
+        "country": "IN"
+      },
+      {
+        "category": "mobile-app-development",
+        "country": "IN"
+      },
+      {
+        "category": "it-services",
+        "country": "IN"
+      },
+      {
+        "category": "software-development",
+        "country": "PK"
+      },
+      {
+        "category": "web-development-companies",
+        "country": "PK"
+      },
+      {
+        "category": "software-development",
+        "country": "SG"
+      },
+      {
+        "category": "software-development",
+        "country": "PH"
+      },
+      {
+        "category": "software-development",
+        "country": "MY"
+      },
+      {
+        "category": "software-development",
+        "country": "ID"
+      },
+      {
+        "category": "software-development",
+        "country": "TR"
+      },
+      {
+        "category": "software-development",
+        "country": "NG"
+      },
+      {
+        "category": "software-development",
+        "country": "ZA"
+      },
+      {
+        "category": "software-development",
+        "country": "EG"
+      },
+      {
+        "category": "software-development",
+        "country": "GB"
+      },
+      {
+        "category": "software-development",
+        "country": "DE"
+      },
+      {
+        "category": "software-development",
+        "country": "CA"
+      },
+      {
+        "category": "software-development",
+        "country": "AU"
+      },
+      {
+        "category": "software-development",
+        "country": "US"
+      }
     ]
   },
   "cloak": {
     "headless": true,
     "humanize": true,
     "proxy": ""
-  },
-  "qualityFilter": {
-    "categoryKeywords": [
-      "software", "technology", "tech", "it services", "information technology",
-      "web", "app", "developer", "development", "digital", "systems", "solutions",
-      "computer", "network", "cyber", "cloud", "saas", "mobile", "data",
-      "electronics", "telecommunication", "artificial intelligence", "ai",
-      "machine learning", "blockchain", "fintech", "startup", "agency", "studio",
-      "engineering", "automation", "devops", "ecommerce", "iot", "analytics",
-      "marketing", "seo", "ppc", "advertising", "branding", "media", "content", "growth"
-    ]
   },
   "quality": {
     "minScore": 35
@@ -403,18 +750,54 @@
     "maxProfileVisits": 15,
     "scraplingFallback": true,
     "queries": [
-      { "service": "software-development",   "country": "united-arab-emirates" },
-      { "service": "web-development",         "country": "united-arab-emirates" },
-      { "service": "mobile-app-development",  "country": "united-arab-emirates" },
-      { "service": "it-services",             "country": "united-arab-emirates" },
-      { "service": "software-development",    "country": "india" },
-      { "service": "web-development",         "country": "india" },
-      { "service": "mobile-app-development",  "country": "india" },
-      { "service": "software-development",    "country": "pakistan" },
-      { "service": "software-development",    "country": "singapore" },
-      { "service": "software-development",    "country": "saudi-arabia" },
-      { "service": "software-development",    "country": "united-states" },
-      { "service": "software-development",    "country": "united-kingdom" }
+      {
+        "service": "software-development",
+        "country": "united-arab-emirates"
+      },
+      {
+        "service": "web-development",
+        "country": "united-arab-emirates"
+      },
+      {
+        "service": "mobile-app-development",
+        "country": "united-arab-emirates"
+      },
+      {
+        "service": "it-services",
+        "country": "united-arab-emirates"
+      },
+      {
+        "service": "software-development",
+        "country": "india"
+      },
+      {
+        "service": "web-development",
+        "country": "india"
+      },
+      {
+        "service": "mobile-app-development",
+        "country": "india"
+      },
+      {
+        "service": "software-development",
+        "country": "pakistan"
+      },
+      {
+        "service": "software-development",
+        "country": "singapore"
+      },
+      {
+        "service": "software-development",
+        "country": "saudi-arabia"
+      },
+      {
+        "service": "software-development",
+        "country": "united-states"
+      },
+      {
+        "service": "software-development",
+        "country": "united-kingdom"
+      }
     ]
   },
   "selectedFirms": {
@@ -423,19 +806,58 @@
     "maxPages": 2,
     "scraplingFallback": true,
     "queries": [
-      { "category": "software-development",   "country": "uae" },
-      { "category": "web-development",        "country": "uae" },
-      { "category": "mobile-app-development",  "country": "uae" },
-      { "category": "software-development",   "country": "india" },
-      { "category": "web-development",        "country": "india" },
-      { "category": "mobile-app-development",  "country": "india" },
-      { "category": "software-development",   "country": "" },
-      { "category": "web-development",        "country": "" },
-      { "category": "mobile-app-development",  "country": "" },
-      { "category": "software-development",   "country": "usa" },
-      { "category": "software-development",   "country": "uk" },
-      { "category": "software-development",   "country": "canada" },
-      { "category": "software-development",   "country": "australia" }
+      {
+        "category": "software-development",
+        "country": "uae"
+      },
+      {
+        "category": "web-development",
+        "country": "uae"
+      },
+      {
+        "category": "mobile-app-development",
+        "country": "uae"
+      },
+      {
+        "category": "software-development",
+        "country": "india"
+      },
+      {
+        "category": "web-development",
+        "country": "india"
+      },
+      {
+        "category": "mobile-app-development",
+        "country": "india"
+      },
+      {
+        "category": "software-development",
+        "country": ""
+      },
+      {
+        "category": "web-development",
+        "country": ""
+      },
+      {
+        "category": "mobile-app-development",
+        "country": ""
+      },
+      {
+        "category": "software-development",
+        "country": "usa"
+      },
+      {
+        "category": "software-development",
+        "country": "uk"
+      },
+      {
+        "category": "software-development",
+        "country": "canada"
+      },
+      {
+        "category": "software-development",
+        "country": "australia"
+      }
     ]
   },
   "scrapegraph": {

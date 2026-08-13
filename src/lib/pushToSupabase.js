@@ -1,8 +1,17 @@
+import { writeFileSync, mkdirSync } from 'fs';
+import { resolve, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import { getSupabaseClient } from './supabaseClient.js';
 import { dedupeKey } from './normalizeUrl.js';
+import { toCsv } from './csv.js';
 
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const BATCH_SIZE = 500;
 const SUPABASE_PAGE_SIZE = 1000; // PostgREST's default/max row cap per request
+const MAX_ATTEMPTS = 3;
+const RETRY_DELAYS_MS = [2000, 5000]; // backoff between attempts 1->2 and 2->3
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const MASTER_SELECT_COLUMNS =
   'company_name, category, website, email, all_emails, phone, address, linkedin, facebook, instagram, rating, review_count, company_size, hourly_rate, min_project, search_query, profile_url, source, engine, email_verified, score, tier, scraped_at, first_seen_at, last_seen_at, industry, tags, sub_industries, employee_count, firm_size_band, is_enterprise, tag_confidence, tag_source, region';
@@ -115,37 +124,84 @@ export async function fetchMasterFromSupabase() {
   return rows.map(fromRow);
 }
 
+// Upserts one batch, retrying on failure with backoff (2s, then 5s) before
+// giving up — most Supabase batch failures are transient (network blip,
+// momentary rate limit), and 2 retries is cheap relative to losing real,
+// already-scraped-and-classified data.
+async function upsertBatchWithRetry(supabase, batch) {
+  let lastErr;
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    const { data, error } = await supabase
+      .from('leads')
+      .upsert(batch, { onConflict: 'dedupe_key' })
+      .select('id, dedupe_key');
+    if (!error) return { data, error: null };
+    lastErr = error;
+    if (attempt < MAX_ATTEMPTS - 1) {
+      const wait = RETRY_DELAYS_MS[attempt];
+      console.warn(`  !! Supabase upsert batch failed (attempt ${attempt + 1}/${MAX_ATTEMPTS}): ${error.message} — retrying in ${wait / 1000}s...`);
+      await sleep(wait);
+    }
+  }
+  return { data: null, error: lastErr };
+}
+
 // Upserts leads into Supabase keyed on dedupe_key so re-running the scraper
 // (or backfilling old CSVs) never creates duplicate rows — matching the same
 // normalized-website/name key the in-process dedupe() uses.
 //
-// Returns { synced, skipped, idsByKey } where idsByKey maps dedupe_key -> lead
-// id. The weekly run ignores the ids, but the personalized worker
-// (src/personalized/runSavedSearches.js) needs them to write user_leads rows
-// pointing at the leads it just delivered.
+// No missing leads are tolerated: a batch that still fails after retries has
+// its original lead objects written to a local recovery CSV (never just
+// logged and dropped — see the Aug 2026 incident where a batch failure
+// silently lost ~2,489 leads while the CI job reported success) and the
+// return value reports the failure so the caller can fail the run loudly
+// instead of looking like a clean sync. Recover a failed batch by re-running
+// scripts/backfill-supabase.js against the recovery file.
+//
+// Returns { synced, skipped, idsByKey, failed, recoveryPath } where idsByKey
+// maps dedupe_key -> lead id (used by src/personalized/runSavedSearches.js to
+// attribute newly-delivered leads to a user).
 export async function syncLeadsToSupabase(leads) {
   const supabase = getSupabaseClient();
   const idsByKey = new Map();
   if (!supabase) {
     console.log('  Supabase not configured (SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY missing) — skipping DB sync.');
-    return { synced: 0, skipped: true, idsByKey };
+    return { synced: 0, skipped: true, idsByKey, failed: 0, recoveryPath: null };
   }
 
-  const rows = leads.map(toRow).filter(Boolean);
+  // Keep the original lead objects aligned with their transformed row so a
+  // failed batch can be written back out in the same shape main()'s CSV
+  // writers already use — toRow() can return null (no dedupe key), so a
+  // naive .map(toRow).filter(Boolean) would desync the two arrays.
+  const pairs = leads.map((lead) => ({ lead, row: toRow(lead) })).filter((p) => p.row);
+
   let synced = 0;
-  for (let i = 0; i < rows.length; i += BATCH_SIZE) {
-    const batch = rows.slice(i, i + BATCH_SIZE);
-    const { data, error } = await supabase
-      .from('leads')
-      .upsert(batch, { onConflict: 'dedupe_key' })
-      .select('id, dedupe_key');
+  const failedLeads = [];
+  for (let i = 0; i < pairs.length; i += BATCH_SIZE) {
+    const batchPairs = pairs.slice(i, i + BATCH_SIZE);
+    const batch = batchPairs.map((p) => p.row);
+    const { data, error } = await upsertBatchWithRetry(supabase, batch);
     if (error) {
-      console.error(`  !! Supabase upsert failed for batch ${i / BATCH_SIZE + 1}: ${error.message}`);
+      console.error(`  !! Supabase upsert batch ${i / BATCH_SIZE + 1} failed after ${MAX_ATTEMPTS} attempts: ${error.message}`);
+      failedLeads.push(...batchPairs.map((p) => p.lead));
       continue;
     }
     for (const row of data || []) idsByKey.set(row.dedupe_key, row.id);
     synced += batch.length;
   }
-  console.log(`  Supabase: upserted ${synced}/${rows.length} leads`);
-  return { synced, skipped: false, idsByKey };
+  console.log(`  Supabase: upserted ${synced}/${pairs.length} leads`);
+
+  let recoveryPath = null;
+  if (failedLeads.length > 0) {
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    recoveryPath = resolve(root, `output/sync-failures-${stamp}.csv`);
+    mkdirSync(dirname(recoveryPath), { recursive: true });
+    writeFileSync(recoveryPath, toCsv(failedLeads), 'utf8');
+    console.error(
+      `  !! ${failedLeads.length} lead(s) FAILED to sync after retries — saved to ${recoveryPath}\n` +
+        `     Recover with: node scripts/backfill-supabase.js ${recoveryPath}`
+    );
+  }
+
+  return { synced, skipped: false, idsByKey, failed: failedLeads.length, recoveryPath };
 }

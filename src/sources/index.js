@@ -5,7 +5,12 @@
 // A caller can select a subset of sources by `key` (see gatherLeads's `only`
 // option) — needed by on-demand/per-user runs later without touching this file.
 import { scrapeGoogleMaps } from '../scrapers/googleMaps.js';
-import { scrapeOpenStreetMap } from '../scrapers/openStreetMap.js';
+import {
+  scrapeOpenStreetMap,
+  TECH_TAG_FILTERS,
+  HEALTHCARE_TAG_FILTERS,
+  GENERAL_BUSINESS_TAG_FILTERS,
+} from '../scrapers/openStreetMap.js';
 import { scrapeClutch } from '../scrapers/clutch.js';
 import { scrapeGoodFirms } from '../scrapers/goodFirms.js';
 import { scrapeGithubOrgs } from '../scrapers/githubOrgs.js';
@@ -39,18 +44,58 @@ export const SOURCE_REGISTRY = [
     },
   },
   {
+    // General local-business searches (dentists, hospitals, law firms,
+    // restaurants, etc. — see config.json's googleMapsGeneral block) — kept
+    // as its own registry key rather than merged into `googleMaps` above so
+    // it can be scraped on its own schedule (weekly-scrape-general.yml)
+    // without inflating the existing tech run's runtime. Reuses the exact
+    // same scraper/lead shape; `source` stays 'google_maps' so scoring and
+    // dedupe treat these leads identically to the tech-vertical GM leads.
+    key: 'googleMapsGeneral',
+    source: 'google_maps',
+    engine: 'normal_scraper',
+    errorName: 'Google Maps (general)',
+    buildJobs(config) {
+      const c = config.googleMapsGeneral || {};
+      if (!c.enabled) return [];
+      return (c.searches || []).map((query) => ({
+        query,
+        announce: `[normal] Google Maps (general): "${query}"`,
+        run: () => scrapeGoogleMaps(query, c.maxResultsPerSearch, c.headless),
+      }));
+    },
+  },
+  {
     key: 'openStreetMap',
     source: 'openstreetmap',
     engine: 'normal_scraper',
     errorName: 'OSM',
+    // config.openStreetMap.verticals: [{ name, cities }] — `name` selects the
+    // OSM tag-filter set below (single source of truth lives in
+    // openStreetMap.js's *_TAG_FILTERS exports, not duplicated into JSON), so
+    // tech/healthcare/general-business coverage can differ per vertical
+    // instead of one flat city list stuck to one tag-set.
     buildJobs(config) {
+      const VERTICAL_FILTERS = {
+        tech: TECH_TAG_FILTERS,
+        healthcare: HEALTHCARE_TAG_FILTERS,
+        general: GENERAL_BUSINESS_TAG_FILTERS,
+      };
       const c = config.openStreetMap || {};
       if (!c.enabled) return [];
-      return (c.cities || []).map((city) => ({
-        query: city,
-        announce: `[normal] OpenStreetMap: "${city}"`,
-        run: () => scrapeOpenStreetMap(city),
-      }));
+      const verticals = c.verticals || [];
+      return verticals.flatMap((v) => {
+        const filters = VERTICAL_FILTERS[v.name];
+        if (!filters) {
+          console.warn(`  !! OpenStreetMap: unknown vertical "${v.name}" — skipped`);
+          return [];
+        }
+        return (v.cities || []).map((city) => ({
+          query: `${v.name}/${city}`,
+          announce: `[normal] OpenStreetMap (${v.name}): "${city}"`,
+          run: () => scrapeOpenStreetMap(city, filters),
+        }));
+      });
     },
   },
   {

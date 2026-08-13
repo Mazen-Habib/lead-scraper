@@ -1,10 +1,32 @@
-// Default ICP keywords used when config.qualityFilter.categoryKeywords is absent.
+// Default ICP keywords used when config.qualityFilter.categoryKeywords is
+// absent. Originally tech/marketing-only; broadened to general local
+// business (healthcare, professional services, hospitality/retail,
+// home/construction, education) so the scraper can target dentists,
+// hospitals, law firms, restaurants, etc. — not just software companies.
+// Genuinely irrelevant categories (cemetery, parking garage, government
+// office) still correctly fail every group below.
 export const DEFAULT_CATEGORY_KEYWORDS = [
+  // Tech / IT / marketing (original scope)
   'software', 'technology', 'tech', 'it services', 'information technology',
   'web', 'app', 'developer', 'development', 'digital', 'systems', 'solutions',
   'computer', 'network', 'cyber', 'cloud', 'saas', 'mobile', 'data',
   'electronics', 'telecommunication',
   'marketing', 'seo', 'ppc', 'advertising', 'branding', 'media', 'content', 'growth',
+  // Healthcare
+  'dentist', 'dental', 'hospital', 'clinic', 'medical', 'doctor', 'physician',
+  'pharmacy', 'pharmacist', 'veterinary', 'vet', 'healthcare', 'diagnostic',
+  'laboratory',
+  // Professional services
+  'law firm', 'lawyer', 'attorney', 'legal', 'accounting', 'accountant',
+  'real estate', 'realtor', 'insurance', 'consultancy', 'consulting',
+  // Hospitality & retail
+  'restaurant', 'cafe', 'coffee', 'hotel', 'retail', 'store', 'shop',
+  'salon', 'spa', 'beauty', 'boutique',
+  // Home & construction
+  'contractor', 'construction', 'plumbing', 'plumber', 'electrician',
+  'renovation', 'interior design',
+  // Education
+  'school', 'academy', 'institute', 'tutoring', 'tuition', 'training',
 ];
 
 /**

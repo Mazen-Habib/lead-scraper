@@ -15,7 +15,7 @@ const OVERPASS_MIRRORS = [
 
 // OSM tag filters that map to tech / tech-related businesses.
 // Each entry becomes an nwr[...] clause in the Overpass query.
-const TECH_TAG_FILTERS = [
+export const TECH_TAG_FILTERS = [
   '["office"="it"]',
   '["office"="software"]',
   '["office"="telecommunication"]',
@@ -24,7 +24,33 @@ const TECH_TAG_FILTERS = [
   '["craft"="electronics"]',
 ];
 
-function buildQuery(city, filters) {
+// Healthcare — dentists, hospitals, clinics, pharmacies, doctors, vets.
+// OSM's `amenity` tag already models these as distinct, well-populated
+// categories (unlike a directory site, OSM doesn't need a search string —
+// these are structured location data).
+export const HEALTHCARE_TAG_FILTERS = [
+  '["amenity"="dentist"]',
+  '["amenity"="hospital"]',
+  '["amenity"="clinic"]',
+  '["amenity"="doctors"]',
+  '["amenity"="pharmacy"]',
+  '["amenity"="veterinary"]',
+];
+
+// General local business — professional services, hospitality, retail.
+export const GENERAL_BUSINESS_TAG_FILTERS = [
+  '["office"="lawyer"]',
+  '["office"="insurance"]',
+  '["office"="estate_agent"]',
+  '["office"="accountant"]',
+  '["amenity"="restaurant"]',
+  '["amenity"="cafe"]',
+  '["tourism"="hotel"]',
+  '["shop"="hairdresser"]',
+  '["shop"="beauty"]',
+];
+
+export function buildQuery(city, filters) {
   // Resolve the city to an area, then match every tag filter inside it.
   const clauses = filters
     .map((f) => `  nwr${f}(area.a);`)
@@ -94,7 +120,12 @@ export async function scrapeOpenStreetMap(city, filters = TECH_TAG_FILTERS) {
 
     leads.push({
       name: t.name,
-      category: t.office || t.shop || t.craft || 'tech',
+      // amenity/tourism cover the new healthcare/general-business filters
+      // (dentist, hospital, restaurant, hotel, ...); office/shop/craft cover
+      // the original tech filters. No hardcoded fallback — an empty category
+      // just means the ICP filter falls back to matching on `name` instead,
+      // same as every other source.
+      category: t.amenity || t.office || t.shop || t.craft || t.tourism || '',
       website: t.website || t['contact:website'] || '',
       email: t.email || t['contact:email'] || '',
       phone: t.phone || t['contact:phone'] || '',

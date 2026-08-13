@@ -19,7 +19,13 @@ function classifierHaystack(lead) {
     .replace(/^https?:\/\//i, '')
     .replace(/^www\./i, '')
     .replace(/[.\-\/]/g, ' ');
-  const slugWords = (lead.maps_url || '').split('/').pop()?.replace(/[-_]/g, ' ') || '';
+  // Directory profile URLs (Clutch/DesignRush) end in a readable slug like
+  // "acme-web-development-agency" — Google Maps URLs end in a coordinate/data
+  // blob like "data=!4m7!3m6!1s0x...", which falsely matched taxonomy
+  // keywords (e.g. the literal "data" in "data=" matching data-analytics-bi).
+  // Any '=', '!' or '%' in the last segment means it isn't a real slug.
+  const rawSlug = (lead.maps_url || '').split('/').pop() || '';
+  const slugWords = /[=!%]/.test(rawSlug) ? '' : rawSlug.replace(/[-_]/g, ' ');
   return [lead.category, lead.name, lead.search_query, domainWords, slugWords]
     .filter(Boolean)
     .join(' ')

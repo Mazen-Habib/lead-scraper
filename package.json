@@ -9,6 +9,7 @@
     "test": "node --test test/*.test.js",
     "sync-shared-data": "node scripts/sync-shared-data.js",
     "sync-shared-data:check": "node scripts/sync-shared-data.js --check",
+    "export-all": "node scripts/export-all-leads.js",
     "postinstall": "playwright install chromium"
   },
   "dependencies": {

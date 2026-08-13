@@ -10,6 +10,7 @@ import { scoreLeads } from './quality/scorer.js';
 import { filterByScore } from './quality/qualityFilter.js';
 import { syncLeadsToSupabase, fetchMasterFromSupabase } from './lib/pushToSupabase.js';
 import { getSupabaseClient } from './lib/supabaseClient.js';
+import { toCsv } from './lib/csv.js';
 import { CSV_COLUMNS } from './lib/leadFields.js';
 import { scrapeUrl } from './commands/scrapeUrl.js';
 import { scrapeFirms } from './commands/scrapeFirms.js';
@@ -41,19 +42,6 @@ function resolvePythonBin() {
   return null;
 }
 const PYTHON_BIN = resolvePythonBin();
-
-function csvCell(value) {
-  const s = value == null ? '' : Array.isArray(value) ? value.join('; ') : String(value);
-  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-}
-
-function toCsv(records) {
-  const header = CSV_COLUMNS.map(([, title]) => title).join(',');
-  const rows = records.map((rec) =>
-    CSV_COLUMNS.map(([id]) => csvCell(rec[id])).join(',')
-  );
-  return [header, ...rows].join('\r\n') + '\r\n';
-}
 
 function runTimestamp() {
   const n = new Date();
@@ -142,11 +130,11 @@ async function writeCsv(records, outPath, attempts = 8) {
   }
 }
 
-async function main() {
-  console.log('Lead scraper starting\n');
+async function main({ only } = {}) {
+  console.log('Lead scraper starting\n' + (only ? `  (scoped to: ${only.join(', ')})\n` : ''));
   const cloak = config.cloak || {};
 
-  let allLeads = await gatherLeads(config, cloak, { pythonBin: PYTHON_BIN });
+  let allLeads = await gatherLeads(config, cloak, { pythonBin: PYTHON_BIN, only });
 
   allLeads = await runPipeline(allLeads, { config, pythonBin: PYTHON_BIN });
 
@@ -184,7 +172,15 @@ async function main() {
 
   // --- Sync full deduped master to Supabase (frontend reads from here) ---
   console.log('Syncing leads to Supabase...');
-  await syncLeadsToSupabase(masterFiltered);
+  const syncResult = await syncLeadsToSupabase(masterFiltered);
+  // No missing leads are tolerated: a partial sync failure (after retries)
+  // must fail the run loudly rather than looking like a clean success — the
+  // recovery CSV already saved the failed rows (see syncLeadsToSupabase), but
+  // someone still needs to notice and run the recovery step.
+  if (syncResult.failed > 0) {
+    console.error(`\nFAILED: ${syncResult.failed} lead(s) could not be synced to Supabase after retries.`);
+    process.exitCode = 1;
+  }
 }
 
 // Phase 2 on-demand entrypoints: `node src/index.js url <website>` and
@@ -214,17 +210,28 @@ async function runFirmsCommand(firmsFile) {
 // Guard so this module can be imported for unit testing (e.g. mergeMaster,
 // pruneExpired in test/mergeMaster.test.js) without kicking off a real scrape.
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const [cmd, ...rest] = process.argv.slice(2);
-  const arg = rest[0];
-  const flags = new Set(rest.filter((a) => a.startsWith('--')));
+  const argv = process.argv.slice(2);
+  // --only=key1,key2 scopes the default scrape to a subset of SOURCE_REGISTRY
+  // keys (gatherLeads already supported this via its `only` option — this is
+  // just the first CLI exposure of it), e.g. weekly-scrape-general.yml uses
+  // --only=googleMapsGeneral,openStreetMap so the general-vertical run never
+  // touches the tech sources' scrape budget.
+  const onlyArg = argv.find((a) => a.startsWith('--only='));
+  const only = onlyArg ? onlyArg.slice('--only='.length).split(',').filter(Boolean) : undefined;
+
+  const [cmd, ...rest] = argv.filter((a) => !a.startsWith('--only='));
+  const arg = cmd && !cmd.startsWith('--') ? rest[0] : undefined;
+  const flags = new Set(argv.filter((a) => a.startsWith('--') && !a.startsWith('--only=')));
+  const isSubcommand = cmd && !cmd.startsWith('--');
+
   const run =
-    cmd === 'url' && arg
+    isSubcommand && cmd === 'url' && arg
       ? () => runUrlCommand(arg)
-      : cmd === 'firms' && arg
+      : isSubcommand && cmd === 'firms' && arg
         ? () => runFirmsCommand(arg)
-        : cmd === 'saved-searches'
+        : isSubcommand && cmd === 'saved-searches'
           ? () => runSavedSearches({ config, cloak: config.cloak || {}, pythonBin: PYTHON_BIN })
-          : cmd === 'classify'
+          : isSubcommand && cmd === 'classify'
             ? () =>
                 runLlmClassification({
                   config: {
@@ -236,7 +243,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
                     },
                   },
                 })
-            : main;
+            : () => main({ only });
 
   run().catch((err) => {
     console.error('Fatal:', err);

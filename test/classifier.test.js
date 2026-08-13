@@ -33,6 +33,29 @@ test('classifyLead ranks the industry with more keyword hits first when multiple
   assert.ok(result.tags.includes('web-development'));
 });
 
+test('classifyLead classifies the new general-local-business verticals', () => {
+  assert.equal(classifyLead({ category: 'Dental Clinic', name: 'Bright Smile Dental' }).industry, 'healthcare');
+  assert.equal(classifyLead({ category: 'General Hospital' }).industry, 'healthcare');
+  assert.equal(classifyLead({ category: 'Law Firm', name: 'Acme Legal Services' }).industry, 'professional-services');
+  assert.equal(classifyLead({ category: 'Restaurant', name: 'Cafe Delight' }).industry, 'hospitality-retail');
+  assert.equal(classifyLead({ category: 'Construction Contractor' }).industry, 'home-construction');
+  assert.equal(classifyLead({ category: 'Private School', name: 'Bright Future Academy' }).industry, 'education-training');
+});
+
+test('classifyLead ignores a Google Maps URL data blob instead of treating it as a slug', () => {
+  // Regression: the last path segment of a Maps URL is "data=!4m7!3m6!1s0x...",
+  // whose literal "data" substring used to falsely match data-analytics-bi and
+  // outrank the correct "healthcare" bucket on tied keyword count.
+  const result = classifyLead({
+    category: 'Hospital',
+    name: 'General Hospital',
+    maps_url:
+      'https://www.google.com/maps/place/General+Hospital/data=!4m7!3m6!1s0x391904!8m2!3d31.5!4d74.3',
+  });
+  assert.equal(result.industry, 'healthcare');
+  assert.ok(!result.tags.includes('data-analytics-bi'));
+});
+
 test('classifyLeads sets industry/tags/tag_confidence/tag_source on every lead in place', () => {
   const leads = [{ category: 'Mobile App Development', name: 'Acme' }, { category: '', name: 'Unrelated Co' }];
   classifyLeads(leads);

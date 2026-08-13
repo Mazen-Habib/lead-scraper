@@ -14,7 +14,25 @@ test('matchesIcp accepts a tech category', () => {
 
 test('matchesIcp falls back to name when category is off-ICP or missing', () => {
   assert.equal(matchesIcp({ category: '', name: 'Acme Software Solutions' }), true);
-  assert.equal(matchesIcp({ category: 'Restaurant', name: 'Joe\'s Pizza' }), false);
+  assert.equal(matchesIcp({ category: 'Parking Garage', name: 'Downtown Parking' }), false);
+});
+
+// The ICP was broadened from tech-only to general local business (healthcare,
+// professional services, hospitality/retail, home/construction, education) —
+// these confirm the new verticals are accepted while genuine junk still isn't.
+test('matchesIcp accepts the new general-local-business verticals', () => {
+  assert.equal(matchesIcp({ category: 'Dental Clinic' }), true);
+  assert.equal(matchesIcp({ category: 'General Hospital' }), true);
+  assert.equal(matchesIcp({ category: 'Law Firm' }), true);
+  assert.equal(matchesIcp({ category: 'Restaurant' }), true);
+  assert.equal(matchesIcp({ category: 'Construction Contractor' }), true);
+  assert.equal(matchesIcp({ category: 'Private School' }), true);
+});
+
+test('matchesIcp still rejects genuinely irrelevant categories', () => {
+  assert.equal(matchesIcp({ category: 'Cemetery' }), false);
+  assert.equal(matchesIcp({ category: 'Government Office' }), false);
+  assert.equal(matchesIcp({ category: 'Parking Garage' }), false);
 });
 
 test('hasContactPoint requires phone, linkedin, or a non-dead email', () => {

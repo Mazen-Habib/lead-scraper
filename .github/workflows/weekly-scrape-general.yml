@@ -1,8 +1,16 @@
-name: Weekly Lead Scrape
+name: Weekly Lead Scrape (General / Local Business)
+
+# Separate from weekly-scrape.yml (the tech-vertical run) specifically because
+# that run is already at the ~360-minute practical ceiling for a single job —
+# adding ~160 more Playwright-driven Google Maps queries plus the OSM
+# healthcare/general verticals to the same run risked timing it out. This runs
+# on its own day/budget instead. Doesn't need the Scrapling/cloak-browser
+# install steps weekly-scrape.yml has — googleMapsGeneral and openStreetMap
+# don't touch the anti-bot-protected directory sites those exist for.
 
 on:
   schedule:
-    - cron: '0 19 * * 0'   # midnight PKT (UTC+5) every Sunday
+    - cron: '0 19 * * 3'   # midnight PKT (UTC+5) every Wednesday — offset from the Sunday tech run
   workflow_dispatch:        # manual trigger from GitHub UI anytime
 
 permissions:
@@ -11,7 +19,7 @@ permissions:
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    timeout-minutes: 360    # 6h cap — expanded run (106 GM + 47 Clutch + 21 GF + 16 Sortlist + 26 DR + 35 GH + 8 TD + 12 TechBehemoths + 13 SelectedFirms + Eventbrite + PSEB)
+    timeout-minutes: 240    # ~161 GM general queries + ~26 OSM jobs (Overpass is fast) — well under weekly-scrape.yml's 360
 
     steps:
       - name: Checkout repo
@@ -31,31 +39,19 @@ jobs:
       - name: Install Playwright + Chromium system deps
         run: npx playwright install chromium --with-deps
 
-      - name: Install Python deps (ScrapegraphAI)
-        run: pip install "scrapegraphai>=1.0" langchain-groq langchain-mistralai --quiet
-
-      - name: Install Python deps (Scrapling)
-        run: pip install "scrapling[fetchers]" --quiet && scrapling install
-
       - name: Run unit tests
         run: npm test
 
       - name: Verify shared taxonomy/regions data is in sync with the dashboard
         run: npm run sync-shared-data:check
 
-      - name: Run scraper
-        run: node src/index.js
+      - name: Run scraper (general/local-business sources only)
+        run: node src/index.js --only=googleMapsGeneral,openStreetMap
         env:
           NODE_ENV: production
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GROQ_KEY_1: ${{ secrets.GROQ_KEY_1 }}
-          GROQ_KEY_2: ${{ secrets.GROQ_KEY_2 }}
-          GROQ_KEY_3: ${{ secrets.GROQ_KEY_3 }}
-          MISTRAL_KEY_1: ${{ secrets.MISTRAL_KEY_1 }}
-          MISTRAL_KEY_2: ${{ secrets.MISTRAL_KEY_2 }}
-          MISTRAL_KEY_3: ${{ secrets.MISTRAL_KEY_3 }}
 
       - name: Export the complete, guaranteed-up-to-date leads database
         run: npm run export-all
@@ -75,7 +71,7 @@ jobs:
             RUN_CSV=$(ls -t output/runs/*.csv 2>/dev/null | head -1)
             RUN_TOTAL=$([ -n "$RUN_CSV" ] && wc -l < "$RUN_CSV" || echo "?")
             echo "Run scraped: ${RUN_TOTAL} leads (pre-filter). Master: ${TOTAL} total."
-            git commit -m "scrape: weekly run $(date -u +'%Y-%m-%d') — ${TOTAL} total leads in master"
+            git commit -m "scrape: weekly general-vertical run $(date -u +'%Y-%m-%d') — ${TOTAL} total leads in master"
             PUSHED=0
             for i in 1 2 3; do
               if git pull --rebase origin main && git push; then
@@ -95,6 +91,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: leads-${{ github.run_id }}
+          name: leads-general-${{ github.run_id }}
           path: output/runs/*.csv
           retention-days: 90
