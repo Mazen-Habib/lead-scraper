@@ -39,6 +39,24 @@ jobs:
       - name: Install Playwright + Chromium system deps
         run: npx playwright install chromium --with-deps
 
+      - name: Install Python deps (MarkItDown — web-tagging fallback rung)
+        run: pip install "markitdown[all]" --quiet
+
+      - name: Install curl-impersonate (TLS-fingerprint fallback for emailFinder)
+        # Best-effort: never fails the job. See weekly-scrape.yml for the full
+        # explanation — same step, kept identical across workflows.
+        continue-on-error: true
+        run: |
+          ASSET_URL=$(curl -sL https://api.github.com/repos/lwthiker/curl-impersonate/releases/latest \
+            | grep -o '"browser_download_url": *"[^"]*x86_64-linux-gnu\.tar\.gz"' \
+            | grep -v 'lib' | head -1 | cut -d'"' -f4)
+          echo "Resolved asset: ${ASSET_URL:-<none found>}"
+          curl -sL "$ASSET_URL" -o curl-impersonate.tar.gz \
+            && mkdir -p curl-impersonate && tar -xzf curl-impersonate.tar.gz -C curl-impersonate \
+            && sudo cp curl-impersonate/curl_chrome* /usr/local/bin/curl_chrome116 \
+            && sudo chmod +x /usr/local/bin/curl_chrome116 \
+            && curl_chrome116 --version || echo "curl-impersonate install skipped/failed — fallback stays disabled, no impact on the run"
+
       - name: Run unit tests
         run: npm test
 
@@ -52,6 +70,7 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FIRECRAWL_API_KEY: ${{ secrets.FIRECRAWL_API_KEY }}
 
       - name: Export the complete, guaranteed-up-to-date leads database
         run: npm run export-all

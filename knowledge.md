@@ -95,9 +95,18 @@ same staircases, plus two standalone additions:
   returned real HTML) — the only one of the four with no external key/binary dependency, so
   it's exercised for real rather than just proven to no-op.
 
+### All 3 pipeline-touching workflows now have the same rungs (checked, not left partial)
+`runPipeline.js` (and therefore the Firecrawl/MarkItDown/curl-impersonate rungs) runs from
+three workflows: `weekly-scrape.yml`, `weekly-scrape-general.yml`, and
+`personalized-scrape.yml` (via `runSavedSearches.js`). All three now install `markitdown[all]`,
+attempt the curl-impersonate binary download, and pass `FIRECRAWL_API_KEY` through. The 4th
+workflow, `llm-classification.yml`, does **not** call `runPipeline` (it only runs Layer-3
+LLM classification on already-scraped Supabase rows via `runLlmClassification.js`) — verified
+via grep before deciding it needed no changes, not assumed.
+
 ### Not done / needs a follow-up decision
 - `FIRECRAWL_API_KEY` GitHub secret doesn't exist yet — the rung is wired but inert in CI
-  until someone adds it.
+  until someone adds it, across all three workflows that now reference it.
 - `curl-impersonate` install step in `weekly-scrape.yml` resolves the download URL live via
   the GitHub API (`repos/lwthiker/curl-impersonate/releases/latest`) rather than a hardcoded
   version, since the real repo/asset naming was verified during this session (it's
