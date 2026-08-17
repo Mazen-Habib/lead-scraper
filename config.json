@@ -866,6 +866,12 @@
       "enabled": true
     }
   },
+  "firecrawl": {
+    "enabled": true,
+    "maxCallsPerRun": 100,
+    "timeoutMs": 25000,
+    "concurrency": 5
+  },
   "findEmails": true,
   "runLabel": ""
 }

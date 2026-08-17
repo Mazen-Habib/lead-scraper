@@ -26,7 +26,91 @@ artifact, but `output/leads-master.csv`, `output/all.csv`, and `output/runs/*.cs
 
 ---
 
-## Most recent session: "no missing leads tolerated" + general local business expansion
+## Most recent session: additive fallback rungs (Firecrawl, MarkItDown, curl-impersonate, Crawlee)
+
+User pasted a folder of open-source scraping tools (`Scrapper_directories/`: crawlee, firecrawl,
+curl-impersonate, markitdown, autoscraper, scrapy, scrcpy) and asked to integrate whatever's
+useful **without replacing anything that already works**, and with a "fallback staircase" —
+each new tool only activates when the existing rungs above it already failed/came up empty.
+
+### What shipped (pushed to `origin/main`)
+
+The codebase already had this exact pattern established (`emailFinder.js` → ScrapegraphAI
+email enrichment, `jinaReader.js` → web tagging). This session added more rungs to those
+same staircases, plus two standalone additions:
+
+1. **Firecrawl — 3rd rung on email enrichment**, after `emailFinder.js` (rung 1) and
+   ScrapegraphAI (rung 2). New: [src/lib/firecrawlEnricher.js](src/lib/firecrawlEnricher.js).
+   Wired into `runPipeline.js` right after the ScrapegraphAI block. Fully opt-in — no-ops
+   with a log line if `FIRECRAWL_API_KEY` isn't set. Config: `config.firecrawl`
+   (`maxCallsPerRun: 100` to stay inside the free tier). Secret not yet added to GitHub —
+   add `FIRECRAWL_API_KEY` there when/if you sign up for the free tier.
+
+2. **MarkItDown — 2nd rung on web tagging**, after Jina Reader. New:
+   [src/quality/markitdown_fetch.py](src/quality/markitdown_fetch.py) (same stdin/stdout JSON
+   contract as `scrapling_fetch.py`) + [src/lib/markitdownReader.js](src/lib/markitdownReader.js)
+   wrapper. Wired into `webTagger.js`'s `tagFromWebsite()` — only called when `readAsText`
+   (Jina) returns null. `pythonBin` now threaded through `tagLeadsFromWeb` → `runPipeline.js`.
+   CI installs `markitdown[all]` in `weekly-scrape.yml`.
+
+3. **curl-impersonate — TLS-fingerprint fallback inside `emailFinder.js`**. New:
+   [src/lib/curlImpersonate.js](src/lib/curlImpersonate.js). Wraps `fetchPage()`'s try/catch —
+   if plain `fetch()` throws, retries once via the `curl_chrome116` binary before giving up.
+   Self-probes for the binary and silently disables if absent (no binary on Windows dev by
+   default). CI downloads a prebuilt Linux binary in `weekly-scrape.yml` as a
+   `continue-on-error: true` step — a failed download never fails the run.
+
+4. **Crawlee — new engine option, not wired into any existing scraper**. New:
+   [src/engines/crawleeEngine.js](src/engines/crawleeEngine.js), exposing
+   `fetchWithCrawlee(url)` (CheerioCrawler) and `fetchRenderedWithCrawlee(url)`
+   (PlaywrightCrawler) as single-URL fetch calls matching the shape every existing scraper
+   already uses — deliberately NOT the request-queue architecture Crawlee normally wants, so
+   it can be adopted by a *new* scraper without anyone rewriting the pipeline. `cloakEngine.js`
+   is untouched; this is available infrastructure for future directories, not a replacement.
+
+5. **AutoScraper — dev-only utility**, never imported by the pipeline. New:
+   [scripts/discover-scraper.py](scripts/discover-scraper.py) — give it a URL + sample value,
+   it learns CSS selectors to speed up writing a *new* scraper by hand.
+
+6. **Scrapy — scaffold only, no spiders**. User explicitly chose "scaffold, no spiders yet"
+   over naming real target directories, to avoid re-scraping sources the Node.js scrapers
+   already cover (pure duplicate-lead waste). See
+   [scrapy-scraper/README.md](scrapy-scraper/README.md) for the plug-in contract (CSV in
+   `output/runs/`, existing master-merge picks it up automatically) — don't write a spider
+   here without a specific, unclaimed directory URL first.
+
+7. **scrcpy** — Android screen-mirroring tool, genuinely unrelated to scraping. Ignored, no
+   integration attempted.
+
+### Verified
+- `npm test`: 116/116 passing (was 111 before this session — 5 new tests in
+  [test/fallbackRungs.test.js](test/fallbackRungs.test.js) proving every new rung is a
+  true no-op — returns null/leaves leads untouched, never throws — when its prerequisite
+  (API key / binary / pythonBin) is absent).
+- `node --check` clean on every new/edited file.
+- `node scripts/test-filters.js` (existing local pipeline smoke test) still produces the
+  same shape of results as before — the curl-impersonate wrapper inside `emailFinder.js`
+  doesn't change normal-path behavior.
+- `crawlee` actually installed and fetch-tested live (`fetchWithCrawlee('https://example.com')`
+  returned real HTML) — the only one of the four with no external key/binary dependency, so
+  it's exercised for real rather than just proven to no-op.
+
+### Not done / needs a follow-up decision
+- `FIRECRAWL_API_KEY` GitHub secret doesn't exist yet — the rung is wired but inert in CI
+  until someone adds it.
+- `curl-impersonate` install step in `weekly-scrape.yml` resolves the download URL live via
+  the GitHub API (`repos/lwthiker/curl-impersonate/releases/latest`) rather than a hardcoded
+  version, since the real repo/asset naming was verified during this session (it's
+  `lwthiker/curl-impersonate`, not the first name guessed — corrected before commit). Still
+  `continue-on-error: true`, so if GitHub's asset naming changes again it fails silently
+  rather than breaking the run — check `curl_chrome116 --version` output in Action logs if
+  you ever need to confirm whether this rung is actually active in CI.
+- Scrapy has zero spiders — needs a real target directory named before it's anything more
+  than a folder with a README.
+
+---
+
+## Previous session: "no missing leads tolerated" + general local business expansion
 
 User's ask, verbatim intent: guarantee zero silent lead loss, broaden the ICP beyond
 tech/marketing to general local business (dentists, hospitals, "many more," Pakistan +

@@ -6,6 +6,18 @@ CLoak Browser/
 # `pip install "scrapling[fetchers]"`, same as scrapegraphai).
 Scrapling-main/
 
+# Vendored reference copies of open-source scraping tools (crawlee, firecrawl,
+# curl-impersonate, markitdown, autoscraper, scrapy, scrcpy) — explored to decide
+# what to integrate (see knowledge.md), not shipped as part of the repo. The
+# actual runtime dependency is `crawlee` in package.json; the rest are either
+# opt-in subprocess/binary tools or, for scrapy/scrcpy, not integrated at all.
+Scrapper_directories/
+
+# Crawlee's local runtime cache (request queue / key-value store state from
+# src/engines/crawleeEngine.js runs) — regenerated automatically, never meant
+# to be committed, same category as .cache/ above.
+storage/
+
 # Dependencies
 node_modules/
 

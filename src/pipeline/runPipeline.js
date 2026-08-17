@@ -5,6 +5,7 @@
 // (src/index.js) today, on-demand url/firm-name lookups later (roadmap Phase 2).
 import { spawnSync } from 'child_process';
 import { enrichLeads } from '../scrapers/emailFinder.js';
+import { enrichWithFirecrawl } from '../lib/firecrawlEnricher.js';
 import { filterByIcp, filterByContactPoint, filterByDeadEmailOnly, filterByScore } from '../quality/qualityFilter.js';
 import { verifyLeads } from '../quality/emailVerifier.js';
 import { scoreLeads } from '../quality/scorer.js';
@@ -107,6 +108,15 @@ export async function runPipeline(rawLeads, opts = {}) {
       }
     }
 
+    // Firecrawl enrichment — third rung, for leads still without email after
+    // emailFinder + ScrapegraphAI. No-op if FIRECRAWL_API_KEY isn't set.
+    const firecrawl = config.firecrawl || {};
+    if (firecrawl.enabled !== false) {
+      console.log('Firecrawl enrichment (leads still missing email)...');
+      await enrichWithFirecrawl(leads, firecrawl);
+      leads.forEach(cleanLead);
+    }
+
     console.log('Verifying email domains (MX check)...');
     await verifyLeads(leads);
     const alive = leads.filter((l) => l.email_verified === 'alive').length;
@@ -130,7 +140,7 @@ export async function runPipeline(rawLeads, opts = {}) {
   const webTagging = config.webTagging || {};
   if (webTagging.enabled !== false) {
     console.log('Tagging unclassified leads from their websites...');
-    await tagLeadsFromWeb(leads, webTagging);
+    await tagLeadsFromWeb(leads, { ...webTagging, pythonBin });
   }
 
   normalizeFirmographics(leads);

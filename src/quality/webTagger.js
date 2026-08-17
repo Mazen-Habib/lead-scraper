@@ -22,6 +22,7 @@
 //   - every failure is a silent skip; this must never break a 6h run
 import { matchTaxonomy } from './classifier.js';
 import { readAsText, createPacer } from '../lib/jinaReader.js';
+import { readViaMarkItDown } from '../lib/markitdownReader.js';
 
 // Page evidence is noisier than a curated directory category, so it tops out
 // lower than the rules pass's 0.95 — a later LLM pass should still be free to
@@ -32,9 +33,12 @@ const MAX_CONFIDENCE = 0.75;
  * Derives taxonomy tags from a company's homepage prose.
  * Returns null when the page yields no confident bucket.
  */
-export async function tagFromWebsite(website, { timeoutMs, minKeywordHits = 2, pace } = {}) {
+export async function tagFromWebsite(website, { timeoutMs, minKeywordHits = 2, pace, pythonBin } = {}) {
   if (pace) await pace();
-  const text = await readAsText(website, { timeoutMs });
+  let text = await readAsText(website, { timeoutMs });
+  // Second rung: Jina came back empty (timeout, rate-limited, refused) — try
+  // MarkItDown locally instead. No-op if pythonBin isn't available.
+  if (!text) text = readViaMarkItDown(website, { pythonBin, timeoutMs });
   if (!text) return null;
 
   const hits = matchTaxonomy(text.toLowerCase(), { wordBoundary: true });
@@ -75,6 +79,7 @@ export async function tagLeadsFromWeb(leads, opts = {}) {
     maxLeads = 300,
     timeoutMs = 20000,
     minKeywordHits = 2,
+    pythonBin = null,
   } = opts;
 
   const candidates = leads.filter((l) => l.website && !l.industry);
@@ -94,7 +99,7 @@ export async function tagLeadsFromWeb(leads, opts = {}) {
       const lead = queue.shift();
       attempted++;
       try {
-        const result = await tagFromWebsite(lead.website, { timeoutMs, minKeywordHits, pace });
+        const result = await tagFromWebsite(lead.website, { timeoutMs, minKeywordHits, pace, pythonBin });
         if (result) {
           lead.industry = result.industry;
           lead.tags = result.tags;

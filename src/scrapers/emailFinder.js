@@ -1,5 +1,6 @@
 import * as cheerio from 'cheerio';
 import { cleanEmail } from '../lib/cleanLead.js';
+import { curlFetchText } from '../lib/curlImpersonate.js';
 
 const EMAIL_RE = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,}/g;
 // Paths most likely to expose a contact email during a bulk (thousands-of-leads) run
@@ -11,19 +12,30 @@ const JUNK_PATTERNS =
   /\.(png|jpe?g|gif|svg|webp|css|js)$|sentry|wixpress|example\.(com|org)|@2x|@3x|^(xxx|email|name|user|your|test|firstname|lastname)@|@(xxx|domain|yourdomain|yoursite|sentry|example)\.|placeholder/i;
 
 async function fetchPage(url, timeoutMs) {
-  const res = await fetch(url, {
-    signal: AbortSignal.timeout(timeoutMs),
-    headers: {
-      'User-Agent':
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
-      Accept: 'text/html,application/xhtml+xml',
-    },
-    redirect: 'follow',
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const type = res.headers.get('content-type') || '';
-  if (!type.includes('text/html')) throw new Error(`Not HTML: ${type}`);
-  return res.text();
+  try {
+    const res = await fetch(url, {
+      signal: AbortSignal.timeout(timeoutMs),
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+        Accept: 'text/html,application/xhtml+xml',
+      },
+      redirect: 'follow',
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const type = res.headers.get('content-type') || '';
+    if (!type.includes('text/html')) throw new Error(`Not HTML: ${type}`);
+    return await res.text();
+  } catch (err) {
+    // Fallback: the block may be TLS/HTTP2 fingerprinting (Node's fetch()
+    // handshake doesn't look like a real browser's). curl-impersonate makes
+    // the same request with a genuine Chrome handshake. No-op if the binary
+    // isn't installed — rethrows the original error so the caller's existing
+    // "skip this path" behavior is unchanged.
+    const html = curlFetchText(url, { timeoutMs });
+    if (html) return html;
+    throw err;
+  }
 }
 
 // Pulls internal links out of a page's <footer> that look like contact/about/team
