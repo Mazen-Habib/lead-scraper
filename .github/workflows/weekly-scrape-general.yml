@@ -70,6 +70,18 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # This workflow was passing FIRECRAWL_API_KEY but none of the LLM
+          # enrichment keys, so rung 2 (scrapegraph_enricher.py) silently
+          # no-opped for exactly the general local-business verticals that need
+          # email enrichment most — their leads carry a phone but rarely an
+          # email. Brought to parity with weekly-scrape.yml here.
+          GROQ_KEY_1: ${{ secrets.GROQ_KEY_1 }}
+          GROQ_KEY_2: ${{ secrets.GROQ_KEY_2 }}
+          GROQ_KEY_3: ${{ secrets.GROQ_KEY_3 }}
+          MISTRAL_KEY_1: ${{ secrets.MISTRAL_KEY_1 }}
+          MISTRAL_KEY_2: ${{ secrets.MISTRAL_KEY_2 }}
+          MISTRAL_KEY_3: ${{ secrets.MISTRAL_KEY_3 }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           FIRECRAWL_API_KEY: ${{ secrets.FIRECRAWL_API_KEY }}
 
       - name: Export the complete, guaranteed-up-to-date leads database

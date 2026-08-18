@@ -79,4 +79,5 @@ jobs:
           MISTRAL_KEY_1: ${{ secrets.MISTRAL_KEY_1 }}
           MISTRAL_KEY_2: ${{ secrets.MISTRAL_KEY_2 }}
           MISTRAL_KEY_3: ${{ secrets.MISTRAL_KEY_3 }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           FIRECRAWL_API_KEY: ${{ secrets.FIRECRAWL_API_KEY }}

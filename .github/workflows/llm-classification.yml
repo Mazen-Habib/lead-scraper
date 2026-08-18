@@ -51,3 +51,4 @@ jobs:
           GROQ_KEY_1: ${{ secrets.GROQ_KEY_1 }}
           GROQ_KEY_2: ${{ secrets.GROQ_KEY_2 }}
           GROQ_KEY_3: ${{ secrets.GROQ_KEY_3 }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}

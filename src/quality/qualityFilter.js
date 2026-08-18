@@ -27,6 +27,32 @@ export const DEFAULT_CATEGORY_KEYWORDS = [
   'renovation', 'interior design',
   // Education
   'school', 'academy', 'institute', 'tutoring', 'tuition', 'training',
+  // Automotive
+  'automotive', 'car dealer', 'auto dealer', 'car showroom', 'auto parts',
+  'spare parts', 'car rental', 'rent a car', 'motors', 'tyre',
+  'tire', 'car wash', 'motorcycle',
+  // Logistics & transport
+  'logistics', 'freight', 'cargo', 'courier', 'shipping', 'transport',
+  'trucking', 'warehousing', 'warehouse', 'movers', 'packers', 'forwarder',
+  // Manufacturing & industrial
+  'manufacturer', 'manufacturing', 'factory', 'mills', 'textile', 'industrial',
+  'fabrication', 'machinery', 'steel', 'plastic', 'chemical', 'packaging',
+  'garments', 'leather',
+  // Real estate
+  'property', 'estate agent', 'builders', 'developers', 'housing scheme',
+  // Finance & insurance
+  'bank', 'banking', 'takaful', 'investment', 'broker', 'brokerage',
+  'microfinance', 'leasing', 'forex', 'audit', 'auditors', 'money exchange',
+  // Agriculture & food
+  'agriculture', 'agri', 'farm', 'farming', 'seeds', 'fertilizer', 'pesticide',
+  'poultry', 'dairy', 'livestock', 'food processing', 'beverage',
+  // Media & entertainment
+  'printing', 'printers', 'photography', 'photographer', 'videography',
+  'event management', 'event planner', 'production house', 'studio',
+  'publishing',
+  // Beauty & wellness
+  'beauty parlour', 'beauty parlor', 'beautician', 'barber', 'gym', 'fitness',
+  'yoga', 'wellness', 'massage', 'skin care',
 ];
 
 /**
@@ -82,12 +108,32 @@ export function filterByDeadEmailOnly(leads) {
 
 /**
  * Drops leads below a minimum score threshold.
- * Eliminates Tier D noise before it reaches the DB or the frontend.
+ *
+ * The live floor is config.json's quality.minScore, currently 22 — deliberately
+ * BELOW the C/D tier boundary of 35, so the two numbers no longer coincide the
+ * way they did when this was written.
+ *
+ * Why: directory sources (businesslist_pk and friends) yield leads with phone,
+ * website and address but no ratings, reviews or email, which tops out around
+ * 23. At a floor of 35 every such lead was discarded and the whole source
+ * produced nothing. The scores that matter here:
+ *
+ *   20  phone + address, no website  -> enrichment can never improve it
+ *   23  phone + address + website    -> enrichment CAN find an email later
+ *   35  ...once an email is found    -> clears even the old floor on its own
+ *
+ * 22 sits in the gap: it keeps leads email enrichment can still upgrade and
+ * drops the ones it can't. Raise it back to 35 to restore the old "Tier C and
+ * above only" behaviour — nothing else depends on the two numbers matching.
+ *
+ * Note this is not retroactive on its own: leads already pruned at a higher
+ * floor are gone from the master and Supabase, and lowering the number here
+ * does not bring them back. It governs what future runs keep.
  */
 export function filterByScore(leads, minScore = 35) {
   return applyFilter(
     leads,
     (lead) => (parseInt(lead.score) || 0) >= minScore,
-    `score below ${minScore} (Tier D noise)`
+    `score below ${minScore}`
   );
 }

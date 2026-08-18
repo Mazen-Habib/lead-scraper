@@ -15,7 +15,7 @@ test('matchTaxonomy in word-boundary mode ignores keywords buried inside longer 
   // "bi" (data-analytics-bi) must not match inside "ambient"/"ambitious",
   // and "etl" must not match inside "kettle" — the exact false positives that
   // make substring matching unusable over full page prose.
-  const hits = matchTaxonomy('an ambient and ambitious kettle manufacturer', { wordBoundary: true });
+  const hits = matchTaxonomy('an ambient and ambitious kettle', { wordBoundary: true });
   assert.deepEqual(hits, []);
 });
 

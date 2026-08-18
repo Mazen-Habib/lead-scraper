@@ -7,15 +7,25 @@
 // not a rewrite of this module.
 import { SYSTEM_PROMPT, buildUserPrompt, ALLOWED_INDUSTRIES } from './prompt.js';
 import { callGroq, loadGroqKeys, GROQ_DEFAULT_MODEL } from './providers/groq.js';
+import {
+  callOpenRouter,
+  loadOpenRouterKeys,
+  OPENROUTER_DEFAULT_MODEL,
+} from './providers/openrouter.js';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // Each provider exposes: call({apiKey, model, systemPrompt, userPrompt, maxTokens, timeoutMs}),
-// loadKeys(env), defaultModel. Only 'groq' is implemented; 'gemini'/'deepseek'/
-// 'openai' are intentionally left as documented gaps (see README) rather than
-// speculative untested code for services this project has no credentials for.
+// loadKeys(env), defaultModel. 'gemini'/'deepseek'/'openai' are still
+// intentionally left as documented gaps (see README) rather than speculative
+// untested code for services this project has no credentials for.
 const PROVIDERS = {
   groq: { call: callGroq, loadKeys: loadGroqKeys, defaultModel: GROQ_DEFAULT_MODEL },
+  openrouter: {
+    call: callOpenRouter,
+    loadKeys: loadOpenRouterKeys,
+    defaultModel: OPENROUTER_DEFAULT_MODEL,
+  },
 };
 
 export function resolveProvider(name = 'groq') {

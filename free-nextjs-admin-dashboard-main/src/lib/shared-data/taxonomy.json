@@ -112,8 +112,8 @@
       "label": "Professional Services",
       "keywords": [
         "law firm", "lawyer", "attorney", "legal", "accounting", "accountant",
-        "cpa", "bookkeeping", "tax", "real estate", "realtor", "insurance",
-        "consultancy", "consulting", "notary"
+        "cpa", "bookkeeping", "tax", "consultancy", "consulting", "notary",
+        "hr consultant", "recruitment", "staffing", "translation"
       ]
     },
     {
@@ -121,7 +121,7 @@
       "label": "Hospitality & Retail",
       "keywords": [
         "restaurant", "cafe", "coffee", "hotel", "retail", "store", "shop",
-        "salon", "spa", "beauty", "boutique", "bakery", "catering"
+        "boutique", "bakery", "catering", "guest house", "resort", "supermarket"
       ]
     },
     {
@@ -138,6 +138,78 @@
       "keywords": [
         "school", "academy", "institute", "tutoring", "tuition", "training",
         "college", "university", "learning center", "coaching center"
+      ]
+    },
+    {
+      "slug": "automotive",
+      "label": "Automotive",
+      "keywords": [
+        "automotive", "car dealer", "auto dealer", "car showroom", "workshop",
+        "auto parts", "spare parts", "car rental", "rent a car", "garage",
+        "motors", "tyre", "tire", "denting", "car wash", "motorcycle"
+      ]
+    },
+    {
+      "slug": "logistics-transport",
+      "label": "Logistics & Transport",
+      "keywords": [
+        "logistics", "freight", "cargo", "courier", "shipping", "transport",
+        "trucking", "warehousing", "warehouse", "movers", "packers",
+        "customs clearing", "forwarder", "delivery service"
+      ]
+    },
+    {
+      "slug": "manufacturing-industrial",
+      "label": "Manufacturing & Industrial",
+      "keywords": [
+        "manufacturer", "manufacturing", "factory", "mills", "textile",
+        "industrial", "fabrication", "machinery", "steel", "plastic",
+        "chemical", "packaging", "foundry", "garments", "leather"
+      ]
+    },
+    {
+      "slug": "real-estate",
+      "label": "Real Estate",
+      "keywords": [
+        "real estate", "realtor", "property", "estate agent", "builders",
+        "developers", "housing scheme", "marketing & builders", "plots",
+        "property management", "letting"
+      ]
+    },
+    {
+      "slug": "finance-insurance",
+      "label": "Finance & Insurance",
+      "keywords": [
+        "bank", "banking", "insurance", "takaful", "investment", "broker",
+        "brokerage", "microfinance", "leasing", "mutual fund", "forex",
+        "audit", "auditors", "financial services", "money exchange"
+      ]
+    },
+    {
+      "slug": "agriculture-food",
+      "label": "Agriculture & Food",
+      "keywords": [
+        "agriculture", "agri", "farm", "farming", "seeds", "fertilizer",
+        "pesticide", "poultry", "dairy", "livestock", "food processing",
+        "flour mills", "rice mills", "food distributor", "beverage"
+      ]
+    },
+    {
+      "slug": "media-entertainment",
+      "label": "Media & Entertainment",
+      "keywords": [
+        "printing", "printers", "photography", "photographer", "videography",
+        "event management", "event planner", "production house", "studio",
+        "publishing", "media house", "advertising agency", "wedding planner"
+      ]
+    },
+    {
+      "slug": "beauty-wellness",
+      "label": "Beauty & Wellness",
+      "keywords": [
+        "salon", "spa", "beauty parlour", "beauty parlor", "beautician",
+        "barber", "gym", "fitness", "yoga", "wellness", "massage",
+        "skin care", "hair studio", "makeup artist"
       ]
     }
   ],

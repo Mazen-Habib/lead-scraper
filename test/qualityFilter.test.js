@@ -29,9 +29,22 @@ test('matchesIcp accepts the new general-local-business verticals', () => {
   assert.equal(matchesIcp({ category: 'Private School' }), true);
 });
 
+test('matchesIcp accepts the vertical expansion beyond local services', () => {
+  assert.equal(matchesIcp({ category: 'Car Showroom' }), true);
+  assert.equal(matchesIcp({ category: 'Freight & Cargo Services' }), true);
+  assert.equal(matchesIcp({ category: 'Textile Manufacturer' }), true);
+  assert.equal(matchesIcp({ category: 'Property Dealers' }), true);
+  assert.equal(matchesIcp({ category: 'Insurance Broker' }), true);
+  assert.equal(matchesIcp({ category: 'Poultry Farm' }), true);
+  assert.equal(matchesIcp({ category: 'Printing Press', name: 'Al-Noor Printers' }), true);
+  assert.equal(matchesIcp({ category: 'Beauty Parlour' }), true);
+});
+
 test('matchesIcp still rejects genuinely irrelevant categories', () => {
   assert.equal(matchesIcp({ category: 'Cemetery' }), false);
   assert.equal(matchesIcp({ category: 'Government Office' }), false);
+  // 'garage' is deliberately NOT an ICP keyword — it would admit parking
+  // garages. Automotive leads come in via showroom/dealer/motors instead.
   assert.equal(matchesIcp({ category: 'Parking Garage' }), false);
 });
 
