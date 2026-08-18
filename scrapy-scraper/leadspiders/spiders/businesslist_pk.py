@@ -29,12 +29,16 @@ Every company page carries a schema.org LocalBusiness JSON-LD block with name,
 address, telephone and website, so extraction reads structured data first and
 only falls back to CSS selectors if that block is missing or malformed.
 
-Output: a CSV of RAW leads (internal field names, see src/lib/leadFields.js).
-It is deliberately NOT a finished lead set — no ICP filter, classification,
-email enrichment, scoring or dedupe has happened yet. Feed it through the real
-pipeline with:
+Output: a CSV of RAW leads (internal field names, see src/lib/leadFields.js),
+written to output/runs/ by leadspiders/pipelines.py's FlushingCsvPipeline,
+which flushes to disk after EVERY row rather than buffering. That is a
+deliberate, tested choice — see that module's docstring and settings.py's
+ITEM_PIPELINES comment for why Scrapy's own FEEDS export was tried first and
+did not survive an interrupted process on this stack. Output is deliberately
+NOT a finished lead set — no ICP filter, classification, email enrichment,
+scoring or dedupe has happened yet. Feed it through the real pipeline with:
 
-    node scripts/ingest-run-csv.js output/runs/scrapy-businesslist-<country>-<ts>.csv
+    node scripts/ingest-run-csv.js output/runs/scrapy-businesslist-<ts>.csv
 
 Usage:
     scrapy crawl businesslist_pk                          # Pakistan, default categories
@@ -46,7 +50,6 @@ Usage:
 import json
 import re
 from datetime import datetime, timezone
-from pathlib import Path
 
 import scrapy
 
@@ -119,7 +122,6 @@ class BusinesslistPkSpider(scrapy.Spider):
             else list(DEFAULT_CATEGORIES)
         )
         self.max_pages = int(max_pages)
-        self._rows = []
 
     # Scrapy 2.13+ deprecated the sync start_requests() in favour of an async
     # start() coroutine (start_requests() still works but logs a warning on
@@ -189,7 +191,9 @@ class BusinesslistPkSpider(scrapy.Spider):
             "search_query": category,
             "scraped_at": datetime.now(timezone.utc).isoformat(),
         }
-        self._rows.append(row)
+        # leadspiders/pipelines.py's FlushingCsvPipeline writes and flushes
+        # this to disk immediately — no in-memory buffer, no write-once-at-
+        # the-end. See that module's docstring for why.
         yield row
 
     @staticmethod
@@ -218,35 +222,6 @@ class BusinesslistPkSpider(scrapy.Spider):
             addr.get("addressRegion"),
         ]
         return ", ".join(p for p in parts if p)
-
-    def closed(self, reason):
-        """Write the canonical CSV the ingest script expects."""
-        if not self._rows:
-            self.logger.warning("No rows scraped — not writing an empty CSV.")
-            return
-
-        root = Path(__file__).resolve().parents[3]
-        out_dir = root / "output" / "runs"
-        out_dir.mkdir(parents=True, exist_ok=True)
-        stamp = datetime.now().strftime("%Y-%m-%d-%H%M")
-        out_file = out_dir / f"scrapy-businesslist-{self.country}-{stamp}.csv"
-
-        import csv
-
-        columns = [
-            "name", "category", "website", "phone", "address",
-            "maps_url", "source", "engine", "search_query", "scraped_at",
-        ]
-        with out_file.open("w", newline="", encoding="utf-8") as fh:
-            writer = csv.DictWriter(fh, fieldnames=columns)
-            writer.writeheader()
-            writer.writerows(self._rows)
-
-        self.logger.info(
-            "Wrote %d raw leads -> %s\n"
-            "Next: node scripts/ingest-run-csv.js %s",
-            len(self._rows), out_file, out_file,
-        )
 
     def on_error(self, failure):
         self.logger.warning("Request failed: %s", failure.value)

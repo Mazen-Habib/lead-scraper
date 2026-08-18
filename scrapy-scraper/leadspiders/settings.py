@@ -44,6 +44,28 @@ DOWNLOAD_TIMEOUT = 30
 
 HTTPCACHE_ENABLED = False
 
+# Item output: leadspiders/pipelines.py's FlushingCsvPipeline, NOT Scrapy's
+# built-in FEEDS setting. This was learned the hard way across two escalating
+# fixes, both against a real interrupted run:
+#
+#   1. First version buffered rows in memory and wrote the CSV only from a
+#      `closed()` callback. An interrupted process lost the ENTIRE crawl —
+#      457 scraped leads gone, nothing on disk, no error.
+#   2. Switched to Scrapy's FEEDS export (writes as items arrive, in theory).
+#      Tested directly against a live crawl with both SIGKILL and a plain
+#      SIGTERM: BOTH left a 0-byte CSV despite 20+ items already scraped.
+#      FEEDS still buffers until the exporter closes cleanly on spider
+#      shutdown, and on this stack (Git Bash on Windows) neither signal
+#      reliably triggers that clean shutdown — the process just stops.
+#
+# FlushingCsvPipeline calls flush() after every single row, verified by the
+# same kill test to actually survive it. See that module's docstring for why
+# flush() (not fsync()) is the right tradeoff for "interrupted process", which
+# is the failure mode this project has actually hit — not "lost power".
+ITEM_PIPELINES = {
+    "leadspiders.pipelines.FlushingCsvPipeline": 300,
+}
+
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
