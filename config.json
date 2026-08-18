@@ -722,7 +722,7 @@
     "proxy": ""
   },
   "quality": {
-    "minScore": 35
+    "minScore": 22
   },
   "webTagging": {
     "enabled": true,

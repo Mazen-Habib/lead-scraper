@@ -20,6 +20,12 @@ const SOURCE_SCORES = {
   eventbrite:    5,
   openstreetmap: 6,
   opencorporates: 6,
+  // Structured schema.org LocalBusiness data (name/phone/website/address) but
+  // no ratings or reviews — the same shape of signal google_maps provides, so
+  // it scores the same. Without this entry it fell to the `?? 5` default,
+  // which put a complete directory lead ~10 points under the floor purely for
+  // being from an unlisted source.
+  businesslist_pk: 10,
 };
 
 // Taxonomy buckets (src/quality/classifier.js) that indicate a premium tech
