@@ -11,7 +11,10 @@ returned empty content for them. Native Playwright scrapers replaced them
 Usage:
   python3 scrapegraph_enricher.py enrich   # stdin: JSON lead array → stdout: same array enriched
 
-Key rotation order: Groq key 1→2→3 → Mistral key 1→2→3
+Key rotation order: Groq 1→2→3 → Mistral 1→2→3 → OpenRouter 1→2→3
+(OpenRouter also accepts a single OPENROUTER_API_KEY, its normal case.)
+Any subset works — the pool is built from whichever keys are actually set, and
+the module no-ops with a log line if none are.
 On rate limit: rotate to next key + sleep 2s.
 On other error: skip that URL and continue.
 """
@@ -28,6 +31,21 @@ def log(msg):
 GROQ_KEYS    = [k for k in [os.environ.get(f'GROQ_KEY_{i}')    for i in range(1, 4)] if k]
 MISTRAL_KEYS = [k for k in [os.environ.get(f'MISTRAL_KEY_{i}') for i in range(1, 4)] if k]
 
+# OpenRouter: numbered pool for rotation, or a single OPENROUTER_API_KEY, which
+# is the normal case there. Mirrors loadOpenRouterKeys() in
+# src/classification/providers/openrouter.js so both halves of this project
+# read the same env vars — numbered wins so a leftover single key cannot
+# silently shadow a deliberately configured pool.
+_OPENROUTER_NUMBERED = [k for k in [os.environ.get(f'OPENROUTER_KEY_{i}') for i in range(1, 4)] if k]
+OPENROUTER_KEYS = _OPENROUTER_NUMBERED or [k for k in [os.environ.get('OPENROUTER_API_KEY')] if k]
+
+# A ":free" model, so enabling this rung costs nothing. Override with
+# OPENROUTER_ENRICH_MODEL if the free pool is saturated — the value is a
+# LiteLLM model string, which is what ScrapegraphAI passes through.
+OPENROUTER_MODEL = os.environ.get(
+    'OPENROUTER_ENRICH_MODEL', 'openrouter/meta-llama/llama-3.3-70b-instruct:free'
+)
+
 def _build_pool():
     pool = []
     for k in GROQ_KEYS:
@@ -39,6 +57,13 @@ def _build_pool():
                                      'model_tokens': 32000}, 'label': 'mistral'})
         except ImportError:
             pass
+    # OpenRouter last: it's the fallback for regions where Groq/Mistral aren't
+    # usable, so when all three are configured the faster providers lead. When
+    # it's the only one configured (the expected case here) pool order is moot.
+    # No import guard needed — this is a plain LiteLLM model string like Groq's,
+    # not a langchain model_instance, so there's no optional package behind it.
+    for k in OPENROUTER_KEYS:
+        pool.append({'llm_cfg': {'model': OPENROUTER_MODEL, 'api_key': k}, 'label': 'openrouter'})
     return pool
 
 KEY_POOL = _build_pool()
