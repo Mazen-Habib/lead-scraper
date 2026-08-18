@@ -7,7 +7,7 @@
 // src/personalized/runSavedSearches.js: a thin orchestration function around
 // pure, independently-testable helpers.
 import { getSupabaseClient } from '../lib/supabaseClient.js';
-import { classifyBatch } from '../classification/llmClassifier.js';
+import { classifyBatch, resolveProvider } from '../classification/llmClassifier.js';
 import { readAsText } from '../lib/jinaReader.js';
 
 const PAGE_SIZE = 500; // Supabase/PostgREST page cap
@@ -131,7 +131,12 @@ export async function runLlmClassification({ config = {} } = {}) {
   }
 
   console.log('Layer 3 (LLM) classification starting\n');
-  const modelVersion = opts.model || 'llama-3.1-8b-instant'; // matches providers/groq.js's default
+  // Ask the selected provider for its own default rather than hardcoding
+  // Groq's. modelVersion is persisted per lead and drives which rows count as
+  // already-classified in fetchCandidates, so stamping Groq's model name on a
+  // lead an OpenRouter model actually classified would both mislabel the row
+  // and make the two providers' output indistinguishable on re-runs.
+  const modelVersion = opts.model || resolveProvider(opts.provider).defaultModel;
 
   const candidates = await fetchCandidates(supabase, {
     confidenceThreshold: opts.confidenceThreshold,

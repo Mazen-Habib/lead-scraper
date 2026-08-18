@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildUserPrompt, SYSTEM_PROMPT, ALLOWED_INDUSTRIES } from '../src/classification/prompt.js';
 import { parseClassification, classifyLead, classifyBatch, resolveProvider } from '../src/classification/llmClassifier.js';
+import { callOpenRouter, loadOpenRouterKeys } from '../src/classification/providers/openrouter.js';
 import { needsClassification, buildUpdatePayload } from '../src/jobs/runLlmClassification.js';
 
 // ── prompt ───────────────────────────────────────────────────────────────────
@@ -88,6 +89,55 @@ test('parseClassification clamps out-of-range confidence and filters secondary d
 test('resolveProvider returns the groq adapter and rejects an unimplemented provider by name', () => {
   assert.ok(resolveProvider('groq'));
   assert.throws(() => resolveProvider('gemini'), /Unknown LLM_PROVIDER/);
+});
+
+test('resolveProvider returns the openrouter adapter with the same shape as groq', () => {
+  const provider = resolveProvider('openrouter');
+  assert.equal(typeof provider.call, 'function');
+  assert.equal(typeof provider.loadKeys, 'function');
+  assert.ok(provider.defaultModel, 'openrouter must declare a default model');
+  // The fallback provider only stays free if its default model is a :free one.
+  assert.ok(
+    provider.defaultModel.endsWith(':free'),
+    `expected a :free default model, got "${provider.defaultModel}"`
+  );
+});
+
+test('loadOpenRouterKeys prefers the numbered pool but accepts a single unnumbered key', () => {
+  const pooled = loadOpenRouterKeys({ OPENROUTER_KEY_1: 'a', OPENROUTER_KEY_2: 'b' });
+  assert.deepEqual(pooled, ['a', 'b']);
+
+  // One key is the common OpenRouter case — it must not require the _1 suffix.
+  assert.deepEqual(loadOpenRouterKeys({ OPENROUTER_API_KEY: 'solo' }), ['solo']);
+
+  // Numbered wins when both are present, so a leftover single key can't
+  // silently shadow a deliberately configured pool.
+  assert.deepEqual(
+    loadOpenRouterKeys({ OPENROUTER_KEY_1: 'pool', OPENROUTER_API_KEY: 'solo' }),
+    ['pool']
+  );
+
+  assert.deepEqual(loadOpenRouterKeys({}), []);
+});
+
+test('callOpenRouter treats a 200-with-error-body as a failure, not a success', async () => {
+  // OpenRouter signals upstream provider failures (cold model, free pool
+  // exhausted) with HTTP 200 and an `error` object. Trusting res.ok alone
+  // would hand llmClassifier.js an undefined completion.
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ error: { code: 429, message: 'rate limited' } }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  try {
+    await assert.rejects(
+      () => callOpenRouter({ apiKey: 'k', systemPrompt: 's', userPrompt: 'u' }),
+      (err) => err.retryable === true && /rate limited/.test(err.message)
+    );
+  } finally {
+    globalThis.fetch = realFetch;
+  }
 });
 
 // ── classifyLead / classifyBatch (network stubbed) ─────────────────────────
