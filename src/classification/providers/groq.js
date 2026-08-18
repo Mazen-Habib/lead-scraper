@@ -8,6 +8,7 @@
 // to turn on. Key rotation on rate-limit mirrors scrapegraph_enricher.py's
 // pattern (Groq 1→2→3, sleep, retry) so this project has one consistent way
 // of spreading load across a key pool rather than two.
+import { parseRetryAfter } from './retryAfter.js';
 const ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
 
 // llama-3.1-8b-instant: fast and cheap, plenty for a 12-way classification
@@ -48,6 +49,9 @@ export async function callGroq({ apiKey, model, systemPrompt, userPrompt, maxTok
     const err = new Error(`Groq HTTP ${res.status}`);
     err.status = res.status;
     err.retryable = res.status === 429 || res.status >= 500;
+    // Free tiers rate-limit aggressively and say how long to wait; honouring it
+    // beats guessing. Seconds per the HTTP spec, occasionally a date.
+    err.retryAfterMs = parseRetryAfter(res.headers?.get?.('retry-after'));
     throw err;
   }
 

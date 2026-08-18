@@ -2,6 +2,7 @@
 // providers/groq.js. Cerebras runs Llama models on its own inference silicon
 // and is typically the fastest of the free options; its free tier is rate-
 // limited per minute/day rather than billed.
+import { parseRetryAfter } from './retryAfter.js';
 const ENDPOINT = 'https://api.cerebras.ai/v1/chat/completions';
 
 // Cerebras' catalogue is small and changes; query GET /v1/models with the key
@@ -48,6 +49,9 @@ export async function callCerebras({ apiKey, model, systemPrompt, userPrompt, ma
     const err = new Error(`Cerebras HTTP ${res.status}`);
     err.status = res.status;
     err.retryable = res.status === 429 || res.status >= 500;
+    // Free tiers rate-limit aggressively and say how long to wait; honouring it
+    // beats guessing. Seconds per the HTTP spec, occasionally a date.
+    err.retryAfterMs = parseRetryAfter(res.headers?.get?.('retry-after'));
     throw err;
   }
 

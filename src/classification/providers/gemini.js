@@ -5,6 +5,7 @@
 // The native API nests differently (candidates[].content.parts[].text, plus
 // contents/systemInstruction instead of messages), so if this endpoint is ever
 // retired the parsing below has to change too — it is not a URL swap.
+import { parseRetryAfter } from './retryAfter.js';
 const ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions';
 
 // Flash tier: the free-est and fastest Gemini, ample for a 25-way
@@ -49,6 +50,7 @@ export async function callGemini({ apiKey, model, systemPrompt, userPrompt, maxT
     // rather than a transient fault, so it is deliberately not retryable —
     // retrying a misconfigured key just burns the whole rotation.
     err.retryable = res.status === 429 || res.status >= 500;
+    err.retryAfterMs = parseRetryAfter(res.headers?.get?.('retry-after'));
     throw err;
   }
 

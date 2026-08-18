@@ -7,6 +7,7 @@
 // carry a `:free` suffix that costs nothing — so the "everything in this stack
 // is free" property holds. If a given free model is saturated, switching is a
 // model-string change (env LLM_MODEL), not a new provider.
+import { parseRetryAfter } from './retryAfter.js';
 const ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
 
 // A `:free` model by design — see the note above. Free models are rate-limited
@@ -65,6 +66,9 @@ export async function callOpenRouter({ apiKey, model, systemPrompt, userPrompt, 
     const err = new Error(`OpenRouter HTTP ${res.status}`);
     err.status = res.status;
     err.retryable = res.status === 429 || res.status >= 500;
+    // Free tiers rate-limit aggressively and say how long to wait; honouring it
+    // beats guessing. Seconds per the HTTP spec, occasionally a date.
+    err.retryAfterMs = parseRetryAfter(res.headers?.get?.('retry-after'));
     throw err;
   }
 

@@ -13,6 +13,7 @@
 // deprecated" body — which reads like a dead endpoint but is not, so check the
 // model catalogue before touching the URL:
 //   GET /client/v4/accounts/<id>/ai/models/search?task=Text%20Generation
+import { parseRetryAfter } from './retryAfter.js';
 const DEFAULT_MODEL = '@cf/meta/llama-3.2-3b-instruct';
 
 function endpointFor(accountId) {
@@ -60,6 +61,9 @@ export async function callCloudflare({ apiKey, model, systemPrompt, userPrompt, 
     const err = new Error(`Cloudflare HTTP ${res.status}`);
     err.status = res.status;
     err.retryable = res.status === 429 || res.status >= 500;
+    // Free tiers rate-limit aggressively and say how long to wait; honouring it
+    // beats guessing. Seconds per the HTTP spec, occasionally a date.
+    err.retryAfterMs = parseRetryAfter(res.headers?.get?.('retry-after'));
     throw err;
   }
 

@@ -734,14 +734,15 @@
   },
   "llmClassification": {
     "enabled": true,
-    "provider": "openrouter",
+    "provider": "cloudflare",
     "confidenceThreshold": 0.65,
     "batchSize": 100,
     "maxLeadsPerRun": 1000,
-    "concurrency": 3,
+    "concurrency": 1,
     "dryRun": false,
     "forceReclassify": false,
-    "timeoutMs": 20000
+    "timeoutMs": 20000,
+    "maxRetries": 5
   },
   "techBehemoths": {
     "enabled": true,

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildUserPrompt, SYSTEM_PROMPT, ALLOWED_INDUSTRIES } from '../src/classification/prompt.js';
-import { parseClassification, classifyLead, classifyBatch, resolveProvider } from '../src/classification/llmClassifier.js';
+import { parseClassification, classifyLead, classifyBatch, resolveProvider, backoffMs } from '../src/classification/llmClassifier.js';
 import { callOpenRouter, loadOpenRouterKeys } from '../src/classification/providers/openrouter.js';
 import { loadCloudflareKeys } from '../src/classification/providers/cloudflare.js';
 import { loadGeminiKeys } from '../src/classification/providers/gemini.js';
@@ -371,4 +371,57 @@ test('buildUpdatePayload produces empty tags for a genuinely unclassifiable lead
   );
   assert.equal(payload.industry, null);
   assert.deepEqual(payload.tags, []);
+});
+
+// ── backoffMs (rate-limit pacing) ────────────────────────────────────────────
+
+test('backoffMs prefers the server-supplied Retry-After over guessing', () => {
+  // A live run against a real free tier hit this exact gap: the classifier
+  // waited a fixed 2s regardless of what the server asked for, exhausted both
+  // retries on one lead's 429, and classified 56 of 1000 leads before giving
+  // up on the rest. Honouring Retry-After is the actual fix; the exponential
+  // fallback below is only for when the server doesn't say.
+  assert.equal(backoffMs(0, 2000, 5000), 5000);
+  assert.equal(backoffMs(3, 2000, 5000), 5000, 'server value wins regardless of attempt number');
+});
+
+test('backoffMs grows exponentially and caps when there is no Retry-After', () => {
+  const a0 = backoffMs(0, 1000, null);
+  const a3 = backoffMs(3, 1000, null);
+  assert.ok(a3 > a0, 'later attempts must wait longer');
+  assert.ok(backoffMs(20, 1000, null) <= 60000, 'must not grow unbounded');
+});
+
+test('backoffMs caps even a Retry-After that asks for an unreasonably long wait', () => {
+  assert.equal(backoffMs(0, 2000, 10 * 60 * 1000), 60000);
+});
+
+test('classifyLead honours maxRetries independent of key count — the bug this fixes', async () => {
+  // A single key used to get exactly 2 attempts (keys.length * 2), so on a
+  // rate-limited free tier the first 429 plus one fixed wait was the whole
+  // budget. maxRetries decouples attempt count from key count.
+  const restore = stubGroqResponse(
+    Array.from({ length: 4 }, () => ({ ok: false, status: 429, json: async () => ({}) }))
+      .concat([{
+        ok: true,
+        status: 200,
+        json: async () => ({
+          choices: [{ message: { content: '{"primary_industry":"web-development","secondary_services":[],"confidence":0.7,"rationale_short":"x"}' } }],
+        }),
+      }])
+  );
+  try {
+    // Awaited (not returned) so `restore()` in finally runs AFTER every retry
+    // has fired, not synchronously the moment the promise is created — that
+    // exact ordering mistake previously ripped the stub out mid-retry and made
+    // this test fail for the wrong reason.
+    const { result, error } = await classifyLead(
+      { company_name: 'Acme' },
+      { env: { GROQ_KEY_1: 'only-key' }, retryDelayMs: 1, maxRetries: 5 }
+    );
+    assert.equal(error, null);
+    assert.equal(result.industry, 'web-development');
+  } finally {
+    restore();
+  }
 });

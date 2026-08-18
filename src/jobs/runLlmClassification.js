@@ -116,6 +116,7 @@ export async function runLlmClassification({ config = {} } = {}) {
     dryRun: false,
     forceReclassify: false,
     timeoutMs: 20000,
+    maxRetries: 5,
     ...(config.llmClassification || {}),
   };
 
@@ -168,6 +169,7 @@ export async function runLlmClassification({ config = {} } = {}) {
       model: opts.model,
       concurrency: opts.concurrency,
       timeoutMs: opts.timeoutMs,
+      maxRetries: opts.maxRetries,
     });
 
     const now = new Date().toISOString();

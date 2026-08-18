@@ -115,6 +115,10 @@ export async function classifyLead(lead, opts = {}) {
     maxTokens = 120,
     timeoutMs = 20000,
     retryDelayMs = 2000,
+    // Enough attempts to ride out a free-tier rate limit rather than treating
+    // the first 429 as terminal. With exponential backoff, 5 attempts span
+    // roughly 2s+4s+8s+16s of waiting before giving up on a lead.
+    maxRetries = 5,
   } = opts;
 
   const provider = resolveProvider(providerName);
@@ -122,7 +126,11 @@ export async function classifyLead(lead, opts = {}) {
   if (keys.length === 0) return { result: null, error: `no API keys configured for provider "${providerName}"` };
 
   const userPrompt = buildUserPrompt(lead);
-  const maxAttempts = keys.length * 2;
+  // Attempts must not be derived from key count alone. With a single key that
+  // gave 2 tries, and on a rate-limited free tier the first 429 plus one fixed
+  // 2s wait burned both — a measured run classified 56 of 1000 leads and failed
+  // 644 on HTTP 429. Retries are about waiting out a limit, not cycling keys.
+  const maxAttempts = Math.max(keys.length * 2, maxRetries);
   let lastErr = null;
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -144,8 +152,8 @@ export async function classifyLead(lead, opts = {}) {
       return { result: parsed, usage, model: model || provider.defaultModel, error: null };
     } catch (err) {
       lastErr = err.message;
-      if (err.retryable) {
-        await sleep(retryDelayMs);
+      if (err.retryable && attempt < maxAttempts - 1) {
+        await sleep(backoffMs(attempt, retryDelayMs, err.retryAfterMs));
         continue;
       }
       // Non-retryable (bad request, auth failure) — no point rotating keys.
@@ -153,6 +161,27 @@ export async function classifyLead(lead, opts = {}) {
     }
   }
   return { result: null, error: lastErr || 'exhausted retries' };
+}
+
+/**
+ * How long to wait before retrying attempt N (0-based).
+ *
+ * Prefers the server's own Retry-After when it sent one — no guess beats being
+ * told. Otherwise exponential backoff with jitter: a fixed delay across several
+ * concurrent workers makes them retry in lockstep and trip the same limit
+ * together, so the retries themselves keep the limit tripped. Jitter spreads
+ * them out; the exponent gives a saturated free tier time to actually recover.
+ *
+ * Capped so one stubborn lead can't stall a whole batch for minutes.
+ */
+export function backoffMs(attempt, baseMs = 2000, retryAfterMs = null) {
+  const CAP_MS = 60000;
+  if (Number.isFinite(retryAfterMs) && retryAfterMs > 0) {
+    return Math.min(retryAfterMs, CAP_MS);
+  }
+  const exponential = baseMs * 2 ** attempt;
+  const jitter = Math.random() * baseMs; // full-ish jitter, never negative
+  return Math.min(exponential + jitter, CAP_MS);
 }
 
 /**
