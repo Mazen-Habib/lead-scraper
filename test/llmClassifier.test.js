@@ -162,6 +162,30 @@ test('loadOpenRouterKeys prefers the numbered pool but accepts a single unnumber
   assert.deepEqual(loadOpenRouterKeys({}), []);
 });
 
+test('callOpenRouter names the reasoning-model case instead of a generic empty response', async () => {
+  // Verified live: most of OpenRouter's current free pool are reasoning models
+  // that spend 100-260 completion tokens thinking. At classifyLead's 120-token
+  // budget they return 200 with EMPTY content, which reads like a network
+  // fault unless the error says what actually happened.
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(
+      JSON.stringify({
+        choices: [{ message: { content: '' } }],
+        usage: { completion_tokens_details: { reasoning_tokens: 111 } },
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
+    );
+  try {
+    await assert.rejects(
+      () => callOpenRouter({ apiKey: 'k', systemPrompt: 's', userPrompt: 'u' }),
+      /spent all 111 completion tokens on internal reasoning/
+    );
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
 test('callOpenRouter treats a 200-with-error-body as a failure, not a success', async () => {
   // OpenRouter signals upstream provider failures (cold model, free pool
   // exhausted) with HTTP 200 and an `error` object. Trusting res.ok alone

@@ -12,7 +12,15 @@ const ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
 // A `:free` model by design — see the note above. Free models are rate-limited
 // rather than billed, so a 429 here means "wait", not "pay", which is exactly
 // what llmClassifier.js's retry loop already handles via err.retryable.
-const DEFAULT_MODEL = 'meta-llama/llama-3.3-70b-instruct:free';
+//
+// Verified live against OpenRouter's catalogue: this model returns clean JSON
+// with ZERO reasoning tokens. That matters more than raw capability here —
+// most of the current free pool (gpt-oss-20b, nemotron-nano) are reasoning
+// models that spend 100-260 tokens thinking before emitting anything, so at
+// classifyLead's 120-token budget they return an EMPTY content string and the
+// classification fails. If you swap this model, check reasoning_tokens in the
+// usage payload, not just that the call returns 200.
+const DEFAULT_MODEL = 'google/gemma-4-26b-a4b-it:free';
 
 // Mirrors loadGroqKeys' 1..3 pool convention so llmClassifier.js's rotation
 // works identically regardless of which provider is selected. A single
@@ -73,7 +81,21 @@ export async function callOpenRouter({ apiKey, model, systemPrompt, userPrompt, 
   }
 
   const text = data?.choices?.[0]?.message?.content;
-  if (!text) throw new Error('OpenRouter response had no message content');
+  if (!text) {
+    // Distinguish the reasoning-model case from a generic empty response: a
+    // reasoning model that burned the whole budget thinking returns 200 with
+    // empty content and non-zero reasoning_tokens. Saying so beats "no message
+    // content", which sends the reader hunting for a network fault.
+    const reasoning = data?.usage?.completion_tokens_details?.reasoning_tokens;
+    if (reasoning > 0) {
+      throw new Error(
+        `OpenRouter returned no content: model "${model || DEFAULT_MODEL}" spent all ` +
+          `${reasoning} completion tokens on internal reasoning. Raise maxTokens or ` +
+          `pick a non-reasoning model.`
+      );
+    }
+    throw new Error('OpenRouter response had no message content');
+  }
   return { text, usage: data?.usage || null };
 }
 

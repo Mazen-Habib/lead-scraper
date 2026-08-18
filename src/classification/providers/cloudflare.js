@@ -8,7 +8,12 @@
 // at call time and loadCloudflareKeys() reports no keys when it's absent —
 // that way an incomplete config is a clean no-op (the same shape as every
 // other unconfigured rung in this project) rather than a 404 mid-run.
-const DEFAULT_MODEL = '@cf/meta/llama-3.1-8b-instruct';
+// Verified live through the /ai/v1/ path below. Cloudflare retires models on a
+// published schedule and a retired one returns HTTP 410 with a "Model has been
+// deprecated" body — which reads like a dead endpoint but is not, so check the
+// model catalogue before touching the URL:
+//   GET /client/v4/accounts/<id>/ai/models/search?task=Text%20Generation
+const DEFAULT_MODEL = '@cf/meta/llama-3.2-3b-instruct';
 
 function endpointFor(accountId) {
   return `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/v1/chat/completions`;

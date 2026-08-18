@@ -4,10 +4,16 @@
 // limited per minute/day rather than billed.
 const ENDPOINT = 'https://api.cerebras.ai/v1/chat/completions';
 
-// llama3.1-8b: Cerebras' naming has no dots or "-instant" suffix, unlike
-// Groq's llama-3.1-8b-instant. Same underlying model class, different string —
-// don't copy Groq's id here, it 404s.
-const DEFAULT_MODEL = 'llama3.1-8b';
+// Cerebras' catalogue is small and changes; query GET /v1/models with the key
+// rather than assuming a Llama id (llama3.1-8b 404s — the naming differs from
+// both Groq and OpenRouter).
+//
+// IMPORTANT: Cerebras is NOT reliably free. Verified live 2026-08-18: a fresh
+// account with a valid key returns HTTP 402 payment_required ("Visit your
+// billing tab") for every model, so this provider is unusable without billing
+// enabled. Unlike a 429 that means "wait", 402 means "pay" — it is correctly
+// non-retryable below. Prefer openrouter or cloudflare for a free setup.
+const DEFAULT_MODEL = 'gpt-oss-120b';
 
 export function loadCerebrasKeys(env = process.env) {
   const numbered = [1, 2, 3].map((i) => env[`CEREBRAS_KEY_${i}`]).filter(Boolean);
