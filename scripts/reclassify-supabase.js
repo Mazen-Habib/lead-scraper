@@ -33,6 +33,7 @@ import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { fetchMasterFromSupabase, syncLeadsToSupabase } from '../src/lib/pushToSupabase.js';
 import { classifyLead } from '../src/quality/classifier.js';
+import { dedupeKey } from '../src/lib/normalizeUrl.js';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -155,8 +156,31 @@ async function run(apply) {
     r.lead.tag_source = r.after ? 'rules' : null;
   }
 
+  // Collapse rows that share a RECOMPUTED dedupe_key before syncing. Two rows
+  // can sit in Supabase under distinct stored keys yet collapse to the same key
+  // once toRow() recomputes it on the way back in — at which point Postgres
+  // rejects the whole batch with "ON CONFLICT DO UPDATE command cannot affect
+  // row a second time". One duplicate pair took down a 500-row batch on the
+  // first apply, so this is not a theoretical guard.
+  //
+  // Keeping the first occurrence is safe here: this job only rewrites
+  // classification fields, so the survivors carry the same corrected tags the
+  // duplicates would have. Merging duplicate rows is a separate concern —
+  // see scripts/clean-supabase-leads.js.
+  const byKey = new Map();
+  for (const lead of leads) {
+    const key = dedupeKey(lead);
+    if (!key) continue;
+    if (!byKey.has(key)) byKey.set(key, lead);
+  }
+  const toSync = [...byKey.values()];
+  const collapsed = leads.length - toSync.length;
+  if (collapsed > 0) {
+    console.log(`  ${collapsed} row(s) share a recomputed dedupe_key — syncing one per key`);
+  }
+
   console.log(`\nApplying ${total} updates to Supabase...`);
-  const { failed } = await syncLeadsToSupabase(leads);
+  const { failed } = await syncLeadsToSupabase(toSync);
   if (failed > 0) {
     console.error(`\nFAILED: ${failed} lead(s) did not sync after retries.`);
     process.exitCode = 1;
