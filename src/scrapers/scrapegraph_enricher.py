@@ -39,12 +39,23 @@ MISTRAL_KEYS = [k for k in [os.environ.get(f'MISTRAL_KEY_{i}') for i in range(1,
 _OPENROUTER_NUMBERED = [k for k in [os.environ.get(f'OPENROUTER_KEY_{i}') for i in range(1, 4)] if k]
 OPENROUTER_KEYS = _OPENROUTER_NUMBERED or [k for k in [os.environ.get('OPENROUTER_API_KEY')] if k]
 
-# A ":free" model, so enabling this rung costs nothing. Override with
-# OPENROUTER_ENRICH_MODEL if the free pool is saturated — the value is a
-# LiteLLM model string, which is what ScrapegraphAI passes through.
+# A ":free" model, so enabling this rung costs nothing.
+#
+# NOTE the bare model id with no "openrouter/" prefix. ScrapegraphAI is NOT a
+# plain LiteLLM passthrough: it validates the provider against its own list and
+# raises "Provider openrouter is not supported. If possible, try to use a model
+# instance instead." for a prefixed string. So OpenRouter goes in as a
+# langchain model_instance (see _build_pool) pointed at its OpenAI-compatible
+# base URL, the same shape the Mistral entry already used — and the id passed
+# to ChatOpenAI must be the plain one OpenRouter itself publishes.
+#
+# Model choice mirrors src/classification/providers/openrouter.js: verified to
+# return content with zero reasoning tokens. Most of the current free pool are
+# reasoning models that emit nothing within a small token budget.
 OPENROUTER_MODEL = os.environ.get(
-    'OPENROUTER_ENRICH_MODEL', 'openrouter/meta-llama/llama-3.3-70b-instruct:free'
+    'OPENROUTER_ENRICH_MODEL', 'google/gemma-4-26b-a4b-it:free'
 )
+OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1'
 
 def _build_pool():
     pool = []
@@ -60,10 +71,22 @@ def _build_pool():
     # OpenRouter last: it's the fallback for regions where Groq/Mistral aren't
     # usable, so when all three are configured the faster providers lead. When
     # it's the only one configured (the expected case here) pool order is moot.
-    # No import guard needed — this is a plain LiteLLM model string like Groq's,
-    # not a langchain model_instance, so there's no optional package behind it.
+    #
+    # Goes in as a model_instance rather than a 'model' string: ScrapegraphAI
+    # rejects an "openrouter/..." string outright (see OPENROUTER_MODEL above).
+    # ChatOpenAI works because OpenRouter's API is OpenAI-compatible — only the
+    # base_url differs.
     for k in OPENROUTER_KEYS:
-        pool.append({'llm_cfg': {'model': OPENROUTER_MODEL, 'api_key': k}, 'label': 'openrouter'})
+        try:
+            from langchain_openai import ChatOpenAI
+            pool.append({'llm_cfg': {'model_instance': ChatOpenAI(model=OPENROUTER_MODEL,
+                                                                 api_key=k,
+                                                                 base_url=OPENROUTER_BASE_URL,
+                                                                 temperature=0),
+                                     'model_tokens': 32000}, 'label': 'openrouter'})
+        except ImportError:
+            log('langchain-openai not installed — OpenRouter enrichment disabled '
+                '(pip install langchain-openai)')
     return pool
 
 KEY_POOL = _build_pool()

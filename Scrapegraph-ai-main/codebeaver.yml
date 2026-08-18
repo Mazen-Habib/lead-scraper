@@ -1,2 +1,0 @@
-from: pytest
-setup_commands: ['@merge', 'pip install -q selenium', 'pip install -q playwright', 'playwright install']

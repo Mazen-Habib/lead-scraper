@@ -13,6 +13,19 @@ Scrapling-main/
 # opt-in subprocess/binary tools or, for scrapy/scrcpy, not integrated at all.
 Scrapper_directories/
 
+# Vendored upstream repos, kept on disk as local reference but not shipped —
+# same reasoning as Scrapper_directories/ above, applied consistently.
+#   Scrapegraph-ai-main/  is the upstream of the `scrapegraphai` PyPI package.
+#     src/scrapers/scrapegraph_enricher.py imports it from pip
+#     (`from scrapegraphai.graphs import ...`), never from this folder, so the
+#     385 tracked files were pure weight — nothing in this repo referenced them.
+#   Agent-Reach-main/     is reference material for the outreach work described
+#     in agent-reach-txt.txt. No code imports it either.
+# Both remain in git history if you need them back:
+#   git checkout <commit-before-this> -- Agent-Reach-main
+Scrapegraph-ai-main/
+Agent-Reach-main/
+
 # Crawlee's local runtime cache (request queue / key-value store state from
 # src/engines/crawleeEngine.js runs) — regenerated automatically, never meant
 # to be committed, same category as .cache/ above.

@@ -32,7 +32,7 @@ jobs:
         run: npx playwright install chromium --with-deps
 
       - name: Install Python deps (ScrapegraphAI)
-        run: pip install "scrapegraphai>=1.0" langchain-groq langchain-mistralai --quiet
+        run: pip install "scrapegraphai>=1.0" langchain-groq langchain-mistralai langchain-openai --quiet
 
       - name: Install Python deps (Scrapling)
         run: pip install "scrapling[fetchers]" --quiet && scrapling install

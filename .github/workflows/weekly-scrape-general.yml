@@ -39,6 +39,15 @@ jobs:
       - name: Install Playwright + Chromium system deps
         run: npx playwright install chromium --with-deps
 
+      - name: Install Python deps (ScrapegraphAI — email enrichment rung 2)
+        # This workflow previously installed only MarkItDown, so even after the
+        # LLM keys were added to its env the enrichment rung could not run:
+        # scrapegraph_enricher.py imports scrapegraphai and cleanly no-ops when
+        # it's absent, which made the gap silent. langchain-openai is what backs
+        # the OpenRouter entry (ScrapegraphAI rejects an "openrouter/..." model
+        # string and needs a ChatOpenAI model_instance instead).
+        run: pip install "scrapegraphai>=1.0" langchain-groq langchain-mistralai langchain-openai --quiet
+
       - name: Install Python deps (MarkItDown — web-tagging fallback rung)
         run: pip install "markitdown[all]" --quiet
 
