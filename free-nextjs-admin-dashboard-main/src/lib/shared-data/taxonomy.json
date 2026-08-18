@@ -4,221 +4,498 @@
       "slug": "data-analytics-bi",
       "label": "Data Analytics / BI",
       "keywords": [
-        "data", "analytics", "bi", "power bi", "powerbi", "dashboard", "reporting",
-        "visualization", "tableau", "looker", "qlik", "business intelligence",
-        "data science", "data engineer", "data warehouse", "etl", "snowflake",
-        "dbt", "metabase", "superset", "grafana"
+        "data",
+        "analytics",
+        "bi",
+        "power bi",
+        "powerbi",
+        "dashboard",
+        "reporting",
+        "visualization",
+        "tableau",
+        "looker",
+        "qlik",
+        "business intelligence",
+        "data science",
+        "data engineer",
+        "data warehouse",
+        "etl",
+        "snowflake",
+        "dbt",
+        "metabase",
+        "superset",
+        "grafana"
       ]
     },
     {
       "slug": "web-development",
       "label": "Web Development",
       "keywords": [
-        "web", "frontend", "react", "angular", "vue", "next", "nuxt",
-        "wordpress", "cms", "portal", "landing page", "website"
+        "web",
+        "frontend",
+        "react",
+        "angular",
+        "vue",
+        "next",
+        "nuxt",
+        "wordpress",
+        "cms",
+        "portal",
+        "landing page",
+        "website"
       ]
     },
     {
       "slug": "mobile-apps",
       "label": "Mobile Apps",
       "keywords": [
-        "mobile", "ios", "android", "flutter", "react native", "app development",
-        "swift", "kotlin", "xamarin", "ionic"
+        "mobile",
+        "ios",
+        "android",
+        "flutter",
+        "react native",
+        "app development",
+        "swift",
+        "kotlin",
+        "xamarin",
+        "ionic"
       ]
     },
     {
       "slug": "ai-ml",
       "label": "AI / ML",
       "keywords": [
-        "ai", "artificial intelligence", "machine learning", "ml", "nlp",
-        "computer vision", "deep learning", "llm", "gpt", "chatbot",
-        "generative ai", "neural", "predictive"
+        "ai",
+        "artificial intelligence",
+        "machine learning",
+        "ml",
+        "nlp",
+        "computer vision",
+        "deep learning",
+        "llm",
+        "gpt",
+        "chatbot",
+        "generative ai",
+        "neural",
+        "predictive"
       ]
     },
     {
       "slug": "ecommerce",
       "label": "E-commerce",
       "keywords": [
-        "ecommerce", "e-commerce", "shopify", "magento", "woocommerce",
-        "online store", "marketplace", "woo", "prestashop", "bigcommerce"
+        "ecommerce",
+        "e-commerce",
+        "shopify",
+        "magento",
+        "woocommerce",
+        "online store",
+        "marketplace",
+        "woo",
+        "prestashop",
+        "bigcommerce"
       ]
     },
     {
       "slug": "cloud-devops",
       "label": "Cloud / DevOps",
       "keywords": [
-        "cloud", "devops", "aws", "azure", "gcp", "docker", "kubernetes",
-        "infrastructure", "ci/cd", "devsecops", "terraform", "ansible"
+        "cloud",
+        "devops",
+        "aws",
+        "azure",
+        "gcp",
+        "docker",
+        "kubernetes",
+        "infrastructure",
+        "ci/cd",
+        "devsecops",
+        "terraform",
+        "ansible"
       ]
     },
     {
       "slug": "cybersecurity",
       "label": "Cybersecurity",
       "keywords": [
-        "cyber", "security", "penetration", "firewall", "soc", "compliance",
-        "iso 27001", "siem", "endpoint", "threat"
+        "cyber",
+        "security",
+        "penetration",
+        "firewall",
+        "soc",
+        "compliance",
+        "iso 27001",
+        "siem",
+        "endpoint",
+        "threat"
       ]
     },
     {
       "slug": "erp-sap",
       "label": "ERP / SAP",
       "keywords": [
-        "erp", "sap", "odoo", "oracle", "dynamics", "netsuite",
-        "enterprise resource", "accounting", "erp system"
+        "erp",
+        "sap",
+        "odoo",
+        "oracle",
+        "dynamics",
+        "netsuite",
+        "enterprise resource",
+        "accounting",
+        "erp system"
       ]
     },
     {
       "slug": "blockchain",
       "label": "Blockchain",
       "keywords": [
-        "blockchain", "crypto", "web3", "nft", "defi", "smart contract", "ethereum"
+        "blockchain",
+        "crypto",
+        "web3",
+        "nft",
+        "defi",
+        "smart contract",
+        "ethereum"
       ]
     },
     {
       "slug": "ui-ux-design",
       "label": "UI/UX Design",
       "keywords": [
-        "design", "ux", "ui", "user experience", "figma", "prototyping", "creative"
+        "design",
+        "ux",
+        "ui",
+        "user experience",
+        "figma",
+        "prototyping",
+        "creative"
       ]
     },
     {
       "slug": "qa-testing",
       "label": "QA / Testing",
       "keywords": [
-        "qa", "testing", "quality assurance", "test automation", "selenium",
-        "cypress", "playwright", "performance testing", "load testing"
+        "qa",
+        "testing",
+        "quality assurance",
+        "test automation",
+        "selenium",
+        "cypress",
+        "playwright",
+        "performance testing",
+        "load testing"
       ]
     },
     {
       "slug": "digital-marketing",
       "label": "Digital Marketing",
       "keywords": [
-        "digital marketing", "seo", "sem", "ppc", "social media", "content marketing",
-        "email marketing", "growth hacking", "performance marketing", "advertising",
-        "branding", "media buying"
+        "digital marketing",
+        "seo",
+        "sem",
+        "ppc",
+        "social media",
+        "content marketing",
+        "email marketing",
+        "growth hacking",
+        "performance marketing",
+        "advertising",
+        "branding",
+        "media buying"
       ]
     },
     {
       "slug": "healthcare",
       "label": "Healthcare / Medical",
       "keywords": [
-        "dentist", "dental", "hospital", "clinic", "medical", "doctor", "physician",
-        "pharmacy", "pharmacist", "veterinary", "vet", "healthcare", "diagnostic",
-        "laboratory", "surgeon", "orthodontist", "pediatric", "cardiology"
+        "dentist",
+        "dental",
+        "hospital",
+        "clinic",
+        "medical",
+        "doctor",
+        "physician",
+        "pharmacy",
+        "pharmacist",
+        "veterinary",
+        "vet",
+        "healthcare",
+        "diagnostic",
+        "laboratory",
+        "surgeon",
+        "orthodontist",
+        "pediatric",
+        "cardiology"
       ]
     },
     {
       "slug": "professional-services",
       "label": "Professional Services",
       "keywords": [
-        "law firm", "lawyer", "attorney", "legal", "accounting", "accountant",
-        "cpa", "bookkeeping", "tax", "consultancy", "consulting", "notary",
-        "hr consultant", "recruitment", "staffing", "translation"
+        "law firm",
+        "lawyer",
+        "attorney",
+        "legal",
+        "accounting",
+        "accountant",
+        "cpa",
+        "bookkeeping",
+        "tax",
+        "consultancy",
+        "consulting",
+        "notary",
+        "hr consultant",
+        "recruitment",
+        "staffing",
+        "translation"
       ]
     },
     {
       "slug": "hospitality-retail",
       "label": "Hospitality & Retail",
       "keywords": [
-        "restaurant", "cafe", "coffee", "hotel", "retail", "store", "shop",
-        "boutique", "bakery", "catering", "guest house", "resort", "supermarket"
+        "restaurant",
+        "cafe",
+        "coffee",
+        "hotel",
+        "retail",
+        "store",
+        "shop",
+        "boutique",
+        "bakery",
+        "catering",
+        "guest house",
+        "resort",
+        "supermarket"
       ]
     },
     {
       "slug": "home-construction",
       "label": "Home & Construction",
       "keywords": [
-        "contractor", "construction", "plumbing", "plumber", "electrician",
-        "renovation", "interior design", "roofing", "landscaping", "hvac"
+        "contractor",
+        "construction",
+        "plumbing",
+        "plumber",
+        "electrician",
+        "renovation",
+        "interior design",
+        "roofing",
+        "landscaping",
+        "hvac"
       ]
     },
     {
       "slug": "education-training",
       "label": "Education & Training",
       "keywords": [
-        "school", "academy", "institute", "tutoring", "tuition", "training",
-        "college", "university", "learning center", "coaching center"
+        "school",
+        "academy",
+        "institute",
+        "tutoring",
+        "tuition",
+        "training",
+        "college",
+        "university",
+        "learning center",
+        "coaching center"
       ]
     },
     {
       "slug": "automotive",
       "label": "Automotive",
       "keywords": [
-        "automotive", "car dealer", "auto dealer", "car showroom", "workshop",
-        "auto parts", "spare parts", "car rental", "rent a car", "garage",
-        "motors", "tyre", "tire", "denting", "car wash", "motorcycle"
+        "automotive",
+        "car dealer",
+        "auto dealer",
+        "car showroom",
+        "workshop",
+        "auto parts",
+        "spare parts",
+        "car rental",
+        "rent a car",
+        "garage",
+        "motors",
+        "tyre",
+        "tire",
+        "denting",
+        "car wash",
+        "motorcycle",
+        "auto repair",
+        "auto service",
+        "vehicle service",
+        "car repair",
+        "auto workshop"
       ]
     },
     {
       "slug": "logistics-transport",
       "label": "Logistics & Transport",
       "keywords": [
-        "logistics", "freight", "cargo", "courier", "shipping", "transport",
-        "trucking", "warehousing", "warehouse", "movers", "packers",
-        "customs clearing", "forwarder", "delivery service"
+        "logistics",
+        "freight",
+        "cargo",
+        "courier",
+        "shipping",
+        "transport",
+        "trucking",
+        "warehousing",
+        "warehouse",
+        "movers",
+        "packers",
+        "customs clearing",
+        "forwarder",
+        "delivery service"
       ]
     },
     {
       "slug": "manufacturing-industrial",
       "label": "Manufacturing & Industrial",
       "keywords": [
-        "manufacturer", "manufacturing", "factory", "mills", "textile",
-        "industrial", "fabrication", "machinery", "steel", "plastic",
-        "chemical", "packaging", "foundry", "garments", "leather"
+        "manufacturer",
+        "manufacturing",
+        "factory",
+        "mills",
+        "textile",
+        "industrial",
+        "fabrication",
+        "machinery",
+        "steel",
+        "plastic",
+        "chemical",
+        "packaging",
+        "foundry",
+        "garments",
+        "leather"
       ]
     },
     {
       "slug": "real-estate",
       "label": "Real Estate",
       "keywords": [
-        "real estate", "realtor", "property", "estate agent", "builders",
-        "developers", "housing scheme", "marketing & builders", "plots",
-        "property management", "letting"
+        "real estate",
+        "realtor",
+        "property",
+        "estate agent",
+        "builders",
+        "developers",
+        "housing scheme",
+        "marketing & builders",
+        "plots",
+        "property management",
+        "letting"
       ]
     },
     {
       "slug": "finance-insurance",
       "label": "Finance & Insurance",
       "keywords": [
-        "bank", "banking", "insurance", "takaful", "investment", "broker",
-        "brokerage", "microfinance", "leasing", "mutual fund", "forex",
-        "audit", "auditors", "financial services", "money exchange"
+        "bank",
+        "banking",
+        "insurance",
+        "takaful",
+        "investment",
+        "broker",
+        "brokerage",
+        "microfinance",
+        "leasing",
+        "mutual fund",
+        "forex",
+        "audit",
+        "auditors",
+        "financial services",
+        "money exchange"
       ]
     },
     {
       "slug": "agriculture-food",
       "label": "Agriculture & Food",
       "keywords": [
-        "agriculture", "agri", "farm", "farming", "seeds", "fertilizer",
-        "pesticide", "poultry", "dairy", "livestock", "food processing",
-        "flour mills", "rice mills", "food distributor", "beverage"
+        "agriculture",
+        "agri",
+        "farm",
+        "farming",
+        "seeds",
+        "fertilizer",
+        "pesticide",
+        "poultry",
+        "dairy",
+        "livestock",
+        "food processing",
+        "flour mills",
+        "rice mills",
+        "food distributor",
+        "beverage"
       ]
     },
     {
       "slug": "media-entertainment",
       "label": "Media & Entertainment",
       "keywords": [
-        "printing", "printers", "photography", "photographer", "videography",
-        "event management", "event planner", "production house", "studio",
-        "publishing", "media house", "advertising agency", "wedding planner"
+        "printing",
+        "printers",
+        "photography",
+        "photographer",
+        "videography",
+        "event management",
+        "event planner",
+        "production house",
+        "studio",
+        "publishing",
+        "media house",
+        "advertising agency",
+        "wedding planner"
       ]
     },
     {
       "slug": "beauty-wellness",
       "label": "Beauty & Wellness",
       "keywords": [
-        "salon", "spa", "beauty parlour", "beauty parlor", "beautician",
-        "barber", "gym", "fitness", "yoga", "wellness", "massage",
-        "skin care", "hair studio", "makeup artist"
+        "salon",
+        "spa",
+        "beauty parlour",
+        "beauty parlor",
+        "beautician",
+        "barber",
+        "gym",
+        "fitness",
+        "yoga",
+        "wellness",
+        "massage",
+        "skin care",
+        "hair studio",
+        "makeup artist",
+        "beauty",
+        "beauty professional",
+        "hairdresser",
+        "hair salon",
+        "nail salon",
+        "aesthetic",
+        "cosmetic"
       ]
     }
   ],
   "firmSizeBands": [
-    { "band": "solo", "maxEmployees": 1 },
-    { "band": "small", "maxEmployees": 10 },
-    { "band": "mid", "maxEmployees": 249 },
-    { "band": "large", "maxEmployees": 999 },
-    { "band": "enterprise", "maxEmployees": null }
+    {
+      "band": "solo",
+      "maxEmployees": 1
+    },
+    {
+      "band": "small",
+      "maxEmployees": 10
+    },
+    {
+      "band": "mid",
+      "maxEmployees": 249
+    },
+    {
+      "band": "large",
+      "maxEmployees": 999
+    },
+    {
+      "band": "enterprise",
+      "maxEmployees": null
+    }
   ],
   "enterpriseEmployeeThreshold": 1000
 }

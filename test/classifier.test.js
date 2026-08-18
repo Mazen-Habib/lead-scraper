@@ -63,3 +63,51 @@ test('classifyLeads sets industry/tags/tag_confidence/tag_source on every lead i
   assert.equal(leads[0].tag_source, 'rules');
   assert.equal(leads[1].industry, null);
 });
+
+// ── substring false positives (measured on a real businesslist.pk crawl) ─────
+
+test('short taxonomy keywords do not match inside ordinary company names', () => {
+  // classifyLead used to run matchTaxonomy in substring mode, which mis-tagged
+  // 22 of 130 leads on a real crawl. Each of these is a genuine scraped name.
+  const cases = [
+    ['HairSense', 'beauty professionals', 'ai-ml'],          // h·ai·rsense
+    ['Asad Enterprises', 'car rental', 'erp-sap'],            // ent·erp·rises
+    ['Bigbasket.pk', 'beauty professionals', 'data-analytics-bi'], // ·bi·gbasket
+    ['Ismail Estate', 'estate agents', 'ai-ml'],              // ism·ai·l
+  ];
+  for (const [name, category, wrongSlug] of cases) {
+    const { industry, tags } = classifyLead({ name, category });
+    assert.notEqual(industry, wrongSlug, `"${name}" must not be tagged ${wrongSlug}`);
+    assert.ok(!tags.includes(wrongSlug), `"${name}" must not carry the ${wrongSlug} tag`);
+  }
+});
+
+test('a plural in the text still matches a singular keyword', () => {
+  // The taxonomy says "estate agent"; businesslist.pk's category is "estate
+  // agents". Requiring an exact boundary match dropped those, trading false
+  // positives for false negatives — plurality must not decide classification.
+  for (const category of ['estate agent', 'estate agents']) {
+    const { industry } = classifyLead({ name: 'Acme', category });
+    assert.equal(industry, 'real-estate', `"${category}" should classify as real-estate`);
+  }
+});
+
+test('an already-plural keyword never has its "s" stripped, so acronyms stay intact', () => {
+  // Tolerating plurals in both directions turns "ios" into "io", which then
+  // matches any .io domain — the exact regression this asserts against.
+  const { industry, tags } = classifyLead({ name: 'XYZ Holdings', website: 'xyz123.io' });
+  assert.equal(industry, null, 'a bare .io domain must not read as an iOS shop');
+  assert.deepEqual(tags, []);
+});
+
+test('real directory categories classify into the vertical they describe', () => {
+  const expectations = [
+    ['auto repair', 'automotive'],
+    ['car rental', 'automotive'],
+    ['estate agents', 'real-estate'],
+    ['beauty professionals', 'beauty-wellness'],
+  ];
+  for (const [category, slug] of expectations) {
+    assert.equal(classifyLead({ name: 'Acme', category }).industry, slug, category);
+  }
+});

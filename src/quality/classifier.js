@@ -34,17 +34,28 @@ function classifierHaystack(lead) {
 
 const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-// Word-boundary matcher, used when the haystack is full page prose rather
-// than the short metadata string. Plain substring matching is fine on
-// "acme-ai.com" but disastrous over a whole homepage: short taxonomy
-// keywords like "bi", "etl" and "erp" would hit inside "ambient",
-// "hotel" and "enterprise". Cached because the regex set is rebuilt for
-// every lead we tag from the web otherwise.
+// Word-boundary matcher. Plain substring matching is fine on "acme-ai.com" but
+// disastrous over any longer text: short taxonomy keywords like "bi", "etl" and
+// "erp" hit inside "ambient", "hotel" and "enterprise" — and equally inside
+// ordinary company names ("Bigbasket", "Ismail", "Enterprises"), which is why
+// classifyLead uses this too, not just the web tagger.
+//
+// Tolerates a plural in the TEXT, because directory categories and taxonomy
+// keywords disagree about plurality constantly: the taxonomy says "estate agent"
+// while businesslist.pk's category is "estate agents". A strict boundary
+// silently dropped those, trading false positives for false negatives.
+//
+// Deliberately one-directional — an existing trailing "s" on the keyword is
+// never stripped. Doing so mangles acronyms: "ios" would become "io" and then
+// match the domain "xyz123.io", "aws" would match "aw", "cms" would match "cm".
+// A keyword that is already plural simply has to appear plural.
+//
+// Cached because the regex set is otherwise rebuilt for every lead.
 const boundaryReCache = new Map();
 function matchesWord(haystack, keyword) {
   let re = boundaryReCache.get(keyword);
   if (!re) {
-    re = new RegExp(`(?:^|[^a-z0-9])${escapeRe(keyword)}(?:[^a-z0-9]|$)`, 'i');
+    re = new RegExp(`(?:^|[^a-z0-9])${escapeRe(keyword)}s?(?:[^a-z0-9]|$)`, 'i');
     boundaryReCache.set(keyword, re);
   }
   return re.test(haystack);
@@ -77,7 +88,18 @@ export function matchTaxonomy(haystack, { wordBoundary = false } = {}) {
  * classifier, 3.3).
  */
 export function classifyLead(lead) {
-  const hits = matchTaxonomy(classifierHaystack(lead));
+  // wordBoundary is NOT optional here, despite matchesWord's comment framing it
+  // as something "long prose" needs. The haystack includes the company name and
+  // the website's domain words, and short taxonomy keywords match inside
+  // ordinary business names just as readily as inside prose. Measured on a real
+  // businesslist.pk crawl, substring matching mis-tagged 22 of 130 leads (17%):
+  //   "HairSense"        -> ai-ml              ("h·ai·rsense")
+  //   "Asad Enterprises" -> erp-sap            ("ent·erp·rises")
+  //   "Bigbasket.pk"     -> data-analytics-bi  ("·bi·gbasket")
+  //   "Ismail Estate"    -> ai-ml              ("ism·ai·l")
+  // webTagger.js already passed wordBoundary: true; this call site was simply
+  // missed, so the guard existed but the main rules pass never used it.
+  const hits = matchTaxonomy(classifierHaystack(lead), { wordBoundary: true });
 
   if (hits.length === 0) {
     return { industry: null, tags: [], sub_industries: [], confidence: 0, tag_source: 'rules' };
