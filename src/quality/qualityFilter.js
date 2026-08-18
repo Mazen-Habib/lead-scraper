@@ -27,6 +27,32 @@ export const DEFAULT_CATEGORY_KEYWORDS = [
   'renovation', 'interior design',
   // Education
   'school', 'academy', 'institute', 'tutoring', 'tuition', 'training',
+  // Automotive
+  'automotive', 'car dealer', 'auto dealer', 'car showroom', 'auto parts',
+  'spare parts', 'car rental', 'rent a car', 'motors', 'tyre',
+  'tire', 'car wash', 'motorcycle',
+  // Logistics & transport
+  'logistics', 'freight', 'cargo', 'courier', 'shipping', 'transport',
+  'trucking', 'warehousing', 'warehouse', 'movers', 'packers', 'forwarder',
+  // Manufacturing & industrial
+  'manufacturer', 'manufacturing', 'factory', 'mills', 'textile', 'industrial',
+  'fabrication', 'machinery', 'steel', 'plastic', 'chemical', 'packaging',
+  'garments', 'leather',
+  // Real estate
+  'property', 'estate agent', 'builders', 'developers', 'housing scheme',
+  // Finance & insurance
+  'bank', 'banking', 'takaful', 'investment', 'broker', 'brokerage',
+  'microfinance', 'leasing', 'forex', 'audit', 'auditors', 'money exchange',
+  // Agriculture & food
+  'agriculture', 'agri', 'farm', 'farming', 'seeds', 'fertilizer', 'pesticide',
+  'poultry', 'dairy', 'livestock', 'food processing', 'beverage',
+  // Media & entertainment
+  'printing', 'printers', 'photography', 'photographer', 'videography',
+  'event management', 'event planner', 'production house', 'studio',
+  'publishing',
+  // Beauty & wellness
+  'beauty parlour', 'beauty parlor', 'beautician', 'barber', 'gym', 'fitness',
+  'yoga', 'wellness', 'massage', 'skin care',
 ];
 
 /**
