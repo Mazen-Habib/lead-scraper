@@ -24,6 +24,7 @@ import { readFileSync, existsSync, writeFileSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { runPipeline } from '../src/pipeline/runPipeline.js';
+import { resolvePythonBin } from '../src/lib/pythonBin.js';
 // mergeMaster/pruneExpired live in src/index.js, which is safe to import: its
 // CLI entry point is guarded behind a `process.argv[1] === this file` check,
 // so importing it here does not kick off a scrape.
@@ -108,7 +109,16 @@ async function main() {
   }
 
   console.log(`\n${raw.length} raw leads -> quality pipeline`);
-  const processed = await runPipeline(raw, { config });
+  // pythonBin was missing here before: runPipeline(raw, { config }) with no
+  // third key means the ScrapegraphAI email-enrichment rung (Groq/Mistral/
+  // OpenRouter — the step that actually lifts a directory lead's score, not
+  // just emailFinder.js's plain-fetch pass) silently never ran for any lead
+  // ingested through this script. See src/lib/pythonBin.js's header.
+  const pythonBin = resolvePythonBin();
+  if (!pythonBin) {
+    console.warn('No Python 3 interpreter found — ScrapegraphAI email enrichment will be skipped.');
+  }
+  const processed = await runPipeline(raw, { config, pythonBin });
   console.log(`${processed.length} leads survived the pipeline`);
 
   if (processed.length === 0) {

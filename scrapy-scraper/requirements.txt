@@ -1,0 +1,2 @@
+# Pinned to what was verified locally and in the first live crawl.
+scrapy>=2.15

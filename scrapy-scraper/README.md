@@ -1,27 +1,49 @@
 # Scrapy spiders
 
-## Active: `businesslist_pk`
+## Active: `businesslist_pk` (Pakistan + Nigeria)
 
 ```bash
-pip install scrapy
+pip install -r requirements.txt
 cd scrapy-scraper
-scrapy crawl businesslist_pk                       # default category set
+scrapy crawl businesslist_pk                              # Pakistan (default), curated categories
+scrapy crawl businesslist_pk -a country=ng                 # Nigeria, same spider
 scrapy crawl businesslist_pk -a categories=auto-repair,car-rental
 scrapy crawl businesslist_pk -a max_pages=5
 ```
 
-Targets [businesslist.pk](https://www.businesslist.pk) — a 388-category
-Pakistan general-business directory, 20 listings per page, categories running
-past 100 pages. Chosen because none of the 14 sources in `src/sources/index.js`
-cover it and its category tree is general local business (auto workshops,
-freight, textile mills, estate agents, salons) rather than the software-agency
-directories `clutch`/`goodFirms`/`sortlist`/`designRush`/`techBehemoths`/
-`selectedFirms` already saturate. Every company page carries a schema.org
-`LocalBusiness` JSON-LD block with name, address, telephone and website.
+Targets the `businesslist.<tld>` platform — general-business directories,
+20 listings per page, categories running past 100 pages. Chosen because none
+of the 14 sources in `src/sources/index.js` cover it and its category tree is
+general local business (auto workshops, freight, textile mills, estate agents,
+salons, doctors' clinics) rather than the software-agency directories
+`clutch`/`goodFirms`/`sortlist`/`designRush`/`techBehemoths`/`selectedFirms`
+already saturate. Every company page carries a schema.org `LocalBusiness`
+JSON-LD block with name, address, telephone and website.
 
-`robots.txt` allows `/company/` and `/category/` (it blocks only admin, user
-and search endpoints). `ROBOTSTXT_OBEY = True` and the crawl is throttled to
-one concurrent request per domain — keep it that way.
+**Multi-country, one spider.** `-a country=pk` (default) or `-a country=ng`
+select between `businesslist.pk` and `businesslist.com.ng` — confirmed live to
+share an identical page structure (`/category/<slug>[/<page>]`,
+`/company/<id>/<slug>`, same JSON-LD shape). `businesslist.co.za` also exists
+but is WordPress, a genuinely different platform — **not** supported here, it
+would need its own spider.
+
+Category slugs are **not** interchangeable across countries by assumption —
+verified against both sites' `/browse-business-directory` pages before being
+hardcoded (`"insurance"` and `"manufacturing"` both 404; the real slugs are
+`insurance-companies`/`finances-insurance` and `manufacturing-industry`). If
+you add a category, check it resolves on the actual site first — a category
+that doesn't exist for a given country 404s harmlessly rather than crashing
+the crawl, so a typo won't fail loudly.
+
+**Crawl-delay differs by country.** `businesslist.pk`'s `robots.txt` sets none
+(the ~1.5s `DOWNLOAD_DELAY` in `settings.py` applies). `businesslist.com.ng`
+declares `Crawl-delay: 40` — 25x slower — honoured via `DOWNLOAD_SLOTS` in
+`settings.py` rather than slowing every domain down to match. Scope Nigeria
+runs accordingly: a handful of categories at `max_pages=1` already takes over
+an hour.
+
+`robots.txt` allows `/company/` and `/category/` on both sites (blocks only
+admin, user and search endpoints). `ROBOTSTXT_OBEY = True`.
 
 ## Adding another spider
 
@@ -63,14 +85,11 @@ Add a spider here when you have a **specific directory URL** that:
 > already-finished leads and would push unqualified, unclassified rows straight
 > into the table the dashboard reads.
 
-## Setup (once a real spider exists)
+## CI
 
-```bash
-pip install scrapy
-cd scrapy-scraper
-scrapy crawl <spider_name>
-```
-
-A `.github/workflows/scrapy-scrape.yml` should be added at that point to run
-it as its own parallel job — see `weekly-scrape-general.yml` for the pattern
-(separate job, own timeout budget, commits back to `output/`).
+`.github/workflows/scrapy-scrape.yml` runs both countries weekly (Fridays,
+offset from the Sunday tech run and Wednesday general run), ingests every
+`output/runs/scrapy-businesslist-*.csv` through `scripts/ingest-run-csv.js` in
+one call, and commits/pushes the result — same shape as the other two weekly
+workflows. `workflow_dispatch` inputs let you widen `max_pages` or Nigeria's
+category list for a one-off deeper run without editing the file.

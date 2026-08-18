@@ -1,0 +1,167 @@
+name: Weekly Lead Scrape (Scrapy directories)
+
+# Third weekly scrape, separate from weekly-scrape.yml (tech verticals, Sunday)
+# and weekly-scrape-general.yml (Google Maps + OSM general verticals,
+# Wednesday) for the same reason those two are split: different throughput
+# profile, different budget. businesslist.com.ng's robots.txt sets
+# Crawl-delay: 40 (verified live — the .pk site has no such directive), so a
+# handful of Nigeria categories costs as much wall-clock time as the entire
+# Pakistan crawl. Bundling that into either existing job would blow its
+# timeout for unrelated reasons.
+#
+# Scrapy output is RAW leads — no ICP filter, enrichment, scoring or dedupe has
+# happened yet (see scrapy-scraper/leadspiders/spiders/businesslist_pk.py).
+# scripts/ingest-run-csv.js is what actually runs it through the real pipeline
+# and syncs to Supabase; output/runs/ itself is write-only and nothing reads it
+# back on its own (see that script's header for why this is not the same as
+# backfill-supabase.js).
+
+on:
+  schedule:
+    - cron: '0 19 * * 5'   # midnight PKT (UTC+5) every Friday — offset from Sunday/Wednesday
+  workflow_dispatch:
+    inputs:
+      pk_max_pages:
+        description: 'Pakistan: pages per category'
+        default: '8'
+      ng_max_pages:
+        description: 'Nigeria: pages per category (40s/request — keep this low)'
+        default: '1'
+      ng_categories:
+        description: 'Nigeria: comma-separated category slugs (blank = the curated thin-vertical default below)'
+        default: ''
+
+permissions:
+  contents: write           # needed to commit CSVs + master back to repo
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    # Budget reasoning: Pakistan runs at ~30 pages/min observed live (no
+    # Crawl-delay), so ~32 categories x 8 pages tops out around 90-120 minutes
+    # even with autothrottle backing off. Nigeria is the real cost: with
+    # Crawl-delay 40 enforced via DOWNLOAD_SLOTS, ~10 categories x 1 page
+    # (roughly 150 requests including company pages) is ~100 minutes on its
+    # own. ingest-run-csv.js adds email-enrichment website crawls + MX checks
+    # on top. 300 minutes leaves real margin without approaching
+    # weekly-scrape.yml's 360-minute tech-run ceiling.
+    timeout-minutes: 300
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Install Scrapy
+        run: pip install -r scrapy-scraper/requirements.txt --quiet
+
+      - name: Install Python deps (ScrapegraphAI — email enrichment rung 2)
+        # ingest-run-csv.js runs scraped leads through the real quality
+        # pipeline, which includes this rung — same install line as the other
+        # two weekly workflows, kept identical on purpose (see
+        # weekly-scrape-general.yml's history: it once installed only
+        # MarkItDown and the enrichment rung silently no-opped for an entire
+        # workflow's leads because the package wasn't there to import).
+        run: pip install "scrapegraphai>=1.0" langchain-groq langchain-mistralai langchain-openai --quiet
+
+      - name: Run unit tests
+        run: npm test
+
+      - name: Verify shared taxonomy/regions data is in sync with the dashboard
+        run: npm run sync-shared-data:check
+
+      - name: Crawl businesslist.pk (Pakistan)
+        working-directory: scrapy-scraper
+        run: |
+          python -m scrapy crawl businesslist_pk \
+            -a country=pk \
+            -a max_pages=${{ github.event.inputs.pk_max_pages || '8' }}
+
+      - name: Crawl businesslist.com.ng (Nigeria)
+        working-directory: scrapy-scraper
+        # Crawl-delay: 40 makes this the slow one. Defaults to a curated slice
+        # of the categories mapping onto the corpus's thinnest verticals
+        # (healthcare, finance-insurance, logistics-transport, real-estate)
+        # rather than the spider's full ~32-category default set, which would
+        # not finish inside this job's budget at 40s/request. Override via
+        # workflow_dispatch inputs for a one-off deeper run.
+        run: |
+          CATEGORIES="${{ github.event.inputs.ng_categories }}"
+          if [ -z "$CATEGORIES" ]; then
+            CATEGORIES="doctors-and-clinics,pharmacies,wellness,insurance-companies,finances-insurance,banks-credit-unions,logistics,transport,estate-agents,lawyers"
+          fi
+          python -m scrapy crawl businesslist_pk \
+            -a country=ng \
+            -a categories="$CATEGORIES" \
+            -a max_pages=${{ github.event.inputs.ng_max_pages || '1' }}
+
+      - name: Ingest scraped CSVs through the real pipeline + sync to Supabase
+        run: |
+          CSVS=$(ls output/runs/scrapy-businesslist-*.csv 2>/dev/null || true)
+          if [ -z "$CSVS" ]; then
+            echo "No Scrapy output this run — nothing to ingest."
+          else
+            node scripts/ingest-run-csv.js $CSVS
+          fi
+        env:
+          NODE_ENV: production
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GROQ_KEY_1: ${{ secrets.GROQ_KEY_1 }}
+          GROQ_KEY_2: ${{ secrets.GROQ_KEY_2 }}
+          GROQ_KEY_3: ${{ secrets.GROQ_KEY_3 }}
+          MISTRAL_KEY_1: ${{ secrets.MISTRAL_KEY_1 }}
+          MISTRAL_KEY_2: ${{ secrets.MISTRAL_KEY_2 }}
+          MISTRAL_KEY_3: ${{ secrets.MISTRAL_KEY_3 }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          FIRECRAWL_API_KEY: ${{ secrets.FIRECRAWL_API_KEY }}
+
+      - name: Export the complete, guaranteed-up-to-date leads database
+        run: npm run export-all
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+      - name: Commit updated lead files
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add output/
+          if git diff --staged --quiet; then
+            echo "No new leads — nothing to commit."
+          else
+            TOTAL=$(wc -l < output/leads-master.csv || echo "?")
+            echo "Master: ${TOTAL} total leads."
+            git commit -m "scrape: weekly businesslist.pk/ng run $(date -u +'%Y-%m-%d') — ${TOTAL} total leads in master"
+            PUSHED=0
+            for i in 1 2 3; do
+              if git pull --rebase origin main && git push; then
+                PUSHED=1
+                break
+              fi
+              echo "Push attempt $i/3 failed, retrying in 5s..."
+              sleep 5
+            done
+            if [ "$PUSHED" -eq 0 ]; then
+              echo "ERROR: all 3 push attempts failed — commit exists locally but was not pushed."
+              exit 1
+            fi
+          fi
+
+      - name: Upload run CSVs as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: leads-businesslist-${{ github.run_id }}
+          path: output/runs/scrapy-businesslist-*.csv
+          retention-days: 90

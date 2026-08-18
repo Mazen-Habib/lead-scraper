@@ -1,8 +1,8 @@
 import 'dotenv/config';
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
-import { spawnSync } from 'child_process';
 import { dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
+import { resolvePythonBin } from './lib/pythonBin.js';
 import { gatherLeads } from './sources/index.js';
 import { runPipeline } from './pipeline/runPipeline.js';
 import { dedupeKey } from './lib/normalizeUrl.js';
@@ -22,25 +22,6 @@ const config = JSON.parse(readFileSync(resolve(root, 'config.json'), 'utf8'));
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// Resolve a working Python 3 executable. On Windows `python3` is usually just
-// the Microsoft Store stub (not real Python), so we probe candidates and pick
-// the first that actually reports Python 3. Override with PYTHON_BIN in .env.
-function resolvePythonBin() {
-  const candidates = process.env.PYTHON_BIN
-    ? [process.env.PYTHON_BIN]
-    : process.platform === 'win32'
-      ? ['python', 'python3', 'py']
-      : ['python3', 'python'];
-  for (const bin of candidates) {
-    try {
-      const r = spawnSync(bin, ['--version'], { encoding: 'utf8' });
-      if (r.status === 0 && /Python 3/.test((r.stdout || '') + (r.stderr || ''))) return bin;
-    } catch {
-      /* try next */
-    }
-  }
-  return null;
-}
 const PYTHON_BIN = resolvePythonBin();
 
 function runTimestamp() {

@@ -26,6 +26,9 @@ const SOURCE_SCORES = {
   // which put a complete directory lead ~10 points under the floor purely for
   // being from an unlisted source.
   businesslist_pk: 10,
+  // Same platform, same shape of signal (structured contact data, no
+  // ratings/reviews) — the spider now runs against businesslist.com.ng too.
+  businesslist_ng: 10,
 };
 
 // Taxonomy buckets (src/quality/classifier.js) that indicate a premium tech

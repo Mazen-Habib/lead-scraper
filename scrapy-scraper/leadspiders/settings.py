@@ -26,6 +26,15 @@ AUTOTHROTTLE_START_DELAY = 1.5
 AUTOTHROTTLE_MAX_DELAY = 30.0
 AUTOTHROTTLE_TARGET_CONCURRENCY = 1.0
 
+# Per-domain overrides. businesslist.com.ng's robots.txt declares
+# "Crawl-delay: 40" (verified live) — 25x DOWNLOAD_DELAY's default. Scrapy's
+# RobotsTxtMiddleware does NOT auto-apply a site's Crawl-delay; DOWNLOAD_SLOTS
+# (Scrapy 2.11+) is the supported way to set it explicitly per domain without
+# slowing every other spider/domain down to match.
+DOWNLOAD_SLOTS = {
+    "businesslist.com.ng": {"delay": 40, "concurrency": 1},
+}
+
 # Retry on the transient stuff, give up on the rest rather than looping.
 RETRY_ENABLED = True
 RETRY_TIMES = 3
