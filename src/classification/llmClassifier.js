@@ -1,10 +1,13 @@
 // Layer 3 LLM classifier — the last resort for leads the rules pass
 // (src/quality/classifier.js) and the web-tagger pass (src/quality/webTagger.js)
-// both left unclassified or low-confidence. Provider-agnostic by design: today
-// only Groq is wired up (see providers/groq.js — already-configured, free),
-// but classifyLead/classifyBatch don't know that, so adding Gemini/DeepSeek/
-// OpenAI later is a new file in providers/ plus one line in PROVIDERS below,
-// not a rewrite of this module.
+// both left unclassified or low-confidence. Provider-agnostic by design:
+// classifyLead/classifyBatch never touch a provider directly, so adding one is
+// a new file in providers/ plus one line in PROVIDERS below.
+//
+// Every provider here has a free tier, which is the selection criterion — this
+// project runs on free infrastructure end to end. They are all OpenAI-shaped
+// Chat Completions, which is why each adapter is ~40 lines rather than a
+// bespoke client.
 import { SYSTEM_PROMPT, buildUserPrompt, ALLOWED_INDUSTRIES } from './prompt.js';
 import { callGroq, loadGroqKeys, GROQ_DEFAULT_MODEL } from './providers/groq.js';
 import {
@@ -12,19 +15,32 @@ import {
   loadOpenRouterKeys,
   OPENROUTER_DEFAULT_MODEL,
 } from './providers/openrouter.js';
+import { callCerebras, loadCerebrasKeys, CEREBRAS_DEFAULT_MODEL } from './providers/cerebras.js';
+import { callGemini, loadGeminiKeys, GEMINI_DEFAULT_MODEL } from './providers/gemini.js';
+import {
+  callCloudflare,
+  loadCloudflareKeys,
+  CLOUDFLARE_DEFAULT_MODEL,
+} from './providers/cloudflare.js';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // Each provider exposes: call({apiKey, model, systemPrompt, userPrompt, maxTokens, timeoutMs}),
-// loadKeys(env), defaultModel. 'gemini'/'deepseek'/'openai' are still
-// intentionally left as documented gaps (see README) rather than speculative
-// untested code for services this project has no credentials for.
+// loadKeys(env), defaultModel. 'deepseek'/'openai' remain deliberate gaps —
+// neither has a free tier worth wiring for this workload.
 const PROVIDERS = {
   groq: { call: callGroq, loadKeys: loadGroqKeys, defaultModel: GROQ_DEFAULT_MODEL },
   openrouter: {
     call: callOpenRouter,
     loadKeys: loadOpenRouterKeys,
     defaultModel: OPENROUTER_DEFAULT_MODEL,
+  },
+  cerebras: { call: callCerebras, loadKeys: loadCerebrasKeys, defaultModel: CEREBRAS_DEFAULT_MODEL },
+  gemini: { call: callGemini, loadKeys: loadGeminiKeys, defaultModel: GEMINI_DEFAULT_MODEL },
+  cloudflare: {
+    call: callCloudflare,
+    loadKeys: loadCloudflareKeys,
+    defaultModel: CLOUDFLARE_DEFAULT_MODEL,
   },
 };
 

@@ -52,3 +52,9 @@ jobs:
           GROQ_KEY_2: ${{ secrets.GROQ_KEY_2 }}
           GROQ_KEY_3: ${{ secrets.GROQ_KEY_3 }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          # Alternative free classification providers — each is inert unless
+          # config.json selects it via llmClassification.provider.
+          CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { buildUserPrompt, SYSTEM_PROMPT, ALLOWED_INDUSTRIES } from '../src/classification/prompt.js';
 import { parseClassification, classifyLead, classifyBatch, resolveProvider } from '../src/classification/llmClassifier.js';
 import { callOpenRouter, loadOpenRouterKeys } from '../src/classification/providers/openrouter.js';
+import { loadCloudflareKeys } from '../src/classification/providers/cloudflare.js';
+import { loadGeminiKeys } from '../src/classification/providers/gemini.js';
 import { needsClassification, buildUpdatePayload } from '../src/jobs/runLlmClassification.js';
 
 // ── prompt ───────────────────────────────────────────────────────────────────
@@ -88,7 +90,47 @@ test('parseClassification clamps out-of-range confidence and filters secondary d
 
 test('resolveProvider returns the groq adapter and rejects an unimplemented provider by name', () => {
   assert.ok(resolveProvider('groq'));
-  assert.throws(() => resolveProvider('gemini'), /Unknown LLM_PROVIDER/);
+  // 'gemini' used to be the example of an unimplemented provider here; it is
+  // implemented now, so this asserts against one that genuinely isn't.
+  assert.throws(() => resolveProvider('deepseek'), /Unknown LLM_PROVIDER/);
+});
+
+test('every registered provider exposes the full adapter contract', () => {
+  // A provider missing any of these fails at classify time, deep inside a
+  // batch, rather than at startup — so check the shape up front.
+  for (const name of ['groq', 'openrouter', 'cerebras', 'gemini', 'cloudflare']) {
+    const provider = resolveProvider(name);
+    assert.equal(typeof provider.call, 'function', `${name}.call`);
+    assert.equal(typeof provider.loadKeys, 'function', `${name}.loadKeys`);
+    assert.ok(provider.defaultModel, `${name}.defaultModel`);
+    // Each provider must report a DIFFERENT default model: modelVersion is
+    // persisted per lead and decides what counts as already-classified, so two
+    // providers sharing a string would make their output indistinguishable.
+    assert.equal(typeof provider.defaultModel, 'string', `${name}.defaultModel type`);
+  }
+
+  const models = ['groq', 'openrouter', 'cerebras', 'gemini', 'cloudflare'].map(
+    (n) => resolveProvider(n).defaultModel
+  );
+  assert.equal(new Set(models).size, models.length, 'provider default models must be distinct');
+});
+
+test('loadCloudflareKeys reports no keys without an account id, since the endpoint is account-scoped', () => {
+  // A token alone cannot build a URL. Returning [] makes an incomplete config
+  // a clean no-op instead of a 404 partway through a run.
+  assert.deepEqual(loadCloudflareKeys({ CLOUDFLARE_API_TOKEN: 'tok' }), []);
+  assert.deepEqual(
+    loadCloudflareKeys({ CLOUDFLARE_API_TOKEN: 'tok', CLOUDFLARE_ACCOUNT_ID: 'acct' }),
+    ['tok']
+  );
+});
+
+test('loadGeminiKeys accepts GOOGLE_API_KEY as well as GEMINI_API_KEY', () => {
+  // Google's own SDKs default to GOOGLE_API_KEY; accepting it avoids making
+  // someone rename a key that already works elsewhere.
+  assert.deepEqual(loadGeminiKeys({ GOOGLE_API_KEY: 'g' }), ['g']);
+  assert.deepEqual(loadGeminiKeys({ GEMINI_KEY_1: 'a', GEMINI_KEY_2: 'b' }), ['a', 'b']);
+  assert.deepEqual(loadGeminiKeys({}), []);
 });
 
 test('resolveProvider returns the openrouter adapter with the same shape as groq', () => {
