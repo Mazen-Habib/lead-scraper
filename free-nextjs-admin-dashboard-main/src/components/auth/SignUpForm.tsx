@@ -4,6 +4,7 @@ import Input from "@/components/form/input/InputField";
 import Label from "@/components/form/Label";
 import { ChevronLeftIcon, EyeCloseIcon, EyeIcon } from "@/icons";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { AUTH_DISABLED, DASHBOARD_PATH } from "@/lib/dev-auth";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React, { useState } from "react";
@@ -22,6 +23,17 @@ export default function SignUpForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+
+    // Auth off: straight to the dashboard, no account created. The terms
+    // checkbox is also not enforced here — with no account being registered
+    // there is nothing to consent to, and blocking on it would recreate the
+    // dead end this removes.
+    if (AUTH_DISABLED) {
+      router.push(DASHBOARD_PATH);
+      router.refresh();
+      return;
+    }
+
     if (!isChecked) {
       setError("Please accept the Terms and Conditions to continue.");
       return;
@@ -42,7 +54,7 @@ export default function SignUpForm() {
       setError(signUpError.message);
       return;
     }
-    router.push("/leads");
+    router.push(DASHBOARD_PATH);
     router.refresh();
   }
 

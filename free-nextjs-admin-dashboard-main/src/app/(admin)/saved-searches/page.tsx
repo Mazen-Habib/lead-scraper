@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { getCurrentUserId, getSupabaseServerClient } from "@/lib/supabase/server";
 import SavedSearchesList, { type SavedSearch } from "@/components/saved-searches/SavedSearchesList";
 
 export const metadata: Metadata = {
@@ -14,13 +14,17 @@ export default async function SavedSearchesPage() {
   let savedSearches: SavedSearch[] = [];
 
   if (supabase) {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (user) {
+    // Resolves to the dev user when auth is disabled, so this page renders real
+    // saved searches instead of an empty list.
+    const userId = await getCurrentUserId(supabase);
+    if (userId) {
       const { data } = await supabase
         .from("saved_searches")
         .select("id, name, filter_json, is_active, created_at")
+        // Explicit rather than relying on RLS — the server client is
+        // service-role when auth is off, which bypasses RLS and would
+        // otherwise return every user's saved searches.
+        .eq("user_id", userId)
         .order("created_at", { ascending: false });
       savedSearches = (data as SavedSearch[] | null) ?? [];
     }

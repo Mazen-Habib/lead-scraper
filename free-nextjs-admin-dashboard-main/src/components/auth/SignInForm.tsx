@@ -5,6 +5,7 @@ import Label from "@/components/form/Label";
 import Button from "@/components/ui/button/Button";
 import { ChevronLeftIcon, EyeCloseIcon, EyeIcon } from "@/icons";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { AUTH_DISABLED, DASHBOARD_PATH } from "@/lib/dev-auth";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React, { useState } from "react";
@@ -21,6 +22,18 @@ export default function SignInForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+
+    // Auth off: go straight to the dashboard without calling Supabase at all.
+    // Deliberately skips signInWithPassword rather than calling it and ignoring
+    // the result — a wrong password would otherwise still surface "Invalid
+    // login credentials" from the network layer, which is the exact dead end
+    // this removes. No credentials are read, so nothing can fail here.
+    if (AUTH_DISABLED) {
+      router.push(DASHBOARD_PATH);
+      router.refresh();
+      return;
+    }
+
     const supabase = getSupabaseBrowserClient();
     if (!supabase) {
       setError("Supabase is not configured.");
@@ -36,7 +49,7 @@ export default function SignInForm() {
       setError(signInError.message);
       return;
     }
-    router.push("/leads");
+    router.push(DASHBOARD_PATH);
     router.refresh();
   }
 
@@ -160,12 +173,19 @@ export default function SignInForm() {
                       Keep me logged in
                     </span>
                   </div>
-                  <Link
-                    href="/reset-password"
-                    className="text-sm text-brand-500 hover:text-brand-600 dark:text-brand-400"
-                  >
-                    Forgot password?
-                  </Link>
+                  {/* The template shipped a "Forgot password?" link to
+                      /reset-password, but that route was never built — it 404'd,
+                      which made a forgotten password unrecoverable from the UI.
+                      With auth off the link is meaningless anyway, so it is
+                      hidden rather than left as a trap. */}
+                  {!AUTH_DISABLED && (
+                    <Link
+                      href="/reset-password"
+                      className="text-sm text-brand-500 hover:text-brand-600 dark:text-brand-400"
+                    >
+                      Forgot password?
+                    </Link>
+                  )}
                 </div>
                 <div>
                   <Button className="w-full" size="sm" disabled={submitting}>

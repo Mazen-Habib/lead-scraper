@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { getCurrentUserId, getSupabaseServerClient } from "@/lib/supabase/server";
 import { createSavedSearchSchema } from "@/lib/validation/savedSearch";
 import { queryLeads, type LeadsQuery } from "@/lib/leads";
 
@@ -12,14 +12,17 @@ export async function GET() {
   const supabase = await getSupabaseServerClient();
   if (!supabase) return NextResponse.json({ error: "Supabase is not configured." }, { status: 500 });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const userId = await getCurrentUserId(supabase);
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { data, error } = await supabase
     .from("saved_searches")
+    // Explicit user scoping, not just RLS: when auth is disabled the server
+    // client is service-role, which BYPASSES RLS entirely — an unfiltered
+    // select would return every user's rows. Harmless belt-and-braces when
+    // RLS is also in force.
     .select("id, name, filter_json, schedule, is_active, created_at")
+    .eq("user_id", userId)
     .order("created_at", { ascending: false });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -30,10 +33,8 @@ export async function POST(request: NextRequest) {
   const supabase = await getSupabaseServerClient();
   if (!supabase) return NextResponse.json({ error: "Supabase is not configured." }, { status: 500 });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const userId = await getCurrentUserId(supabase);
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await request.json().catch(() => null);
   const parsed = createSavedSearchSchema.safeParse(body);
@@ -43,13 +44,13 @@ export async function POST(request: NextRequest) {
 
   const { data, error } = await supabase
     .from("saved_searches")
-    .insert({ user_id: user.id, name: parsed.data.name, filter_json: parsed.data.filter_json })
+    .insert({ user_id: userId, name: parsed.data.name, filter_json: parsed.data.filter_json })
     .select("id, name, filter_json, schedule, is_active, created_at")
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  const backfilled = await backfillExistingMatches(supabase, user.id, data.id, parsed.data.filter_json);
+  const backfilled = await backfillExistingMatches(supabase, userId, data.id, parsed.data.filter_json);
   return NextResponse.json({ savedSearch: data, backfilled }, { status: 201 });
 }
 

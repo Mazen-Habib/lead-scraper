@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { getCurrentUserId, getSupabaseServerClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
@@ -17,10 +17,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const supabase = await getSupabaseServerClient();
   if (!supabase) return NextResponse.json({ error: "Supabase is not configured." }, { status: 500 });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const userId = await getCurrentUserId(supabase);
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const limit = Math.min(20, Math.max(1, parseInt(request.nextUrl.searchParams.get("limit") || "5", 10) || 5));
 

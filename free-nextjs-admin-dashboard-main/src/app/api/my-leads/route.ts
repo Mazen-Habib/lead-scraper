@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { getCurrentUserId, getSupabaseServerClient } from "@/lib/supabase/server";
 import { LEAD_SELECT_COLUMNS, rowToLead, type LeadRow } from "@/lib/leads";
 
 export const dynamic = "force-dynamic";
@@ -22,10 +22,8 @@ export async function GET(request: NextRequest) {
   const supabase = await getSupabaseServerClient();
   if (!supabase) return NextResponse.json({ error: "Supabase is not configured." }, { status: 500 });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const userId = await getCurrentUserId(supabase);
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const params = request.nextUrl.searchParams;
   const savedSearchId = parseInt(params.get("savedSearchId") || "", 10);
@@ -36,6 +34,9 @@ export async function GET(request: NextRequest) {
     .select(`id, saved_search_id, delivery_reason, first_delivered_at, leads (${LEAD_SELECT_COLUMNS})`, {
       count: "exact",
     })
+    // See the note in api/saved-searches/route.ts: service-role bypasses RLS,
+    // so ownership is filtered explicitly rather than assumed.
+    .eq("user_id", userId)
     .order("first_delivered_at", { ascending: false })
     .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
 

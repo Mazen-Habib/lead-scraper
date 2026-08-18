@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { getCurrentUserId, getSupabaseServerClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
@@ -20,16 +20,16 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const supabase = await getSupabaseServerClient();
   if (!supabase) return NextResponse.json({ error: "Supabase is not configured." }, { status: 500 });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const userId = await getCurrentUserId(supabase);
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  // RLS scopes this to the owner, so a missing row means "not yours or gone".
+  // A missing row means "not yours or gone". Ownership is filtered explicitly
+  // because RLS is bypassed when the server client is service-role (auth off).
   const { data: search } = await supabase
     .from("saved_searches")
     .select("id, depth")
     .eq("id", savedSearchId)
+    .eq("user_id", userId)
     .single();
   if (!search) return NextResponse.json({ error: "Saved search not found" }, { status: 404 });
 
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const { data: run, error } = await supabase
     .from("scrape_runs")
     .insert({
-      user_id: user.id,
+      user_id: userId,
       saved_search_id: savedSearchId,
       trigger: "manual",
       status: "pending",
