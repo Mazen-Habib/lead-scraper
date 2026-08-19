@@ -14,7 +14,7 @@ directories/maps, enriches them with emails/socials, classifies + scores them, a
 everything to a Supabase Postgres table that a Next.js dashboard reads from.
 
 Two apps in one repo:
-- `src/` — the Node.js 20 ESM scraper + quality pipeline (the engine)
+- `src/` — the Node.js 24 ESM scraper + quality pipeline (the engine)
 - `free-nextjs-admin-dashboard-main/` — the Next.js dashboard (the UI)
 - `shared/` — `taxonomy.json` / `regions.json` / `sourceTargets.json`, consumed by **both**
   apps so classification vocab never drifts. `npm run sync-shared-data` keeps the
@@ -26,7 +26,141 @@ artifact, but `output/leads-master.csv`, `output/all.csv`, and `output/runs/*.cs
 
 ---
 
-## Most recent session: additive fallback rungs (Firecrawl, MarkItDown, curl-impersonate, Crawlee)
+## Most recent session: businesslist.pk/ng spider, provider rework, CI hardening
+
+User's ask evolved across the session: fix the disk-space emergency that opened it → verify
+the scraper still works → expand coverage into "why is this vertical so thin" → get free LLM
+providers wired up (user is in Pakistan, Groq unreliable there) → scale the new source →
+"never blink an eye on quality" → get it running for real in GitHub Actions.
+
+### Free LLM provider stack — verified live, not just wired
+
+Five Layer-3 classification providers now exist in `src/classification/providers/`: groq,
+openrouter, cerebras, gemini, cloudflare. **Every one of the default models I first picked
+from memory was wrong** — caught by actually calling each API with a real key rather than
+trusting docs:
+- OpenRouter's original default 404'd (model no longer free); also most of its current free
+  pool are **reasoning models** that burn 100–260 tokens thinking before emitting content, so
+  they return HTTP 200 with **empty** content at a normal token budget — `callOpenRouter` now
+  detects this via `reasoning_tokens` and says so explicitly rather than "no content" being a
+  mystery. Current default (`google/gemma-4-26b-a4b-it:free`) was chosen specifically because
+  it reports zero reasoning tokens.
+- Cloudflare's original default was a **retired model** (410, not the URL — check the model
+  catalogue API, not the endpoint, when this happens again).
+- **Cerebras is NOT free on this account** — every model 402s ("payment required") despite a
+  valid key. Adapter works; don't route classification there without confirming billing.
+- Active config: `config.json`'s `llmClassification.provider` is `"cloudflare"` (fast, genuinely
+  free, verified). **OpenRouter is what backs email enrichment** — this needed a *separate*
+  fix, since ScrapegraphAI (`src/scrapers/scrapegraph_enricher.py`) is not a plain LiteLLM
+  passthrough and rejects an `"openrouter/..."` model string outright; it goes in as a
+  `langchain_openai.ChatOpenAI` model_instance pointed at OpenRouter's base_url instead.
+
+Retry handling was also broken for a single-key setup: `maxAttempts = keys.length * 2` gave a
+lone key only 2 attempts before giving up, and none of the adapters read the `Retry-After`
+header, so retries guessed a flat 2s regardless of what the server actually asked for. Fixed:
+`maxRetries` is now independent of pool size (default 5), and `parseRetryAfter()`
+(`src/classification/providers/retryAfter.js`) is honoured everywhere.
+
+### businesslist.pk / businesslist.com.ng — new Scrapy source, verified live
+
+`scrapy-scraper/leadspiders/spiders/businesslist_pk.py` targets a general-business directory
+platform, general local business (auto workshops, freight, clinics, salons) rather than the
+software-agency directories the existing 14 sources saturate. **Multi-country in one spider**
+(`-a country=pk|ng`) — confirmed live that `businesslist.com.ng` shares the exact page
+structure. `businesslist.co.za` also exists but is WordPress, a different platform — not
+supported, would need its own spider. Category slugs are checked against each site's real
+`/browse-business-directory` page before being hardcoded — several guessed ones 404 (real
+slugs are more specific than the obvious guess, e.g. `insurance-companies` not `insurance`).
+Nigeria's `robots.txt` sets `Crawl-delay: 40` (25x Pakistan's default), honoured via
+`DOWNLOAD_SLOTS` in `settings.py`.
+
+`scripts/ingest-run-csv.js` is the **missing link** a spider's CSV needs — `output/runs/` is
+write-only, nothing reads it back automatically (the old scaffold README claimed otherwise;
+corrected). This script runs a spider's raw CSV through the real pipeline and syncs to
+Supabase. It had its own silent bug: it called `runPipeline(raw, { config })` with no
+`pythonBin`, so the ScrapegraphAI enrichment rung silently never ran for anything ingested
+this way — fixed by extracting `resolvePythonBin()` (was private to `src/index.js`) into
+`src/lib/pythonBin.js`.
+
+**Crawl output resilience was learned the hard way, twice, against a real interruption:**
+1. First version buffered scraped rows in memory, wrote the CSV only in `closed()`. An
+   interrupted process lost an entire 457-lead crawl — nothing on disk, no error.
+2. Switched to Scrapy's built-in `FEEDS` export (writes as items arrive, in theory). Tested it
+   directly: scraped 20+ real items, killed the process both via `SIGKILL` and a plain
+   `SIGTERM`. **Both left a 0-byte file** — on this stack (Git Bash on Windows) neither signal
+   reliably triggers Scrapy's graceful-shutdown/flush path.
+3. Real fix: `scrapy-scraper/leadspiders/pipelines.py`'s `FlushingCsvPipeline` — flushes to
+   disk after every single row. Re-ran the identical kill test: 12 items scraped, hard-killed,
+   all 12 survived. **If you ever touch spider output again, don't trust FEEDS on this stack —
+   test against a real kill, don't assume.**
+
+### Taxonomy 17 → 25 industries, and a real classifier bug the new source exposed
+
+Added automotive, logistics-transport, manufacturing-industrial, real-estate,
+finance-insurance, agriculture-food, media-entertainment, beauty-wellness. The first real
+businesslist.pk crawl then exposed that `classifyLead` ran `matchTaxonomy` in **substring**
+mode, not word-boundary mode (the guard already existed for exactly this — `webTagger.js` used
+it, the main rules pass never did). 17% of a real 130-lead crawl was mis-tagged this way
+("HairSense" → ai-ml via "h·ai·rsense", "Bigbasket.pk" → data-analytics-bi via "·bi·gbasket").
+Fixing it naively broke plurals ("estate agent" vs directory category "estate agents") and
+then broke acronyms (stripping a keyword's own trailing "s" turns "ios" into "io", which
+matches any `.io` domain) — final rule tolerates a plural in the *text* only, never strips one
+from the *keyword*. A **second** landmine (`"developers"` as a bare real-estate keyword,
+matching "software developers" constantly) was caught by a dry-run before it ever hit
+Supabase — `scripts/reclassify-supabase.js` (new, `--apply` required, dry-run by default,
+skips `tag_source` web/llm as strictly-better signal) confirmed **0 CHANGED / 0 CLEARED
+outstanding** after the real production reclassify ran. Also fixed while there: a duplicate
+`dedupe_key` collision (24 rows, recomputed key collapses two stored keys to one) that can
+poison an entire Supabase upsert batch — the reclassify script now collapses on the recomputed
+key before syncing.
+
+### Score floor: businesslist_pk/ng leads (phone+website, no reviews) scored ~18–23 against a
+floor of 35 and were entirely discarded. `SOURCE_SCORES` gained `businesslist_pk`/`_ng: 10`
+(matches `google_maps`) and the floor dropped to `config.json`'s `quality.minScore: 22` —
+**deliberately decoupled** from the C/D tier boundary (still 35); see `filterByScore`'s header
+comment before "fixing" that apparent mismatch.
+
+### CI: new `scrapy-scrape.yml`, and a real cross-workflow bug found by actually triggering it
+
+New third weekly workflow (Fridays) runs both countries, ingests, syncs, commits — same shape
+as the other two. Manually triggering it (`gh workflow run scrapy-scrape.yml -f ...`) is what
+caught two real bugs no local run would have: **all five workflows pinned Node 20**, but
+`@supabase/supabase-js`'s realtime client needs native `WebSocket` (Node 22+) — every
+`npm test` step was silently going to fail on its next scheduled run, not just this new
+workflow's. Bumped to Node 24 everywhere. Second: `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY`
+weren't set as GitHub repo secrets at all — the sync step skipped cleanly, `export-all`
+correctly refused to overwrite `all.csv` with empty data and failed loudly, nothing bad landed
+on `main`. Both fixed; a scoped manual run (1 page/category) then **fully succeeded end to end
+for the first time** — 5,132 leads synced, commit `fffda0d` landed. Repo secrets now set:
+`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `OPENROUTER_API_KEY` (Groq/Mistral were already
+present from an earlier session).
+
+### Repo hygiene
+`Scrapegraph-ai-main/` (385 files) and `Agent-Reach-main/` (117 files) — vendored upstream
+copies, 54% of all tracked files, referenced by zero code (`scrapegraphai` comes from pip) —
+untracked via `.gitignore` (stay on disk, stay in git history). Root-level stragglers moved:
+`rescore.js` → `scripts/`, `leads.txt`/`agent-reach-txt.txt` → `docs/notes/`.
+
+### Not done / open
+- Only scoped sanity crawls have run against businesslist.pk/ng so far (a handful of
+  categories, 1–2 pages). The real weekly Friday run uses fuller defaults (8 pages PK, the
+  10-category thin-vertical set for NG) and hasn't fired yet.
+- `CEREBRAS_API_KEY`/`GEMINI_API_KEY`/`CLOUDFLARE_ACCOUNT_ID`/`CLOUDFLARE_API_TOKEN` aren't
+  GitHub repo secrets yet — `llm-classification.yml` references them but they're inert in CI
+  until added. Cloudflare is the *active* classification provider locally; it needs its two
+  secrets added before the CI classify workflow can actually use it (it'll silently fall back
+  to no-op otherwise, same pattern as every other unconfigured rung in this project).
+- The dashboard's "Forgot password?" link points at `/reset-password`, which doesn't exist
+  (404) — found, not fixed, user redirected focus elsewhere.
+- Production Vercel deployment (`lead-scraper-mazestic.vercel.app`) is running with the no-auth
+  local-dev mode live and public — flagged explicitly, user's call was "leave it open for now."
+  Don't re-raise this unprompted; they know.
+- `creds_2.txt` at repo root holds plaintext provider keys — correctly gitignored/untracked,
+  but still plaintext on disk. Not this session's call to move it.
+
+---
+
+## Previous session: additive fallback rungs (Firecrawl, MarkItDown, curl-impersonate, Crawlee)
 
 User pasted a folder of open-source scraping tools (`Scrapper_directories/`: crawlee, firecrawl,
 curl-impersonate, markitdown, autoscraper, scrapy, scrcpy) and asked to integrate whatever's
@@ -119,7 +253,7 @@ via grep before deciding it needed no changes, not assumed.
 
 ---
 
-## Previous session: "no missing leads tolerated" + general local business expansion
+## Earlier session: "no missing leads tolerated" + general local business expansion
 
 User's ask, verbatim intent: guarantee zero silent lead loss, broaden the ICP beyond
 tech/marketing to general local business (dentists, hospitals, "many more," Pakistan +
@@ -222,16 +356,34 @@ abroad), and produce a standing complete `all.csv` export. Approved plan is arch
 - Config.json is regenerated with `JSON.stringify(obj, null, 2)` when edited programmatically
   — this reformats some unrelated arrays (one-value-per-line vs packed). This is cosmetic
   and has been accepted as a tradeoff; don't spend time reverting pure formatting diffs.
+- **Verify against the live API, not memory, before hardcoding a model name/id.** Every default
+  model picked from memory this session (OpenRouter, Cerebras, Cloudflare) was wrong — free
+  tiers rotate their model lists faster than training data reflects. Curl the real endpoint
+  first.
+- **Don't trust a resilience mechanism you haven't killed a process against.** Scrapy's FEEDS
+  export looks correct in the docs and still lost everything on this Git-Bash-on-Windows stack
+  under both SIGKILL and SIGTERM. If output-durability matters, test the actual failure mode,
+  not the documented one.
+- **`gh` CLI is authenticated and available** — used this session to trigger/monitor workflow
+  runs (`gh workflow run`, `gh run view --log-failed`) and to set repo secrets
+  (`gh secret set NAME`, reading the value from local `.env`/`creds_2.txt`). Setting a repo
+  secret was treated as needing explicit user confirmation first (it's persistent account
+  config) — asked, got a yes, then proceeded. Don't assume that carries forward to a different
+  secret/action without asking again.
+- User is comfortable with local credential files (`creds_2.txt`, `.env`) being read to
+  populate GitHub secrets or test provider connections directly, as long as values aren't
+  printed to output. Confirmed this session, not a one-off exception.
 
 ---
 
 ## Where to look for more
 
 - [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md) — full architecture reference (schema, scoring
-  formula, all 15 sources, personalized-leads worker design, dashboard API routes). Written
-  for pasting into an external AI, so it's more exhaustive but was last updated *before*
-  this session's changes (still says 12 taxonomy industries / tech-only ICP — that's now
-  stale, trust this file over that section until PROJECT_CONTEXT.md is refreshed).
+  formula, sources, personalized-leads worker design, dashboard API routes). Written for
+  pasting into an external AI, more exhaustive but **increasingly stale** — still describes an
+  earlier taxonomy count and doesn't know about businesslist.pk/ng, the 5-provider LLM stack,
+  or `scrapy-scrape.yml`. Trust `knowledge.md` over it until someone refreshes it; the gap has
+  widened across two sessions now, worth doing if anyone's about to rely on it heavily.
 - [ROADMAP.md](ROADMAP.md), [SOURCES.md](SOURCES.md), [DEPLOYMENT.md](DEPLOYMENT.md),
   [README.md](README.md) — supplementary docs, not touched this session.
 - Known gaps as of this session (from PROJECT_CONTEXT.md, still true): LLM classifier layer
