@@ -34,7 +34,20 @@ jobs:
         run: npm ci
 
       - name: Install Playwright + Chromium system deps
-        run: npx playwright install chromium --with-deps
+        # This exact step hung the ENTIRE 90-minute job budget on 2026-08-19:
+        # apt-get stalled fetching an Ubuntu package index, zero forward
+        # progress, no error — because there was no per-attempt timeout to
+        # fail it and retry. `timeout 300` bounds each attempt so a stuck
+        # mirror gets retried instead of silently eating the whole job; the
+        # step-level timeout-minutes is the outer backstop. See
+        # weekly-scrape.yml's identical step for the same fix.
+        timeout-minutes: 20
+        run: |
+          for i in 1 2 3; do
+            timeout 300 npx playwright install chromium --with-deps && break
+            echo "Playwright/Chromium install attempt $i/3 failed or hung, retrying in 15s..."
+            sleep 15
+          done
 
       - name: Install Python deps (ScrapegraphAI)
         run: pip install "scrapegraphai>=1.0" langchain-groq langchain-mistralai langchain-openai --quiet
