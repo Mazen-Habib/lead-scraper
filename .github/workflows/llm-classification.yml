@@ -2,7 +2,12 @@ name: LLM Classification (Layer 3)
 
 on:
   schedule:
-    - cron: '0 4 * * *'   # 09:00 PKT daily — cleans up whatever rules+web left unclassified
+    # Was daily; switched to weekly at the user's explicit request. Saturday,
+    # after all three scrape workflows have run for the week (Sun/Wed/Fri),
+    # so this sweeps up whatever rules+web tagging left unclassified from
+    # everything scraped that week in one pass rather than several partial
+    # ones.
+    - cron: '0 4 * * 6'   # 09:00 PKT every Saturday
   workflow_dispatch:        # manual trigger, with optional dry-run/force inputs
     inputs:
       dry_run:

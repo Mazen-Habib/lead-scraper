@@ -2,7 +2,15 @@ name: Personalized Lead Runs
 
 on:
   schedule:
-    - cron: '0 2 * * *'     # 07:00 PKT daily — picks up 'daily'/'weekly' saved searches
+    # Was daily; switched to weekly at the user's explicit request. Real
+    # consequence, not just a CI cadence tweak: runSavedSearches.js's
+    # DUE_AFTER_MS lets a user pick 'daily' or 'weekly' refresh per saved
+    # search, but a search can never actually run more often than THIS
+    # workflow fires. A 'daily' search now effectively gets weekly service —
+    # flagged to the user before this change, confirmed anyway. Monday, the
+    # day after weekly-scrape.yml's Sunday tech run, so freshly scraped leads
+    # are available for personalized matching right away.
+    - cron: '0 2 * * 1'     # 07:00 PKT every Monday
   workflow_dispatch:         # also fired by the dashboard's "Run now" button via the GitHub API
 
 # Unlike the weekly scrape this writes nothing back to the repo — personalized
