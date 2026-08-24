@@ -338,6 +338,22 @@ function tag(leads, { source, engine, query }) {
 // source is logged and skipped — one broken directory never aborts the run.
 export async function gatherLeads(config, cloak, opts = {}) {
   const { only, pythonBin = null } = opts;
+  if (only) {
+    // A key that matches nothing used to fail silently: the filter below just
+    // never matches, so a typo in --only= quietly scraped fewer sources than
+    // intended with no warning anywhere. Caught after weekly-scrape.yml's
+    // --only list was hand-written directly against SOURCE_REGISTRY's keys —
+    // worth having this check before that pattern gets used somewhere less
+    // carefully checked.
+    const validKeys = new Set(SOURCE_REGISTRY.map((e) => e.key));
+    const unknown = only.filter((k) => !validKeys.has(k));
+    if (unknown.length > 0) {
+      throw new Error(
+        `--only referenced unknown source key(s): ${unknown.join(', ')}. ` +
+          `Valid keys: ${[...validKeys].join(', ')}`
+      );
+    }
+  }
   let allLeads = [];
   for (const entry of SOURCE_REGISTRY) {
     if (only && !only.includes(entry.key)) continue;

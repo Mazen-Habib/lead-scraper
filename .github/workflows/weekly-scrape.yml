@@ -79,8 +79,29 @@ jobs:
       - name: Verify shared taxonomy/regions data is in sync with the dashboard
         run: npm run sync-shared-data:check
 
-      - name: Run scraper
-        run: node src/index.js
+      - name: Run scraper (tech verticals only)
+        # Explicit --only list, NOT a bare `node src/index.js`. A bare run
+        # scrapes every enabled source in SOURCE_REGISTRY, which since
+        # weekly-scrape-general.yml was added has silently included
+        # googleMapsGeneral and openStreetMap — the two sources that workflow
+        # exists to own. They were being scraped TWICE a week (here on Sunday,
+        # again on Wednesday), producing duplicate leads that dedupe() then
+        # throws away.
+        #
+        # Measured on the 2026-08-23 run that hit the 6h ceiling and was
+        # cancelled mid-scrape (nothing synced, nothing committed):
+        #   Google Maps (general)  115.7 min   <- belongs to Wednesday
+        #   Google Maps (tech)      83.6 min
+        #   OpenStreetMap (x3)      20.8 min   <- belongs to Wednesday
+        #   everything else         ~47 min
+        # Removing the two Wednesday-owned sources cuts ~136 min of pure
+        # duplicate work off this job, taking it from >360 min to ~140.
+        #
+        # Keep this list in sync with src/sources/index.js's SOURCE_REGISTRY:
+        # it is every key EXCEPT googleMapsGeneral + openStreetMap (Wednesday's)
+        # and openCorporates (disabled in config.json — its free tier requires
+        # open-licensing the data, incompatible with private lead data).
+        run: node src/index.js --only=googleMaps,githubOrgs,pseb,topDevelopers,eventbrite,clutch,goodFirms,sortlist,designRush,techBehemoths,selectedFirms
         env:
           NODE_ENV: production
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
