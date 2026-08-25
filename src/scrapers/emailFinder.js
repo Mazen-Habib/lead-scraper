@@ -141,9 +141,22 @@ export async function findContacts(website, opts = {}) {
   };
 }
 
-/** Runs findContacts over many leads with limited concurrency. */
+/**
+ * Runs findContacts over many leads with limited concurrency.
+ *
+ * Skips a lead that already has both an email AND a linkedin — the same
+ * "we have everything we came for" condition findContacts itself uses to stop
+ * crawling a single site early (see the `emails.size > 0 && linkedin` check
+ * above). Previously this filtered on `l.website` alone, so a lead already
+ * fully known — most often a re-scraped duplicate whose email/linkedin were
+ * backfilled from the existing Supabase record before this ran (see
+ * runPipeline.js's `knownByKey` option) — still paid for a full site crawl to
+ * find information it already had. Measured on a real run: this was ~18% of
+ * total wall-clock time on a batch where ~88% of scraped leads were already
+ * known.
+ */
 export async function enrichLeads(leads, concurrency = 15) {
-  const queue = leads.filter((l) => l.website);
+  const queue = leads.filter((l) => l.website && !(l.email && l.linkedin));
   let done = 0;
 
   async function worker() {

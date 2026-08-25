@@ -117,7 +117,32 @@ async function main({ only } = {}) {
 
   let allLeads = await gatherLeads(config, cloak, { pythonBin: PYTHON_BIN, only });
 
-  allLeads = await runPipeline(allLeads, { config, pythonBin: PYTHON_BIN });
+  // Early read of the current master, purely to (a) tell the operator what
+  // fraction of this run is genuinely new vs re-scraping known companies, and
+  // (b) hand runPipeline a knownByKey map so it can backfill already-known
+  // fields and skip redundant enrichment work for duplicates. This is a
+  // SEPARATE read from the one below used for the final merge — deliberately
+  // not reused, so the final merge still always reads the freshest master
+  // right before writing, exactly as it did before this existed. An extra
+  // ~14k-row Supabase read is cheap; the enrichment work it lets us skip is
+  // not (see scripts/audit-leads.js — measured ~88% of a typical run's
+  // scraped leads are already-known duplicates).
+  const knownForBackfill = getSupabaseClient()
+    ? await fetchMasterFromSupabase()
+    : loadMasterJson(resolve(root, 'output/master.json'));
+  const knownByKey = new Map();
+  for (const lead of knownForBackfill) {
+    const key = dedupeKey(lead);
+    if (key) knownByKey.set(key, lead);
+  }
+  const alreadyKnown = allLeads.filter((l) => knownByKey.has(dedupeKey(l))).length;
+  console.log(
+    `  ${alreadyKnown}/${allLeads.length} scraped leads (${
+      allLeads.length ? Math.round((100 * alreadyKnown) / allLeads.length) : 0
+    }%) already known — enrichment will be skipped for those with a known email\n`
+  );
+
+  allLeads = await runPipeline(allLeads, { config, pythonBin: PYTHON_BIN, knownByKey });
 
   const minScore = config.quality?.minScore ?? 35;
 

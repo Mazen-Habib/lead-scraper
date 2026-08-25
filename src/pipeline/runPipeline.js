@@ -40,6 +40,48 @@ export function dedupe(leads) {
   return merged;
 }
 
+// Fills a freshly-scraped lead's empty fields from an existing Supabase
+// record for the same company, using exactly the field-fill rule
+// mergeMaster() in src/index.js already uses for the reverse direction
+// (`base[field] || lead[field]`) — so the record this pipeline run produces
+// agrees with what the eventual merge will produce, rather than looking
+// incomplete for a run that's actually just re-confirming a known lead.
+//
+// This exists to make enrichLeads()'s and scrapegraph_enricher.py's own
+// "already have an email" skip checks fire correctly for re-scraped
+// duplicates. Those checks run on the LEAD OBJECT, not against Supabase, so
+// without this a duplicate lead whose raw scrape has no email would still
+// look email-less to them and get re-crawled/re-enriched for information the
+// master already has — measured at ~88% of a typical run's scraped leads,
+// and the single biggest source of wasted enrichment time (see
+// scripts/audit-leads.js and this commit's message for the numbers).
+//
+// Deliberately does NOT touch filterByContactPoint/filterByDeadEmailOnly
+// downstream — those still run on every lead exactly as before. Backfilling
+// a known email is what lets an already-known lead legitimately PASS those
+// filters (correctly — it has a contact point, just not from this scrape),
+// rather than being silently exempted from them.
+export function backfillFromKnown(leads, knownByKey) {
+  if (!knownByKey || knownByKey.size === 0) return leads;
+  let backfilled = 0;
+  for (const lead of leads) {
+    const key = dedupeKey(lead);
+    if (!key) continue;
+    const known = knownByKey.get(key);
+    if (!known) continue;
+    let touched = false;
+    for (const [field] of CSV_COLUMNS) {
+      if (!lead[field] && known[field]) {
+        lead[field] = known[field];
+        touched = true;
+      }
+    }
+    if (touched) backfilled++;
+  }
+  if (backfilled > 0) console.log(`  Backfilled known fields onto ${backfilled} already-seen leads`);
+  return leads;
+}
+
 /**
  * opts:
  *   config      - loaded config.json (ICP keywords, quality.minScore)
@@ -47,6 +89,16 @@ export function dedupe(leads) {
  *                 (defaults to config.findEmails)
  *   pythonBin   - resolved python executable, or null to skip ScrapegraphAI
  *   scrapegraph - config.scrapegraph block (defaults to config.scrapegraph)
+ *   knownByKey  - optional Map<dedupeKey, existingLeadRecord> (e.g. the
+ *                 current Supabase master, keyed by src/lib/normalizeUrl.js's
+ *                 dedupeKey()). When given, a re-scraped lead that matches an
+ *                 existing record gets that record's known fields backfilled
+ *                 before enrichment runs, so enrichLeads/scrapegraph correctly
+ *                 skip work for leads we already have an email for instead of
+ *                 redoing it. Omit entirely for unchanged behaviour — this is
+ *                 opt-in and every existing caller (ingest-run-csv.js,
+ *                 scrapeUrl.js, the test suite) is unaffected unless it starts
+ *                 passing this.
  */
 export async function runPipeline(rawLeads, opts = {}) {
   const {
@@ -54,6 +106,7 @@ export async function runPipeline(rawLeads, opts = {}) {
     findEmails = config.findEmails,
     pythonBin = null,
     scrapegraph = config.scrapegraph || {},
+    knownByKey = null,
   } = opts;
 
   let leads = [...rawLeads];
@@ -64,6 +117,8 @@ export async function runPipeline(rawLeads, opts = {}) {
 
   leads = dedupe(leads);
   console.log(`${leads.length} unique leads after dedupe`);
+
+  backfillFromKnown(leads, knownByKey);
 
   leads = filterByIcp(leads, config);
   console.log(`${leads.length} leads after ICP/category filter`);
