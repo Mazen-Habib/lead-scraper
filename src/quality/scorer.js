@@ -101,6 +101,11 @@ export function scoreLead(lead) {
   // a categorically different lead than a 5-person shop with the same tags.
   if (lead.is_enterprise) score += 3;
 
+  // Named decision-maker bonus (+5 uncapped) — a real person to email beats
+  // a role inbox (info@/sales@), which is the single biggest lead-quality
+  // gap measured in memory.md (61% of emailed leads are role inboxes).
+  if (lead.contact_name) score += 5;
+
   score = Math.min(100, score);
 
   // ── Tier ─────────────────────────────────────────────────────────────────

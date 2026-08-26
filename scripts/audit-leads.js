@@ -256,6 +256,13 @@ async function main() {
     }
     console.log('');
 
+    console.log('  COVERAGE BY COUNTRY (top 12)');
+    for (const [country, n] of tally(leads, (l) => l.country).slice(0, 12)) {
+      console.log(`    ${String(n).padStart(6)}  ${bar(n, total, 18)}  ${country}`);
+    }
+    console.log(`    ${String(leads.filter((l) => l.city).length).padStart(6)}  ${pct(leads.filter((l) => l.city).length, total).padStart(5)}%  have a resolved city (of ${pct(leads.filter((l) => l.country).length, total)}% with a resolved country)`);
+    console.log('');
+
     console.log('  COVERAGE BY INDUSTRY (top 12)');
     for (const [ind, n] of tally(leads, (l) => l.industry).slice(0, 12)) {
       console.log(`    ${String(n).padStart(6)}  ${bar(n, total, 18)}  ${ind}`);
@@ -267,6 +274,7 @@ async function main() {
     const roleInbox = withEmail.filter((l) => ROLE_INBOX.test(l.email));
     console.log(`    ${String(withEmail.length).padStart(6)}  ${pct(withEmail.length, total).padStart(5)}%  have any email`);
     console.log(`    ${String(roleInbox.length).padStart(6)}  ${pct(roleInbox.length, withEmail.length).padStart(5)}%  ...of those, role inboxes (of emails, not of total)`);
+    console.log(`    ${String(leads.filter((l) => l.contact_name).length).padStart(6)}  ${pct(leads.filter((l) => l.contact_name).length, total).padStart(5)}%  have a named decision-maker (contact_name)`);
     console.log(`    ${String(leads.filter((l) => l.phone).length).padStart(6)}  ${pct(leads.filter((l) => l.phone).length, total).padStart(5)}%  have a phone`);
     console.log(`    ${String(leads.filter((l) => l.linkedin).length).padStart(6)}  ${pct(leads.filter((l) => l.linkedin).length, total).padStart(5)}%  have a LinkedIn`);
     console.log('');

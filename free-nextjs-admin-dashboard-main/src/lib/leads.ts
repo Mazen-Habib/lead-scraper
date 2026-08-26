@@ -11,6 +11,8 @@ export type LeadRow = {
   website: string | null;
   email: string | null;
   all_emails: string | null;
+  contact_name: string | null;
+  contact_title: string | null;
   phone: string | null;
   address: string | null;
   linkedin: string | null;
@@ -40,6 +42,8 @@ export type LeadRow = {
   tag_confidence: number | null;
   tag_source: string | null;
   region: string | null;
+  country: string | null;
+  city: string | null;
 };
 
 // DB columns are properly typed (numeric/int); the rest of the app expects
@@ -53,6 +57,8 @@ export function rowToLead(row: LeadRow): Lead {
     website: row.website ?? "",
     email: row.email ?? "",
     all_emails: row.all_emails ?? "",
+    contact_name: row.contact_name ?? "",
+    contact_title: row.contact_title ?? "",
     phone: row.phone ?? "",
     address: row.address ?? "",
     linkedin: row.linkedin ?? "",
@@ -82,6 +88,8 @@ export function rowToLead(row: LeadRow): Lead {
     tag_confidence: row.tag_confidence ?? null,
     tag_source: row.tag_source ?? null,
     region: row.region ?? null,
+    country: row.country ?? null,
+    city: row.city ?? null,
   };
 }
 
@@ -132,7 +140,7 @@ function parseCSV(csv: string): Lead[] {
 const SUPABASE_PAGE_SIZE = 1000; // PostgREST's default/max row cap per request
 
 export const LEAD_SELECT_COLUMNS =
-  "id, status, company_name, category, website, email, all_emails, phone, address, linkedin, facebook, instagram, rating, review_count, company_size, hourly_rate, min_project, search_query, profile_url, source, engine, email_verified, score, tier, scraped_at, first_seen_at, last_seen_at, industry, tags, sub_industries, employee_count, firm_size_band, is_enterprise, tag_confidence, tag_source, region";
+  "id, status, company_name, category, website, email, all_emails, contact_name, contact_title, phone, address, linkedin, facebook, instagram, rating, review_count, company_size, hourly_rate, min_project, search_query, profile_url, source, engine, email_verified, score, tier, scraped_at, first_seen_at, last_seen_at, industry, tags, sub_industries, employee_count, firm_size_band, is_enterprise, tag_confidence, tag_source, region, country, city";
 
 async function fetchAllLeadRows(
   supabase: NonNullable<Awaited<ReturnType<typeof getSupabaseServerClient>>>
@@ -214,6 +222,8 @@ export type LeadsQuery = {
   industry?: string;
   tag?: string;
   region?: string;
+  country?: string;
+  city?: string;
   firmSizeBand?: string;
   minScore?: number;
   maxScore?: number;
@@ -251,6 +261,8 @@ function matchesQueryInMemory(lead: Lead, q: ReturnType<typeof normalizeQuery>):
   if (q.industry && lead.industry !== q.industry) return false;
   if (q.tag && !(lead.tags ?? []).includes(q.tag)) return false;
   if (q.region && lead.region !== q.region) return false;
+  if (q.country && lead.country !== q.country) return false;
+  if (q.city && lead.city !== q.city) return false;
   if (q.firmSizeBand && lead.firm_size_band !== q.firmSizeBand) return false;
   if (q.minScore != null && (parseInt(lead.score) || 0) < q.minScore) return false;
   if (q.maxScore != null && (parseInt(lead.score) || 0) > q.maxScore) return false;
@@ -283,6 +295,8 @@ export async function queryLeads(rawQuery: LeadsQuery): Promise<LeadsQueryResult
     if (q.industry) query = query.eq("industry", q.industry);
     if (q.tag) query = query.contains("tags", [q.tag]);
     if (q.region) query = query.eq("region", q.region);
+    if (q.country) query = query.eq("country", q.country);
+    if (q.city) query = query.eq("city", q.city);
     if (q.firmSizeBand) query = query.eq("firm_size_band", q.firmSizeBand);
     if (q.minScore != null) query = query.gte("score", q.minScore);
     if (q.maxScore != null) query = query.lte("score", q.maxScore);
@@ -343,6 +357,8 @@ export async function queryAllLeads(rawQuery: Omit<LeadsQuery, "page" | "pageSiz
       if (q.industry) query = query.eq("industry", q.industry);
       if (q.tag) query = query.contains("tags", [q.tag]);
       if (q.region) query = query.eq("region", q.region);
+    if (q.country) query = query.eq("country", q.country);
+    if (q.city) query = query.eq("city", q.city);
       if (q.firmSizeBand) query = query.eq("firm_size_band", q.firmSizeBand);
       if (q.minScore != null) query = query.gte("score", q.minScore);
       if (q.maxScore != null) query = query.lte("score", q.maxScore);

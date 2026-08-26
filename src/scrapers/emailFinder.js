@@ -1,5 +1,5 @@
 import * as cheerio from 'cheerio';
-import { cleanEmail } from '../lib/cleanLead.js';
+import { cleanEmail, cleanStr } from '../lib/cleanLead.js';
 import { curlFetchText } from '../lib/curlImpersonate.js';
 
 const EMAIL_RE = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,}/g;
@@ -10,6 +10,166 @@ const DEEP_CANDIDATE_PATHS = ['/team', '/about-us', '/leadership', '/contact-us'
 // Junk matches that regex picks up from asset filenames / trackers
 const JUNK_PATTERNS =
   /\.(png|jpe?g|gif|svg|webp|css|js)$|sentry|wixpress|example\.(com|org)|@2x|@3x|^(xxx|email|name|user|your|test|firstname|lastname)@|@(xxx|domain|yourdomain|yoursite|sentry|example)\.|placeholder/i;
+
+// A parked/misconfigured/template page (200 OK, but the body is stock
+// placeholder content, not the real business's site) — a real production hit
+// was "Ava Thompson, Founder and Yoga Instructor" pulled off a sandwich
+// bar's <title>Access Forbidden</title> page whose meta description was
+// still "Webpage description goes here". Nothing on a page like this is a
+// trustworthy signal for a decision-maker, however name-shaped it looks.
+const PAGE_JUNK_RE =
+  /webpage description goes here|lorem ipsum|access forbidden|403 forbidden|under construction|coming soon|domain (is )?for sale|this site can.?t be reached/i;
+
+// A person's full name, e.g. "John Smith" or "Mary Jane Watson" — 2-3
+// capitalized words, nothing else on the line.
+const NAME_RE = /^[A-Z][a-zA-Z'.-]+(?:\s[A-Z][a-zA-Z'.-]+){1,2}$/;
+
+// Section headings ("Meet Our Team", "Our Leadership") and unrelated service
+// copy ("Business Immigration Advice") match NAME_RE just as easily as a real
+// name — both are 2-3 capitalized words. None of these words legitimately
+// appear in a person's name, so they're a safe reject list.
+const NAME_BLOCKLIST_RE =
+  /\b(Team|Leadership|Staff|Members?|Management|Meet|Our|About|Company|Group|Services?|Advice|Business|Contact|Careers|Visa|Immigration|Department|Office|Manager|Officer|Executive|Operations?|Production|Coordinator|Supervisor|Administrator|Representative|Specialist|Engineer|Consultant|Analyst|Associate|Assistant)\b/i;
+
+// Placeholder names used in templates/examples — never a real contact.
+// "John Smith"/"Jane Smith" are deliberately NOT here: unlike "(John|Jane)
+// Doe", they're common enough as real names that blocking them would cost
+// more true positives than the rare placeholder use would save.
+const PLACEHOLDER_NAME_RE =
+  /^(john|jane)\s+doe$|^test\s+test$|^foo\s+bar$|^your\s+name$|^full\s+name$|^first\s+last$/i;
+
+// Job titles that identify a decision-maker, ranked by how senior/authoritative
+// they are — tier 1 wins over tier 2 when a page lists several people.
+const TITLE_TIERS = [
+  /\b(Founder|Co-Founder|CEO|Chief Executive Officer|President|Owner|Managing Director|Managing Partner)\b/i,
+  /\b(CTO|COO|CFO|CMO|Chief [A-Za-z]+ Officer|VP|Vice President|Partner|Principal|Director)\b/i,
+  /\b(Head of [A-Za-z &]+|Manager)\b/i,
+];
+
+function classifyTitle(text) {
+  for (let i = 0; i < TITLE_TIERS.length; i++) {
+    if (TITLE_TIERS[i].test(text)) return i + 1;
+  }
+  return 0;
+}
+
+function looksLikeName(text) {
+  const t = (text || '').trim();
+  if (!t || t.length > 40) return false;
+  if (!NAME_RE.test(t)) return false;
+  if (NAME_BLOCKLIST_RE.test(t)) return false;
+  if (PLACEHOLDER_NAME_RE.test(t)) return false;
+  return true;
+}
+
+// Walks parsed JSON-LD (schema.org) looking for `Person` nodes with both a
+// name and a jobTitle — the highest-confidence signal a site can give us,
+// since it's structured data the site itself published for search engines.
+function walkForPersons(node, candidates, depth = 0) {
+  if (!node || typeof node !== 'object' || depth > 4) return;
+  if (node['@type'] === 'Person' && node.name && node.jobTitle) {
+    const name = String(node.name).trim();
+    if (!PLACEHOLDER_NAME_RE.test(name)) {
+      const tier = classifyTitle(String(node.jobTitle)) || 4;
+      candidates.push({ name, title: String(node.jobTitle), tier });
+    }
+  }
+  for (const key of Object.keys(node)) {
+    const val = node[key];
+    if (Array.isArray(val)) val.forEach((v) => walkForPersons(v, candidates, depth + 1));
+    else if (val && typeof val === 'object') walkForPersons(val, candidates, depth + 1);
+  }
+}
+
+function extractFromJsonLd($) {
+  const candidates = [];
+  $('script[type="application/ld+json"]').each((_, el) => {
+    let data;
+    try {
+      data = JSON.parse($(el).contents().text());
+    } catch {
+      return;
+    }
+    for (const item of Array.isArray(data) ? data : [data]) walkForPersons(item, candidates);
+  });
+  return candidates;
+}
+
+// Heuristic fallback for sites without JSON-LD: finds short elements whose
+// text is just a job title (e.g. "CEO & Founder") and looks for a name-shaped
+// sibling near it — the common "team member card" pattern (name heading,
+// title directly below/after it).
+//
+// The same card shape shows up in client-testimonial widgets ("Jane Doe,
+// Founder, Acme Co" under a quoted review) — a false positive that would
+// attribute someone else's customer as the company's own decision-maker.
+// Testimonial text reliably contains a quoted sentence nearby even when
+// there's no semantic class name to key off (component-library markup tends
+// to use utility classes, not "testimonial"), so a curly-quote/quoted-run
+// check in the surrounding container is a more reliable discriminator than
+// class names here.
+const QUOTE_NEARBY_RE = /[“”]|"[^"]{20,}"/;
+
+function nearbyTextHasQuote($el) {
+  let node = $el;
+  for (let i = 0; i < 4 && node.length; i++) node = node.parent();
+  return QUOTE_NEARBY_RE.test(node.text());
+}
+
+// Nav/footer link text ("Partner Login", "Become a Partner") matches the
+// name and title shapes just as easily as a real person does — the only
+// reliable tell is that it's link text, not prose. Reject any candidate
+// piece (title or name) whose visible text is entirely a link's text,
+// whether the element itself is the <a> (or inside one, e.g. a caption
+// under a linked image) or just wraps one (e.g. <h6><a>Partner Login</a></h6>).
+function isLinkText($el) {
+  if ($el.is('a') || $el.closest('a').length > 0) return true;
+  const innerLinkText = $el.find('a').text().trim();
+  return innerLinkText.length > 0 && innerLinkText === $el.text().trim();
+}
+
+function extractFromDom($) {
+  const candidates = [];
+  $('h1,h2,h3,h4,h5,h6,strong,b,span,p,div').each((_, el) => {
+    const text = $(el).text().trim();
+    if (!text || text.length > 60) return;
+    const tier = classifyTitle(text);
+    if (!tier) return;
+    if (text.split(/\s+/).length > 6) return; // avoid matching full sentences
+
+    const $el = $(el);
+    if (isLinkText($el)) return;
+    if (nearbyTextHasQuote($el)) return; // likely a testimonial card, not our team
+
+    let name = '';
+    if (looksLikeName($el.prev().text()) && !isLinkText($el.prev())) {
+      name = $el.prev().text().trim();
+    } else if (looksLikeName($el.parent().prev().text()) && !isLinkText($el.parent().prev())) {
+      name = $el.parent().prev().text().trim();
+    } else {
+      $el
+        .parent()
+        .children()
+        .each((_, sib) => {
+          if (sib === el) return false; // stop once we reach the title element itself
+          const $sib = $(sib);
+          if (looksLikeName($sib.text()) && !isLinkText($sib)) name = $sib.text().trim();
+        });
+    }
+    if (name) candidates.push({ name, title: text, tier });
+  });
+  return candidates;
+}
+
+// Picks the most senior named decision-maker found on a page, from
+// already-parsed JSON-LD + DOM heuristics — no extra network calls, so this
+// is free on every page findContacts() was already going to fetch.
+function extractDecisionMaker($) {
+  const candidates = [...extractFromJsonLd($), ...extractFromDom($)];
+  if (candidates.length === 0) return null;
+  candidates.sort((a, b) => a.tier - b.tier);
+  return { name: cleanStr(candidates[0].name), title: cleanStr(candidates[0].title) };
+}
 
 async function fetchPage(url, timeoutMs) {
   try {
@@ -71,12 +231,12 @@ function discoverFooterPaths($, origin, alreadyQueued) {
  */
 export async function findContacts(website, opts = {}) {
   const { deep = false, timeoutMs = deep ? 30000 : 6000 } = opts;
-  const contacts = { emails: new Set(), linkedin: '', facebook: '', instagram: '' };
+  const contacts = { emails: new Set(), linkedin: '', facebook: '', instagram: '', contactName: '', contactTitle: '' };
   let origin;
   try {
     origin = new URL(website).origin;
   } catch {
-    return { emails: [], linkedin: '', facebook: '', instagram: '' };
+    return { emails: [], linkedin: '', facebook: '', instagram: '', contactName: '', contactTitle: '' };
   }
 
   const queue = [...CANDIDATE_PATHS, ...(deep ? DEEP_CANDIDATE_PATHS : [])];
@@ -125,6 +285,17 @@ export async function findContacts(website, opts = {}) {
       if (ig) contacts.instagram = ig.split('?')[0];
     }
 
+    // Named decision-maker (about/team/leadership pages) — same fetched
+    // page, no extra request. Keep the first (most senior) one found.
+    // Skipped entirely on a parked/placeholder page — see PAGE_JUNK_RE.
+    if (!contacts.contactName && !PAGE_JUNK_RE.test(html)) {
+      const person = extractDecisionMaker($);
+      if (person) {
+        contacts.contactName = person.name;
+        contacts.contactTitle = person.title;
+      }
+    }
+
     // Deep mode only: on the homepage, queue any footer links to contact/
     // about/team pages the fixed candidate list didn't already cover.
     if (deep && path === '' && !footerChecked) {
@@ -138,25 +309,35 @@ export async function findContacts(website, opts = {}) {
     linkedin: contacts.linkedin,
     facebook: contacts.facebook,
     instagram: contacts.instagram,
+    contactName: contacts.contactName,
+    contactTitle: contacts.contactTitle,
   };
 }
 
 /**
  * Runs findContacts over many leads with limited concurrency.
  *
- * Skips a lead that already has both an email AND a linkedin — the same
- * "we have everything we came for" condition findContacts itself uses to stop
- * crawling a single site early (see the `emails.size > 0 && linkedin` check
- * above). Previously this filtered on `l.website` alone, so a lead already
- * fully known — most often a re-scraped duplicate whose email/linkedin were
- * backfilled from the existing Supabase record before this ran (see
- * runPipeline.js's `knownByKey` option) — still paid for a full site crawl to
- * find information it already had. Measured on a real run: this was ~18% of
- * total wall-clock time on a batch where ~88% of scraped leads were already
- * known.
+ * Skips a lead that already has an email, a linkedin, AND a contact_name —
+ * "we have everything we came for". Previously this filtered on email+linkedin
+ * alone, so a lead already fully known — most often a re-scraped duplicate
+ * whose fields were backfilled from the existing Supabase record before this
+ * ran (see runPipeline.js's `knownByKey` option) — still paid for a full site
+ * crawl to find information it already had. Measured on a real run: this was
+ * ~18% of total wall-clock time on a batch where ~88% of scraped leads were
+ * already known.
+ *
+ * contact_name has to be part of that "fully known" bar, not just email+
+ * linkedin: a source scraper (e.g. PSEB) commonly hands over its own role
+ * inbox (info@...) and a company LinkedIn directly, which used to satisfy the
+ * old two-field check and skip the crawl entirely — meaning the free
+ * decision-maker extraction below never got a chance to run on exactly the
+ * leads it exists to fix. A genuinely-known duplicate isn't penalized by this:
+ * backfillFromKnown() (runPipeline.js) copies contact_name from the Supabase
+ * master the same way it does every other field, so once a lead has been
+ * crawled once and a name found, later re-scrapes still skip it.
  */
 export async function enrichLeads(leads, concurrency = 15) {
-  const queue = leads.filter((l) => l.website && !(l.email && l.linkedin));
+  const queue = leads.filter((l) => l.website && !(l.email && l.linkedin && l.contact_name));
   let done = 0;
 
   async function worker() {
@@ -174,6 +355,8 @@ export async function enrichLeads(leads, concurrency = 15) {
         lead.linkedin = c.linkedin || lead.linkedin || '';
         lead.facebook = c.facebook || lead.facebook || '';
         lead.instagram = c.instagram || lead.instagram || '';
+        lead.contact_name = c.contactName || lead.contact_name || '';
+        lead.contact_title = c.contactTitle || lead.contact_title || '';
       } catch {
         /* leave fields as-is on error */
       }

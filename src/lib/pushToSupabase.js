@@ -14,7 +14,7 @@ const RETRY_DELAYS_MS = [2000, 5000]; // backoff between attempts 1->2 and 2->3
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const MASTER_SELECT_COLUMNS =
-  'company_name, category, website, email, all_emails, phone, address, linkedin, facebook, instagram, rating, review_count, company_size, hourly_rate, min_project, search_query, profile_url, source, engine, email_verified, score, tier, scraped_at, first_seen_at, last_seen_at, industry, tags, sub_industries, employee_count, firm_size_band, is_enterprise, tag_confidence, tag_source, region';
+  'company_name, category, website, email, all_emails, contact_name, contact_title, phone, address, linkedin, facebook, instagram, rating, review_count, company_size, hourly_rate, min_project, search_query, profile_url, source, engine, email_verified, score, tier, scraped_at, first_seen_at, last_seen_at, industry, tags, sub_industries, employee_count, firm_size_band, is_enterprise, tag_confidence, tag_source, region, country, city';
 
 function toRow(lead) {
   const key = dedupeKey(lead);
@@ -26,6 +26,8 @@ function toRow(lead) {
     website: lead.website || null,
     email: lead.email || null,
     all_emails: lead.all_emails || null,
+    contact_name: lead.contact_name || null,
+    contact_title: lead.contact_title || null,
     phone: lead.phone || null,
     address: lead.address || null,
     linkedin: lead.linkedin || null,
@@ -55,6 +57,8 @@ function toRow(lead) {
     tag_confidence: lead.tag_confidence != null ? Number(lead.tag_confidence) : null,
     tag_source: lead.tag_source || null,
     region: lead.region || null,
+    country: lead.country || null,
+    city: lead.city || null,
   };
 }
 
@@ -67,6 +71,8 @@ function fromRow(row) {
     website: row.website || '',
     email: row.email || '',
     all_emails: row.all_emails || '',
+    contact_name: row.contact_name || '',
+    contact_title: row.contact_title || '',
     phone: row.phone || '',
     address: row.address || '',
     linkedin: row.linkedin || '',
@@ -96,6 +102,8 @@ function fromRow(row) {
     tag_confidence: row.tag_confidence != null ? row.tag_confidence : null,
     tag_source: row.tag_source || null,
     region: row.region || null,
+    country: row.country || null,
+    city: row.city || null,
   };
 }
 

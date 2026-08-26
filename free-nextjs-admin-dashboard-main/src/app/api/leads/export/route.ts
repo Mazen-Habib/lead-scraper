@@ -7,6 +7,7 @@ const CSV_COLUMNS = [
   "company_name", "category", "email", "phone", "address", "website",
   "linkedin", "source", "score", "tier", "rating", "review_count",
   "company_size", "hourly_rate", "email_verified", "industry", "region",
+  "country", "city", "contact_name", "contact_title",
   "firm_size_band", "tags", "scraped_at",
 ] as (keyof Lead)[];
 
@@ -32,6 +33,8 @@ export async function GET(request: NextRequest) {
     industry: params.get("industry") || undefined,
     tag: params.get("tag") || undefined,
     region: params.get("region") || undefined,
+    country: params.get("country") || undefined,
+    city: params.get("city") || undefined,
     firmSizeBand: params.get("firmSizeBand") || undefined,
     minScore: params.get("minScore") ? parseInt(params.get("minScore")!, 10) : undefined,
     maxScore: params.get("maxScore") ? parseInt(params.get("maxScore")!, 10) : undefined,

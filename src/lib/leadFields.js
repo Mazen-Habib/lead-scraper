@@ -8,6 +8,8 @@ export const CSV_COLUMNS = [
   ['website', 'website'],
   ['email', 'email'],
   ['all_emails', 'all_emails'],
+  ['contact_name', 'contact_name'],   // decision-maker name, extracted free from about/team/leadership pages
+  ['contact_title', 'contact_title'], // their job title, e.g. 'Founder', 'CEO'
   ['phone', 'phone'],
   ['address', 'address'],
   ['linkedin', 'linkedin'],
@@ -37,4 +39,6 @@ export const CSV_COLUMNS = [
   ['tag_confidence', 'tag_confidence'],     // 0-1, confidence of the classifier pass
   ['tag_source', 'tag_source'],             // 'rules' / 'llm' / 'manual'
   ['region', 'region'],                     // resolved region slug, e.g. 'middle-east'
+  ['country', 'country'],                   // resolved country slug, e.g. 'pakistan'
+  ['city', 'city'],                         // resolved city slug, e.g. 'karachi'
 ];

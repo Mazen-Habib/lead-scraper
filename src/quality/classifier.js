@@ -52,7 +52,7 @@ const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 //
 // Cached because the regex set is otherwise rebuilt for every lead.
 const boundaryReCache = new Map();
-function matchesWord(haystack, keyword) {
+export function matchesWord(haystack, keyword) {
   let re = boundaryReCache.get(keyword);
   if (!re) {
     re = new RegExp(`(?:^|[^a-z0-9])${escapeRe(keyword)}s?(?:[^a-z0-9]|$)`, 'i');

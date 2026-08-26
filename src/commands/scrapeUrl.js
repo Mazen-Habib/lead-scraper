@@ -39,6 +39,8 @@ export async function scrapeUrl(website, opts = {}) {
     linkedin: contacts.linkedin,
     facebook: contacts.facebook,
     instagram: contacts.instagram,
+    contact_name: contacts.contactName,
+    contact_title: contacts.contactTitle,
     rating: '',
     reviews: '',
     company_size: '',

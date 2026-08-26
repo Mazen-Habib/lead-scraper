@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import type { Lead } from "@/lib/lead-types";
 import { SOURCE_LABELS } from "@/lib/lead-types";
-import { INDUSTRIES, REGIONS, FIRM_SIZE_BANDS } from "@/lib/facets";
+import { INDUSTRIES, REGIONS, COUNTRIES, CITIES, FIRM_SIZE_BANDS } from "@/lib/facets";
 
 const TIER_COLORS: Record<string, string> = {
   A: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
@@ -36,6 +36,8 @@ const SEARCH_DEBOUNCE_MS = 350;
 
 const REGION_LABELS: Record<string, string> = Object.fromEntries(REGIONS.map((r) => [r.slug, r.label]));
 const INDUSTRY_LABELS: Record<string, string> = Object.fromEntries(INDUSTRIES.map((i) => [i.slug, i.label]));
+const COUNTRY_LABELS: Record<string, string> = Object.fromEntries(COUNTRIES.map((c) => [c.slug, c.label]));
+const CITY_LABELS: Record<string, string> = Object.fromEntries(CITIES.map((c) => [c.slug, c.label]));
 
 // ── Lead detail drawer ────────────────────────────────────────────────────────
 
@@ -194,6 +196,8 @@ function LeadDrawer({
               <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">Location</h3>
               <Field label="Address" value={lead.address} />
               {lead.region && <Field label="Region" value={REGION_LABELS[lead.region] ?? lead.region} />}
+              {lead.country && <Field label="Country" value={COUNTRY_LABELS[lead.country] ?? lead.country} />}
+              {lead.city && <Field label="City" value={CITY_LABELS[lead.city] ?? lead.city} />}
             </section>
           )}
 
@@ -313,6 +317,8 @@ type Filters = {
   tier: string;
   source: string;
   region: string;
+  country: string;
+  city: string;
   industry: string;
   firmSizeBand: string;
   emailOnly: boolean;
@@ -323,7 +329,7 @@ type Filters = {
 };
 
 const DEFAULT_FILTERS: Filters = {
-  search: "", tier: "All", source: "All", region: "All", industry: "All",
+  search: "", tier: "All", source: "All", region: "All", country: "All", city: "All", industry: "All",
   firmSizeBand: "All", emailOnly: false, minScore: "", maxScore: "",
   sortCol: "score", sortDir: "desc",
 };
@@ -333,6 +339,8 @@ function filtersToFilterJson(filters: Filters) {
     tier: filters.tier !== "All" ? filters.tier : undefined,
     source: filters.source !== "All" ? filters.source : undefined,
     region: filters.region !== "All" ? filters.region : undefined,
+    country: filters.country !== "All" ? filters.country : undefined,
+    city: filters.city !== "All" ? filters.city : undefined,
     industry: filters.industry !== "All" ? filters.industry : undefined,
     firmSizeBand: filters.firmSizeBand !== "All" ? filters.firmSizeBand : undefined,
     hasEmail: filters.emailOnly || undefined,
@@ -349,6 +357,8 @@ function buildParams(filters: Filters, page: number): URLSearchParams {
   if (filters.tier !== "All") params.set("tier", filters.tier);
   if (filters.source !== "All") params.set("source", filters.source);
   if (filters.region !== "All") params.set("region", filters.region);
+  if (filters.country !== "All") params.set("country", filters.country);
+  if (filters.city !== "All") params.set("city", filters.city);
   if (filters.industry !== "All") params.set("industry", filters.industry);
   if (filters.firmSizeBand !== "All") params.set("firmSizeBand", filters.firmSizeBand);
   if (filters.emailOnly) params.set("hasEmail", "1");
@@ -369,6 +379,8 @@ type InitialQuery = {
   source?: string;
   industry?: string;
   region?: string;
+  country?: string;
+  city?: string;
   firmSizeBand?: string;
   minScore?: number;
   maxScore?: number;
@@ -385,6 +397,8 @@ function filtersFromInitialQuery(q?: InitialQuery): Filters {
     tier: q.tier ?? "All",
     source: q.source ?? "All",
     region: q.region ?? "All",
+    country: q.country ?? "All",
+    city: q.city ?? "All",
     industry: q.industry ?? "All",
     firmSizeBand: q.firmSizeBand ?? "All",
     emailOnly: q.hasEmail ?? false,
@@ -456,6 +470,8 @@ export default function LeadsTable({
     filters.tier !== "All",
     filters.source !== "All",
     filters.region !== "All",
+    filters.country !== "All",
+    filters.city !== "All",
     filters.industry !== "All",
     filters.firmSizeBand !== "All",
     filters.emailOnly,
@@ -470,6 +486,19 @@ export default function LeadsTable({
     setFilters((f) => ({ ...f, [key]: value }));
     setPage(1);
   };
+
+  // Changing country invalidates a previously-picked city from a different
+  // country (a stale city filter would just zero out the results silently).
+  const setCountryFilter = (value: string) => {
+    setFilters((f) => ({ ...f, country: value, city: "All" }));
+    setPage(1);
+  };
+
+  // Once a country is picked, narrow the city dropdown to that country's
+  // cities so picking one can't produce a combination with zero matches.
+  const cityOptions = filters.country !== "All"
+    ? CITIES.filter((c) => c.country === filters.country)
+    : CITIES;
 
   const applyPreset = (p: Preset) => {
     setFilters({
@@ -666,6 +695,20 @@ export default function LeadsTable({
               {REGIONS.map((r) => <option key={r.slug} value={r.slug}>{r.label}</option>)}
             </select>
 
+            {/* Country */}
+            <select value={filters.country} onChange={(e) => setCountryFilter(e.target.value)}
+              className={`${selectCls} ${filters.country !== "All" ? "border-brand-400 ring-1 ring-brand-300 text-brand-600 dark:text-brand-400" : ""}`}>
+              <option value="All">All Countries</option>
+              {COUNTRIES.map((c) => <option key={c.slug} value={c.slug}>{c.label}</option>)}
+            </select>
+
+            {/* City — narrowed to the selected country's cities, if any */}
+            <select value={filters.city} onChange={(e) => setFilter("city", e.target.value)}
+              className={`${selectCls} ${filters.city !== "All" ? "border-brand-400 ring-1 ring-brand-300 text-brand-600 dark:text-brand-400" : ""}`}>
+              <option value="All">All Cities</option>
+              {cityOptions.map((c) => <option key={c.slug} value={c.slug}>{c.label}</option>)}
+            </select>
+
             {/* Industry */}
             <select value={filters.industry} onChange={(e) => setFilter("industry", e.target.value)}
               className={`${selectCls} ${filters.industry !== "All" ? "border-brand-400 ring-1 ring-brand-300 text-brand-600 dark:text-brand-400" : ""}`}>
@@ -710,12 +753,24 @@ export default function LeadsTable({
           </div>
 
           {/* Active filter pills */}
-          {(filters.region !== "All" || filters.industry !== "All") && (
+          {(filters.region !== "All" || filters.country !== "All" || filters.city !== "All" || filters.industry !== "All") && (
             <div className="flex flex-wrap gap-2 pt-1">
               {filters.region !== "All" && (
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 dark:bg-brand-900/20 border border-brand-200 dark:border-brand-700 px-3 py-1 text-xs font-medium text-brand-700 dark:text-brand-300">
                   📍 {REGION_LABELS[filters.region] ?? filters.region}
                   <button onClick={() => setFilter("region", "All")} className="hover:text-red-500 transition-colors">×</button>
+                </span>
+              )}
+              {filters.country !== "All" && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 dark:bg-brand-900/20 border border-brand-200 dark:border-brand-700 px-3 py-1 text-xs font-medium text-brand-700 dark:text-brand-300">
+                  🌍 {COUNTRY_LABELS[filters.country] ?? filters.country}
+                  <button onClick={() => setCountryFilter("All")} className="hover:text-red-500 transition-colors">×</button>
+                </span>
+              )}
+              {filters.city !== "All" && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 dark:bg-brand-900/20 border border-brand-200 dark:border-brand-700 px-3 py-1 text-xs font-medium text-brand-700 dark:text-brand-300">
+                  🏙️ {CITY_LABELS[filters.city] ?? filters.city}
+                  <button onClick={() => setFilter("city", "All")} className="hover:text-red-500 transition-colors">×</button>
                 </span>
               )}
               {filters.industry !== "All" && (

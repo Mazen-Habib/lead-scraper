@@ -34,6 +34,10 @@ const FILES = [
     source: resolve(root, 'shared/regions.json'),
     target: resolve(root, 'free-nextjs-admin-dashboard-main/src/lib/shared-data/regions.json'),
   },
+  {
+    source: resolve(root, 'shared/geo.json'),
+    target: resolve(root, 'free-nextjs-admin-dashboard-main/src/lib/shared-data/geo.json'),
+  },
 ];
 
 let drifted = false;

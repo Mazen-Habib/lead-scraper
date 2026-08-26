@@ -95,7 +95,7 @@ export function cleanLead(lead) {
   const textFields = ['name', 'company_name', 'category', 'address', 'search_query',
                       'engine', 'source', 'company_size', 'hourly_rate', 'min_project',
                       'rating', 'reviews', 'review_count', 'email_verified', 'scraped_at',
-                      'tier', 'score'];
+                      'tier', 'score', 'contact_name', 'contact_title'];
   for (const f of textFields) {
     if (lead[f]) lead[f] = cleanStr(lead[f]);
   }

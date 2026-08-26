@@ -23,6 +23,8 @@ export async function GET(request: NextRequest) {
     industry: params.get("industry") || undefined,
     tag: params.get("tag") || undefined,
     region: params.get("region") || undefined,
+    country: params.get("country") || undefined,
+    city: params.get("city") || undefined,
     firmSizeBand: params.get("firmSizeBand") || undefined,
     minScore: parseIntParam(params.get("minScore")),
     maxScore: parseIntParam(params.get("maxScore")),

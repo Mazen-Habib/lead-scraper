@@ -6,6 +6,10 @@ export type Lead = {
   website: string;
   email: string;
   all_emails: string;
+  // Named decision-maker, extracted free from about/team/leadership pages.
+  // Optional so rows that predate this column keep typechecking.
+  contact_name?: string;
+  contact_title?: string;
   phone: string;
   address: string;
   linkedin: string;
@@ -39,6 +43,8 @@ export type Lead = {
   tag_source?: string | null;
   // Populated once the backend region resolver (roadmap Phase 4.2) has run.
   region?: string | null;
+  country?: string | null;
+  city?: string | null;
 };
 
 export const SOURCE_LABELS: Record<string, string> = {

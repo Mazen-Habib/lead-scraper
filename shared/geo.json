@@ -1,0 +1,471 @@
+{
+  "countries": [
+    {
+      "slug": "uae", "label": "UAE", "region": "middle-east",
+      "countryKeywords": ["uae", "united arab", "emirates"],
+      "cities": [
+        { "slug": "dubai", "label": "Dubai", "keywords": ["dubai"] },
+        { "slug": "abu-dhabi", "label": "Abu Dhabi", "keywords": ["abu dhabi"] },
+        { "slug": "sharjah", "label": "Sharjah", "keywords": ["sharjah"] },
+        { "slug": "ajman", "label": "Ajman", "keywords": ["ajman"] },
+        { "slug": "ras-al-khaimah", "label": "Ras Al Khaimah", "keywords": ["ras al khaimah", "ras al"] },
+        { "slug": "fujairah", "label": "Fujairah", "keywords": ["fujairah"] }
+      ]
+    },
+    {
+      "slug": "saudi-arabia", "label": "Saudi Arabia", "region": "middle-east",
+      "countryKeywords": ["saudi", "ksa"],
+      "cities": [
+        { "slug": "riyadh", "label": "Riyadh", "keywords": ["riyadh"] },
+        { "slug": "jeddah", "label": "Jeddah", "keywords": ["jeddah"] },
+        { "slug": "dammam", "label": "Dammam", "keywords": ["dammam"] },
+        { "slug": "mecca", "label": "Mecca", "keywords": ["mecca"] },
+        { "slug": "medina", "label": "Medina", "keywords": ["medina"] },
+        { "slug": "khobar", "label": "Khobar", "keywords": ["khobar"] }
+      ]
+    },
+    {
+      "slug": "qatar", "label": "Qatar", "region": "middle-east",
+      "countryKeywords": ["qatar"],
+      "cities": [{ "slug": "doha", "label": "Doha", "keywords": ["doha"] }]
+    },
+    {
+      "slug": "kuwait", "label": "Kuwait", "region": "middle-east",
+      "countryKeywords": ["kuwait"],
+      "cities": []
+    },
+    {
+      "slug": "bahrain", "label": "Bahrain", "region": "middle-east",
+      "countryKeywords": ["bahrain"],
+      "cities": [{ "slug": "manama", "label": "Manama", "keywords": ["manama"] }]
+    },
+    {
+      "slug": "oman", "label": "Oman", "region": "middle-east",
+      "countryKeywords": ["oman"],
+      "cities": [{ "slug": "muscat", "label": "Muscat", "keywords": ["muscat"] }]
+    },
+    {
+      "slug": "jordan", "label": "Jordan", "region": "middle-east",
+      "countryKeywords": ["jordan"],
+      "cities": [{ "slug": "amman", "label": "Amman", "keywords": ["amman"] }]
+    },
+    {
+      "slug": "lebanon", "label": "Lebanon", "region": "middle-east",
+      "countryKeywords": ["lebanon"],
+      "cities": [{ "slug": "beirut", "label": "Beirut", "keywords": ["beirut"] }]
+    },
+    {
+      "slug": "iraq", "label": "Iraq", "region": "middle-east",
+      "countryKeywords": ["iraq"],
+      "cities": [{ "slug": "baghdad", "label": "Baghdad", "keywords": ["baghdad"] }]
+    },
+    {
+      "slug": "israel", "label": "Israel", "region": "middle-east",
+      "countryKeywords": ["israel"],
+      "cities": [
+        { "slug": "tel-aviv", "label": "Tel Aviv", "keywords": ["tel aviv"] },
+        { "slug": "haifa", "label": "Haifa", "keywords": ["haifa"] }
+      ]
+    },
+    {
+      "slug": "palestine", "label": "Palestine", "region": "middle-east",
+      "countryKeywords": ["palestine"],
+      "cities": []
+    },
+    {
+      "slug": "egypt", "label": "Egypt", "region": "middle-east",
+      "countryKeywords": ["egypt"],
+      "cities": [
+        { "slug": "cairo", "label": "Cairo", "keywords": ["cairo"] },
+        { "slug": "alexandria", "label": "Alexandria", "keywords": ["alexandria"] }
+      ]
+    },
+    {
+      "slug": "yemen", "label": "Yemen", "region": "middle-east",
+      "countryKeywords": ["yemen"], "cities": []
+    },
+    {
+      "slug": "syria", "label": "Syria", "region": "middle-east",
+      "countryKeywords": ["syria"], "cities": []
+    },
+
+    {
+      "slug": "pakistan", "label": "Pakistan", "region": "south-asia",
+      "countryKeywords": ["pakistan"],
+      "cities": [
+        { "slug": "karachi", "label": "Karachi", "keywords": ["karachi"] },
+        { "slug": "lahore", "label": "Lahore", "keywords": ["lahore"] },
+        { "slug": "islamabad", "label": "Islamabad", "keywords": ["islamabad"] },
+        { "slug": "faisalabad", "label": "Faisalabad", "keywords": ["faisalabad"] },
+        { "slug": "peshawar", "label": "Peshawar", "keywords": ["peshawar"] },
+        { "slug": "quetta", "label": "Quetta", "keywords": ["quetta"] },
+        { "slug": "multan", "label": "Multan", "keywords": ["multan"] },
+        { "slug": "rawalpindi", "label": "Rawalpindi", "keywords": ["rawalpindi"] }
+      ]
+    },
+    {
+      "slug": "india", "label": "India", "region": "south-asia",
+      "countryKeywords": ["india"],
+      "cities": [
+        { "slug": "bangalore", "label": "Bangalore", "keywords": ["bangalore", "bengaluru"] },
+        { "slug": "mumbai", "label": "Mumbai", "keywords": ["mumbai"] },
+        { "slug": "delhi", "label": "Delhi", "keywords": ["delhi"] },
+        { "slug": "hyderabad", "label": "Hyderabad", "keywords": ["hyderabad"] },
+        { "slug": "pune", "label": "Pune", "keywords": ["pune"] },
+        { "slug": "chennai", "label": "Chennai", "keywords": ["chennai"] },
+        { "slug": "kolkata", "label": "Kolkata", "keywords": ["kolkata"] },
+        { "slug": "ahmedabad", "label": "Ahmedabad", "keywords": ["ahmedabad"] },
+        { "slug": "surat", "label": "Surat", "keywords": ["surat"] },
+        { "slug": "jaipur", "label": "Jaipur", "keywords": ["jaipur"] },
+        { "slug": "lucknow", "label": "Lucknow", "keywords": ["lucknow"] },
+        { "slug": "kochi", "label": "Kochi", "keywords": ["kochi"] }
+      ]
+    },
+    {
+      "slug": "bangladesh", "label": "Bangladesh", "region": "south-asia",
+      "countryKeywords": ["bangladesh"],
+      "cities": [
+        { "slug": "dhaka", "label": "Dhaka", "keywords": ["dhaka"] },
+        { "slug": "chittagong", "label": "Chittagong", "keywords": ["chittagong"] }
+      ]
+    },
+    {
+      "slug": "sri-lanka", "label": "Sri Lanka", "region": "south-asia",
+      "countryKeywords": ["sri lanka"],
+      "cities": [{ "slug": "colombo", "label": "Colombo", "keywords": ["colombo"] }]
+    },
+    {
+      "slug": "nepal", "label": "Nepal", "region": "south-asia",
+      "countryKeywords": ["nepal"],
+      "cities": [{ "slug": "kathmandu", "label": "Kathmandu", "keywords": ["kathmandu"] }]
+    },
+
+    {
+      "slug": "singapore", "label": "Singapore", "region": "southeast-asia",
+      "countryKeywords": ["singapore"], "cities": []
+    },
+    {
+      "slug": "philippines", "label": "Philippines", "region": "southeast-asia",
+      "countryKeywords": ["philippines"],
+      "cities": [
+        { "slug": "manila", "label": "Manila", "keywords": ["manila"] },
+        { "slug": "cebu", "label": "Cebu", "keywords": ["cebu"] },
+        { "slug": "davao", "label": "Davao", "keywords": ["davao"] }
+      ]
+    },
+    {
+      "slug": "malaysia", "label": "Malaysia", "region": "southeast-asia",
+      "countryKeywords": ["malaysia"],
+      "cities": [
+        { "slug": "kuala-lumpur", "label": "Kuala Lumpur", "keywords": ["kuala lumpur"] },
+        { "slug": "penang", "label": "Penang", "keywords": ["penang"] },
+        { "slug": "johor", "label": "Johor", "keywords": ["johor"] }
+      ]
+    },
+    {
+      "slug": "vietnam", "label": "Vietnam", "region": "southeast-asia",
+      "countryKeywords": ["vietnam"],
+      "cities": [
+        { "slug": "ho-chi-minh", "label": "Ho Chi Minh City", "keywords": ["ho chi minh"] },
+        { "slug": "hanoi", "label": "Hanoi", "keywords": ["hanoi"] },
+        { "slug": "da-nang", "label": "Da Nang", "keywords": ["da nang"] }
+      ]
+    },
+    {
+      "slug": "indonesia", "label": "Indonesia", "region": "southeast-asia",
+      "countryKeywords": ["indonesia"],
+      "cities": [
+        { "slug": "jakarta", "label": "Jakarta", "keywords": ["jakarta"] },
+        { "slug": "bali", "label": "Bali", "keywords": ["bali"] },
+        { "slug": "surabaya", "label": "Surabaya", "keywords": ["surabaya"] }
+      ]
+    },
+    {
+      "slug": "thailand", "label": "Thailand", "region": "southeast-asia",
+      "countryKeywords": ["thailand"],
+      "cities": [
+        { "slug": "bangkok", "label": "Bangkok", "keywords": ["bangkok"] },
+        { "slug": "chiang-mai", "label": "Chiang Mai", "keywords": ["chiang mai"] }
+      ]
+    },
+    {
+      "slug": "myanmar", "label": "Myanmar", "region": "southeast-asia",
+      "countryKeywords": ["myanmar"],
+      "cities": [{ "slug": "rangoon", "label": "Rangoon", "keywords": ["rangoon"] }]
+    },
+    {
+      "slug": "cambodia", "label": "Cambodia", "region": "southeast-asia",
+      "countryKeywords": ["cambodia"],
+      "cities": [{ "slug": "phnom-penh", "label": "Phnom Penh", "keywords": ["phnom penh"] }]
+    },
+
+    {
+      "slug": "nigeria", "label": "Nigeria", "region": "africa",
+      "countryKeywords": ["nigeria"],
+      "cities": [
+        { "slug": "lagos", "label": "Lagos", "keywords": ["lagos"] },
+        { "slug": "abuja", "label": "Abuja", "keywords": ["abuja"] },
+        { "slug": "port-harcourt", "label": "Port Harcourt", "keywords": ["port harcourt"] }
+      ]
+    },
+    {
+      "slug": "kenya", "label": "Kenya", "region": "africa",
+      "countryKeywords": ["kenya"],
+      "cities": [
+        { "slug": "nairobi", "label": "Nairobi", "keywords": ["nairobi"] },
+        { "slug": "mombasa", "label": "Mombasa", "keywords": ["mombasa"] }
+      ]
+    },
+    {
+      "slug": "south-africa", "label": "South Africa", "region": "africa",
+      "countryKeywords": ["south africa"],
+      "cities": [
+        { "slug": "cape-town", "label": "Cape Town", "keywords": ["cape town"] },
+        { "slug": "johannesburg", "label": "Johannesburg", "keywords": ["johannesburg"] },
+        { "slug": "durban", "label": "Durban", "keywords": ["durban"] },
+        { "slug": "pretoria", "label": "Pretoria", "keywords": ["pretoria"] }
+      ]
+    },
+    {
+      "slug": "ghana", "label": "Ghana", "region": "africa",
+      "countryKeywords": ["ghana"],
+      "cities": [{ "slug": "accra", "label": "Accra", "keywords": ["accra"] }]
+    },
+    {
+      "slug": "ethiopia", "label": "Ethiopia", "region": "africa",
+      "countryKeywords": ["ethiopia"],
+      "cities": [{ "slug": "addis-ababa", "label": "Addis Ababa", "keywords": ["addis ababa"] }]
+    },
+    {
+      "slug": "tanzania", "label": "Tanzania", "region": "africa",
+      "countryKeywords": ["tanzania"],
+      "cities": [{ "slug": "dar-es-salaam", "label": "Dar es Salaam", "keywords": ["dar es salaam"] }]
+    },
+    {
+      "slug": "uganda", "label": "Uganda", "region": "africa",
+      "countryKeywords": ["uganda"],
+      "cities": [{ "slug": "kampala", "label": "Kampala", "keywords": ["kampala"] }]
+    },
+    {
+      "slug": "morocco", "label": "Morocco", "region": "africa",
+      "countryKeywords": ["morocco"],
+      "cities": [
+        { "slug": "casablanca", "label": "Casablanca", "keywords": ["casablanca"] },
+        { "slug": "rabat", "label": "Rabat", "keywords": ["rabat"] }
+      ]
+    },
+    {
+      "slug": "senegal", "label": "Senegal", "region": "africa",
+      "countryKeywords": ["senegal"],
+      "cities": [{ "slug": "dakar", "label": "Dakar", "keywords": ["dakar"] }]
+    },
+    {
+      "slug": "ivory-coast", "label": "Ivory Coast", "region": "africa",
+      "countryKeywords": ["ivory coast"], "cities": []
+    },
+
+    {
+      "slug": "uk", "label": "United Kingdom", "region": "europe",
+      "countryKeywords": ["uk", "united kingdom"],
+      "cities": [
+        { "slug": "london", "label": "London", "keywords": ["london"] },
+        { "slug": "manchester", "label": "Manchester", "keywords": ["manchester"] },
+        { "slug": "birmingham", "label": "Birmingham", "keywords": ["birmingham"] },
+        { "slug": "glasgow", "label": "Glasgow", "keywords": ["glasgow"] },
+        { "slug": "edinburgh", "label": "Edinburgh", "keywords": ["edinburgh"] }
+      ]
+    },
+    {
+      "slug": "germany", "label": "Germany", "region": "europe",
+      "countryKeywords": ["germany"],
+      "cities": [
+        { "slug": "berlin", "label": "Berlin", "keywords": ["berlin"] },
+        { "slug": "munich", "label": "Munich", "keywords": ["munich"] },
+        { "slug": "hamburg", "label": "Hamburg", "keywords": ["hamburg"] },
+        { "slug": "frankfurt", "label": "Frankfurt", "keywords": ["frankfurt"] },
+        { "slug": "cologne", "label": "Cologne", "keywords": ["cologne"] },
+        { "slug": "dusseldorf", "label": "Düsseldorf", "keywords": ["düsseldorf", "dusseldorf"] }
+      ]
+    },
+    {
+      "slug": "netherlands", "label": "Netherlands", "region": "europe",
+      "countryKeywords": ["netherlands"],
+      "cities": [
+        { "slug": "amsterdam", "label": "Amsterdam", "keywords": ["amsterdam"] },
+        { "slug": "rotterdam", "label": "Rotterdam", "keywords": ["rotterdam"] },
+        { "slug": "the-hague", "label": "The Hague", "keywords": ["the hague"] }
+      ]
+    },
+    {
+      "slug": "france", "label": "France", "region": "europe",
+      "countryKeywords": ["france"],
+      "cities": [
+        { "slug": "paris", "label": "Paris", "keywords": ["paris"] },
+        { "slug": "lyon", "label": "Lyon", "keywords": ["lyon"] },
+        { "slug": "marseille", "label": "Marseille", "keywords": ["marseille"] }
+      ]
+    },
+    {
+      "slug": "spain", "label": "Spain", "region": "europe",
+      "countryKeywords": ["spain"],
+      "cities": [
+        { "slug": "madrid", "label": "Madrid", "keywords": ["madrid"] },
+        { "slug": "barcelona", "label": "Barcelona", "keywords": ["barcelona"] }
+      ]
+    },
+    {
+      "slug": "sweden", "label": "Sweden", "region": "europe",
+      "countryKeywords": ["sweden"],
+      "cities": [{ "slug": "stockholm", "label": "Stockholm", "keywords": ["stockholm"] }]
+    },
+    {
+      "slug": "norway", "label": "Norway", "region": "europe",
+      "countryKeywords": ["norway"],
+      "cities": [{ "slug": "oslo", "label": "Oslo", "keywords": ["oslo"] }]
+    },
+    {
+      "slug": "denmark", "label": "Denmark", "region": "europe",
+      "countryKeywords": ["denmark"],
+      "cities": [{ "slug": "copenhagen", "label": "Copenhagen", "keywords": ["copenhagen"] }]
+    },
+    {
+      "slug": "finland", "label": "Finland", "region": "europe",
+      "countryKeywords": ["finland"],
+      "cities": [{ "slug": "helsinki", "label": "Helsinki", "keywords": ["helsinki"] }]
+    },
+    {
+      "slug": "poland", "label": "Poland", "region": "europe",
+      "countryKeywords": ["poland"],
+      "cities": [{ "slug": "warsaw", "label": "Warsaw", "keywords": ["warsaw"] }]
+    },
+    {
+      "slug": "ukraine", "label": "Ukraine", "region": "europe",
+      "countryKeywords": ["ukraine"],
+      "cities": [{ "slug": "kyiv", "label": "Kyiv", "keywords": ["kyiv"] }]
+    },
+    {
+      "slug": "czech-republic", "label": "Czech Republic", "region": "europe",
+      "countryKeywords": ["czech"],
+      "cities": [{ "slug": "prague", "label": "Prague", "keywords": ["prague"] }]
+    },
+    {
+      "slug": "austria", "label": "Austria", "region": "europe",
+      "countryKeywords": ["austria"],
+      "cities": [{ "slug": "vienna", "label": "Vienna", "keywords": ["vienna"] }]
+    },
+    {
+      "slug": "switzerland", "label": "Switzerland", "region": "europe",
+      "countryKeywords": ["switzerland"],
+      "cities": [{ "slug": "zurich", "label": "Zurich", "keywords": ["zurich"] }]
+    },
+    {
+      "slug": "italy", "label": "Italy", "region": "europe",
+      "countryKeywords": ["italy"],
+      "cities": [
+        { "slug": "rome", "label": "Rome", "keywords": ["rome"] },
+        { "slug": "milan", "label": "Milan", "keywords": ["milan"] }
+      ]
+    },
+    {
+      "slug": "portugal", "label": "Portugal", "region": "europe",
+      "countryKeywords": ["portugal"],
+      "cities": [{ "slug": "lisbon", "label": "Lisbon", "keywords": ["lisbon"] }]
+    },
+    {
+      "slug": "belgium", "label": "Belgium", "region": "europe",
+      "countryKeywords": ["belgium"],
+      "cities": [{ "slug": "brussels", "label": "Brussels", "keywords": ["brussels"] }]
+    },
+
+    {
+      "slug": "usa", "label": "United States", "region": "north-america",
+      "countryKeywords": ["usa", "united states"],
+      "cities": [
+        { "slug": "new-york", "label": "New York", "keywords": ["new york"] },
+        { "slug": "san-francisco", "label": "San Francisco", "keywords": ["san francisco", "silicon valley"] },
+        { "slug": "los-angeles", "label": "Los Angeles", "keywords": ["los angeles"] },
+        { "slug": "seattle", "label": "Seattle", "keywords": ["seattle"] },
+        { "slug": "austin", "label": "Austin", "keywords": ["austin"] },
+        { "slug": "chicago", "label": "Chicago", "keywords": ["chicago"] },
+        { "slug": "boston", "label": "Boston", "keywords": ["boston"] },
+        { "slug": "miami", "label": "Miami", "keywords": ["miami"] },
+        { "slug": "dallas", "label": "Dallas", "keywords": ["dallas"] },
+        { "slug": "denver", "label": "Denver", "keywords": ["denver"] },
+        { "slug": "atlanta", "label": "Atlanta", "keywords": ["atlanta"] }
+      ]
+    },
+    {
+      "slug": "canada", "label": "Canada", "region": "north-america",
+      "countryKeywords": ["canada"],
+      "cities": [
+        { "slug": "toronto", "label": "Toronto", "keywords": ["toronto"] },
+        { "slug": "vancouver", "label": "Vancouver", "keywords": ["vancouver"] },
+        { "slug": "montreal", "label": "Montreal", "keywords": ["montreal"] },
+        { "slug": "calgary", "label": "Calgary", "keywords": ["calgary"] },
+        { "slug": "ottawa", "label": "Ottawa", "keywords": ["ottawa"] }
+      ]
+    },
+    {
+      "slug": "mexico", "label": "Mexico", "region": "north-america",
+      "countryKeywords": ["mexico"],
+      "cities": [
+        { "slug": "mexico-city", "label": "Mexico City", "keywords": ["mexico city"] },
+        { "slug": "guadalajara", "label": "Guadalajara", "keywords": ["guadalajara"] }
+      ]
+    },
+
+    {
+      "slug": "australia", "label": "Australia", "region": "apac-anz",
+      "countryKeywords": ["australia"],
+      "cities": [
+        { "slug": "sydney", "label": "Sydney", "keywords": ["sydney"] },
+        { "slug": "melbourne", "label": "Melbourne", "keywords": ["melbourne"] },
+        { "slug": "brisbane", "label": "Brisbane", "keywords": ["brisbane"] },
+        { "slug": "perth", "label": "Perth", "keywords": ["perth"] },
+        { "slug": "adelaide", "label": "Adelaide", "keywords": ["adelaide"] }
+      ]
+    },
+    {
+      "slug": "new-zealand", "label": "New Zealand", "region": "apac-anz",
+      "countryKeywords": ["new zealand"],
+      "cities": [
+        { "slug": "auckland", "label": "Auckland", "keywords": ["auckland"] },
+        { "slug": "wellington", "label": "Wellington", "keywords": ["wellington"] }
+      ]
+    },
+    {
+      "slug": "japan", "label": "Japan", "region": "apac-anz",
+      "countryKeywords": ["japan"],
+      "cities": [
+        { "slug": "tokyo", "label": "Tokyo", "keywords": ["tokyo"] },
+        { "slug": "osaka", "label": "Osaka", "keywords": ["osaka"] }
+      ]
+    },
+    {
+      "slug": "south-korea", "label": "South Korea", "region": "apac-anz",
+      "countryKeywords": ["south korea"],
+      "cities": [
+        { "slug": "seoul", "label": "Seoul", "keywords": ["seoul"] },
+        { "slug": "busan", "label": "Busan", "keywords": ["busan"] }
+      ]
+    },
+    {
+      "slug": "taiwan", "label": "Taiwan", "region": "apac-anz",
+      "countryKeywords": ["taiwan"],
+      "cities": [{ "slug": "taipei", "label": "Taipei", "keywords": ["taipei"] }]
+    },
+    {
+      "slug": "hong-kong", "label": "Hong Kong", "region": "apac-anz",
+      "countryKeywords": ["hong kong"], "cities": []
+    },
+    {
+      "slug": "china", "label": "China", "region": "apac-anz",
+      "countryKeywords": ["china"],
+      "cities": [
+        { "slug": "beijing", "label": "Beijing", "keywords": ["beijing"] },
+        { "slug": "shanghai", "label": "Shanghai", "keywords": ["shanghai"] },
+        { "slug": "shenzhen", "label": "Shenzhen", "keywords": ["shenzhen"] }
+      ]
+    }
+  ]
+}
