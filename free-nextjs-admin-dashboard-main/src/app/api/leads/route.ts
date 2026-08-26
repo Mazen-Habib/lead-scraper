@@ -25,6 +25,7 @@ export async function GET(request: NextRequest) {
     region: params.get("region") || undefined,
     country: params.get("country") || undefined,
     city: params.get("city") || undefined,
+    leadType: params.get("leadType") || undefined,
     firmSizeBand: params.get("firmSizeBand") || undefined,
     minScore: parseIntParam(params.get("minScore")),
     maxScore: parseIntParam(params.get("maxScore")),

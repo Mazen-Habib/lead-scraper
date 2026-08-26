@@ -44,6 +44,7 @@ export type LeadRow = {
   region: string | null;
   country: string | null;
   city: string | null;
+  lead_type: string | null;
 };
 
 // DB columns are properly typed (numeric/int); the rest of the app expects
@@ -90,6 +91,7 @@ export function rowToLead(row: LeadRow): Lead {
     region: row.region ?? null,
     country: row.country ?? null,
     city: row.city ?? null,
+    lead_type: row.lead_type ?? null,
   };
 }
 
@@ -140,7 +142,7 @@ function parseCSV(csv: string): Lead[] {
 const SUPABASE_PAGE_SIZE = 1000; // PostgREST's default/max row cap per request
 
 export const LEAD_SELECT_COLUMNS =
-  "id, status, company_name, category, website, email, all_emails, contact_name, contact_title, phone, address, linkedin, facebook, instagram, rating, review_count, company_size, hourly_rate, min_project, search_query, profile_url, source, engine, email_verified, score, tier, scraped_at, first_seen_at, last_seen_at, industry, tags, sub_industries, employee_count, firm_size_band, is_enterprise, tag_confidence, tag_source, region, country, city";
+  "id, status, company_name, category, website, email, all_emails, contact_name, contact_title, phone, address, linkedin, facebook, instagram, rating, review_count, company_size, hourly_rate, min_project, search_query, profile_url, source, engine, email_verified, score, tier, scraped_at, first_seen_at, last_seen_at, industry, tags, sub_industries, employee_count, firm_size_band, is_enterprise, tag_confidence, tag_source, region, country, city, lead_type";
 
 async function fetchAllLeadRows(
   supabase: NonNullable<Awaited<ReturnType<typeof getSupabaseServerClient>>>
@@ -224,6 +226,7 @@ export type LeadsQuery = {
   region?: string;
   country?: string;
   city?: string;
+  leadType?: string;
   firmSizeBand?: string;
   minScore?: number;
   maxScore?: number;
@@ -263,6 +266,7 @@ function matchesQueryInMemory(lead: Lead, q: ReturnType<typeof normalizeQuery>):
   if (q.region && lead.region !== q.region) return false;
   if (q.country && lead.country !== q.country) return false;
   if (q.city && lead.city !== q.city) return false;
+  if (q.leadType && lead.lead_type !== q.leadType) return false;
   if (q.firmSizeBand && lead.firm_size_band !== q.firmSizeBand) return false;
   if (q.minScore != null && (parseInt(lead.score) || 0) < q.minScore) return false;
   if (q.maxScore != null && (parseInt(lead.score) || 0) > q.maxScore) return false;
@@ -297,6 +301,7 @@ export async function queryLeads(rawQuery: LeadsQuery): Promise<LeadsQueryResult
     if (q.region) query = query.eq("region", q.region);
     if (q.country) query = query.eq("country", q.country);
     if (q.city) query = query.eq("city", q.city);
+    if (q.leadType) query = query.eq("lead_type", q.leadType);
     if (q.firmSizeBand) query = query.eq("firm_size_band", q.firmSizeBand);
     if (q.minScore != null) query = query.gte("score", q.minScore);
     if (q.maxScore != null) query = query.lte("score", q.maxScore);
@@ -359,6 +364,7 @@ export async function queryAllLeads(rawQuery: Omit<LeadsQuery, "page" | "pageSiz
       if (q.region) query = query.eq("region", q.region);
     if (q.country) query = query.eq("country", q.country);
     if (q.city) query = query.eq("city", q.city);
+    if (q.leadType) query = query.eq("lead_type", q.leadType);
       if (q.firmSizeBand) query = query.eq("firm_size_band", q.firmSizeBand);
       if (q.minScore != null) query = query.gte("score", q.minScore);
       if (q.maxScore != null) query = query.lte("score", q.maxScore);

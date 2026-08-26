@@ -41,4 +41,5 @@ export const CSV_COLUMNS = [
   ['region', 'region'],                     // resolved region slug, e.g. 'middle-east'
   ['country', 'country'],                   // resolved country slug, e.g. 'pakistan'
   ['city', 'city'],                         // resolved city slug, e.g. 'karachi'
+  ['lead_type', 'lead_type'],               // 'buyer' / 'vendor' / null — see src/quality/leadType.js
 ];

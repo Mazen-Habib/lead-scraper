@@ -279,6 +279,12 @@ async function main() {
     console.log(`    ${String(leads.filter((l) => l.linkedin).length).padStart(6)}  ${pct(leads.filter((l) => l.linkedin).length, total).padStart(5)}%  have a LinkedIn`);
     console.log('');
 
+    console.log('  BUYER VS VENDOR (memory.md\'s seller/buyer problem)');
+    for (const [type, n] of tally(leads, (l) => l.lead_type)) {
+      console.log(`    ${String(n).padStart(6)}  ${bar(n, total, 18)}  ${type}`);
+    }
+    console.log('');
+
     console.log('  CLASSIFICATION PROVENANCE');
     for (const [src, n] of tally(leads, (l) => l.tag_source)) {
       console.log(`    ${String(n).padStart(6)}  ${pct(n, total).padStart(5)}%  ${src}`);

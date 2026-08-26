@@ -35,6 +35,7 @@ export default async function LeadsPage({
     region: get("region"),
     country: get("country"),
     city: get("city"),
+    leadType: get("leadType"),
     firmSizeBand: get("firmSizeBand"),
     minScore: parseIntParam(get("minScore")),
     maxScore: parseIntParam(get("maxScore")),

@@ -319,6 +319,7 @@ type Filters = {
   region: string;
   country: string;
   city: string;
+  leadType: string;
   industry: string;
   firmSizeBand: string;
   emailOnly: boolean;
@@ -329,7 +330,7 @@ type Filters = {
 };
 
 const DEFAULT_FILTERS: Filters = {
-  search: "", tier: "All", source: "All", region: "All", country: "All", city: "All", industry: "All",
+  search: "", tier: "All", source: "All", region: "All", country: "All", city: "All", leadType: "All", industry: "All",
   firmSizeBand: "All", emailOnly: false, minScore: "", maxScore: "",
   sortCol: "score", sortDir: "desc",
 };
@@ -341,6 +342,7 @@ function filtersToFilterJson(filters: Filters) {
     region: filters.region !== "All" ? filters.region : undefined,
     country: filters.country !== "All" ? filters.country : undefined,
     city: filters.city !== "All" ? filters.city : undefined,
+    leadType: filters.leadType !== "All" ? filters.leadType : undefined,
     industry: filters.industry !== "All" ? filters.industry : undefined,
     firmSizeBand: filters.firmSizeBand !== "All" ? filters.firmSizeBand : undefined,
     hasEmail: filters.emailOnly || undefined,
@@ -359,6 +361,7 @@ function buildParams(filters: Filters, page: number): URLSearchParams {
   if (filters.region !== "All") params.set("region", filters.region);
   if (filters.country !== "All") params.set("country", filters.country);
   if (filters.city !== "All") params.set("city", filters.city);
+  if (filters.leadType !== "All") params.set("leadType", filters.leadType);
   if (filters.industry !== "All") params.set("industry", filters.industry);
   if (filters.firmSizeBand !== "All") params.set("firmSizeBand", filters.firmSizeBand);
   if (filters.emailOnly) params.set("hasEmail", "1");
@@ -381,6 +384,7 @@ type InitialQuery = {
   region?: string;
   country?: string;
   city?: string;
+  leadType?: string;
   firmSizeBand?: string;
   minScore?: number;
   maxScore?: number;
@@ -399,6 +403,7 @@ function filtersFromInitialQuery(q?: InitialQuery): Filters {
     region: q.region ?? "All",
     country: q.country ?? "All",
     city: q.city ?? "All",
+    leadType: q.leadType ?? "All",
     industry: q.industry ?? "All",
     firmSizeBand: q.firmSizeBand ?? "All",
     emailOnly: q.hasEmail ?? false,
@@ -472,6 +477,7 @@ export default function LeadsTable({
     filters.region !== "All",
     filters.country !== "All",
     filters.city !== "All",
+    filters.leadType !== "All",
     filters.industry !== "All",
     filters.firmSizeBand !== "All",
     filters.emailOnly,
@@ -709,6 +715,14 @@ export default function LeadsTable({
               {cityOptions.map((c) => <option key={c.slug} value={c.slug}>{c.label}</option>)}
             </select>
 
+            {/* Lead type — buyer vs vendor, see memory.md's seller/buyer problem */}
+            <select value={filters.leadType} onChange={(e) => setFilter("leadType", e.target.value)}
+              className={`${selectCls} ${filters.leadType !== "All" ? "border-brand-400 ring-1 ring-brand-300 text-brand-600 dark:text-brand-400" : ""}`}>
+              <option value="All">Buyers &amp; Vendors</option>
+              <option value="buyer">Buyers only</option>
+              <option value="vendor">Vendors only</option>
+            </select>
+
             {/* Industry */}
             <select value={filters.industry} onChange={(e) => setFilter("industry", e.target.value)}
               className={`${selectCls} ${filters.industry !== "All" ? "border-brand-400 ring-1 ring-brand-300 text-brand-600 dark:text-brand-400" : ""}`}>
@@ -753,7 +767,7 @@ export default function LeadsTable({
           </div>
 
           {/* Active filter pills */}
-          {(filters.region !== "All" || filters.country !== "All" || filters.city !== "All" || filters.industry !== "All") && (
+          {(filters.region !== "All" || filters.country !== "All" || filters.city !== "All" || filters.leadType !== "All" || filters.industry !== "All") && (
             <div className="flex flex-wrap gap-2 pt-1">
               {filters.region !== "All" && (
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 dark:bg-brand-900/20 border border-brand-200 dark:border-brand-700 px-3 py-1 text-xs font-medium text-brand-700 dark:text-brand-300">
@@ -771,6 +785,12 @@ export default function LeadsTable({
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 dark:bg-brand-900/20 border border-brand-200 dark:border-brand-700 px-3 py-1 text-xs font-medium text-brand-700 dark:text-brand-300">
                   🏙️ {CITY_LABELS[filters.city] ?? filters.city}
                   <button onClick={() => setFilter("city", "All")} className="hover:text-red-500 transition-colors">×</button>
+                </span>
+              )}
+              {filters.leadType !== "All" && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 px-3 py-1 text-xs font-medium text-amber-700 dark:text-amber-300">
+                  {filters.leadType === "buyer" ? "🛒 Buyers only" : "🏭 Vendors only"}
+                  <button onClick={() => setFilter("leadType", "All")} className="hover:text-red-500 transition-colors">×</button>
                 </span>
               )}
               {filters.industry !== "All" && (
@@ -828,8 +848,13 @@ export default function LeadsTable({
                         onClick={() => setSelectedLead(lead)}
                         className="hover:bg-brand-50/50 dark:hover:bg-white/[0.03] transition-colors cursor-pointer group">
                         <td className="px-5 py-3.5 max-w-[200px]">
-                          <div className="font-semibold text-gray-800 dark:text-white truncate group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
-                            {lead.company_name || "—"}
+                          <div className="flex items-center gap-1.5">
+                            <div className="font-semibold text-gray-800 dark:text-white truncate group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
+                              {lead.company_name || "—"}
+                            </div>
+                            {lead.lead_type === "vendor" && (
+                              <span title="Sells the service it was scraped under, not a buyer" className="shrink-0 text-xs px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">Vendor</span>
+                            )}
                           </div>
                           {lead.category && (
                             <div className="text-xs text-gray-400 truncate mt-0.5">{lead.category}</div>

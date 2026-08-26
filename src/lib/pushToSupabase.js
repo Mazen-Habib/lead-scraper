@@ -14,7 +14,7 @@ const RETRY_DELAYS_MS = [2000, 5000]; // backoff between attempts 1->2 and 2->3
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const MASTER_SELECT_COLUMNS =
-  'company_name, category, website, email, all_emails, contact_name, contact_title, phone, address, linkedin, facebook, instagram, rating, review_count, company_size, hourly_rate, min_project, search_query, profile_url, source, engine, email_verified, score, tier, scraped_at, first_seen_at, last_seen_at, industry, tags, sub_industries, employee_count, firm_size_band, is_enterprise, tag_confidence, tag_source, region, country, city';
+  'company_name, category, website, email, all_emails, contact_name, contact_title, phone, address, linkedin, facebook, instagram, rating, review_count, company_size, hourly_rate, min_project, search_query, profile_url, source, engine, email_verified, score, tier, scraped_at, first_seen_at, last_seen_at, industry, tags, sub_industries, employee_count, firm_size_band, is_enterprise, tag_confidence, tag_source, region, country, city, lead_type';
 
 function toRow(lead) {
   const key = dedupeKey(lead);
@@ -59,6 +59,7 @@ function toRow(lead) {
     region: lead.region || null,
     country: lead.country || null,
     city: lead.city || null,
+    lead_type: lead.lead_type || null,
   };
 }
 
@@ -104,6 +105,7 @@ function fromRow(row) {
     region: row.region || null,
     country: row.country || null,
     city: row.city || null,
+    lead_type: row.lead_type || null,
   };
 }
 

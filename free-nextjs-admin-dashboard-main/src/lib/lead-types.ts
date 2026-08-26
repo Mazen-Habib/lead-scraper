@@ -45,6 +45,10 @@ export type Lead = {
   region?: string | null;
   country?: string | null;
   city?: string | null;
+  // 'buyer' (a real business that would hire/pay for services) or 'vendor'
+  // (sells the exact service category it was scraped under — the seller vs
+  // buyer problem, see memory.md). null when there wasn't enough signal.
+  lead_type?: string | null;
 };
 
 export const SOURCE_LABELS: Record<string, string> = {

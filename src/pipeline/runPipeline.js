@@ -13,6 +13,7 @@ import { classifyLeads } from '../quality/classifier.js';
 import { tagLeadsFromWeb } from '../quality/webTagger.js';
 import { normalizeFirmographics } from '../quality/firmographics.js';
 import { resolveRegions, resolveGeos } from '../quality/geography.js';
+import { classifyLeadTypes } from '../quality/leadType.js';
 import { cleanLead } from '../lib/cleanLead.js';
 import { dedupeKey } from '../lib/normalizeUrl.js';
 import { CSV_COLUMNS } from '../lib/leadFields.js';
@@ -201,6 +202,7 @@ export async function runPipeline(rawLeads, opts = {}) {
   normalizeFirmographics(leads);
   resolveRegions(leads);
   resolveGeos(leads);
+  classifyLeadTypes(leads);
 
   // Score the current batch
   console.log('Scoring leads...');
