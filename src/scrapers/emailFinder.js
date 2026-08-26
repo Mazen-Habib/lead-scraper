@@ -1,6 +1,7 @@
 import * as cheerio from 'cheerio';
 import { cleanEmail, cleanStr } from '../lib/cleanLead.js';
 import { curlFetchText } from '../lib/curlImpersonate.js';
+import { GEO, REGIONS } from '../quality/geography.js';
 
 const EMAIL_RE = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,}/g;
 // Paths most likely to expose a contact email during a bulk (thousands-of-leads) run
@@ -29,7 +30,7 @@ const NAME_RE = /^[A-Z][a-zA-Z'.-]+(?:\s[A-Z][a-zA-Z'.-]+){1,2}$/;
 // name — both are 2-3 capitalized words. None of these words legitimately
 // appear in a person's name, so they're a safe reject list.
 const NAME_BLOCKLIST_RE =
-  /\b(Team|Leadership|Staff|Members?|Management|Meet|Our|About|Company|Group|Services?|Advice|Business|Contact|Careers|Visa|Immigration|Department|Office|Manager|Officer|Executive|Operations?|Production|Coordinator|Supervisor|Administrator|Representative|Specialist|Engineer|Consultant|Analyst|Associate|Assistant)\b/i;
+  /\b(Team|Leadership|Staff|Members?|Management|Meet|Our|About|Company|Group|Services?|Advice|Business|Contact|Careers|Visa|Immigration|Department|Office|Manager|Officer|Executive|Operations?|Production|Coordinator|Supervisor|Administrator|Representative|Specialist|Engineer|Consultant|Analyst|Associate|Assistant|Partner|Official|Certified|Admin|Panel|Dashboard|Login)\b/i;
 
 // Placeholder names used in templates/examples — never a real contact.
 // "John Smith"/"Jane Smith" are deliberately NOT here: unlike "(John|Jane)
@@ -37,6 +38,24 @@ const NAME_BLOCKLIST_RE =
 // more true positives than the rare placeholder use would save.
 const PLACEHOLDER_NAME_RE =
   /^(john|jane)\s+doe$|^test\s+test$|^foo\s+bar$|^your\s+name$|^full\s+name$|^first\s+last$/i;
+
+// Place names ("United States", "Karachi", "Middle East") match the name
+// shape just as easily as a person — reuse the same country/city/region
+// label lists geography.js resolves leads against, rather than authoring a
+// second location list to keep in sync.
+const PLACE_NAMES = new Set(
+  [
+    ...GEO.countries.map((c) => c.label),
+    ...GEO.countries.flatMap((c) => c.cities.map((city) => city.label)),
+    ...REGIONS.regions.map((r) => r.label),
+  ].map((s) => s.toLowerCase())
+);
+
+// Tech/business generic terms ("Rapid MVP Development", "Retail ERP") that
+// end up in the name slot when the DOM heuristic grabs service copy or a
+// product name sitting next to a title-shaped phrase, instead of a person.
+const GENERIC_BUSINESS_NAME_RE =
+  /\b(Development|Solutions?|Software|Systems?|Technolog(?:y|ies)|Digital|Cloud|Consulting|Platform|MVP|ERP|CRM|SaaS|API|App|Apps)\b/i;
 
 // Job titles that identify a decision-maker, ranked by how senior/authoritative
 // they are — tier 1 wins over tier 2 when a page lists several people.
@@ -46,21 +65,73 @@ const TITLE_TIERS = [
   /\b(Head of [A-Za-z &]+|Manager)\b/i,
 ];
 
+// Catches the testimonial-caption shape ORG_SUFFIX_RE misses: a bare company
+// name with no legal-entity suffix ("COO/Founder, Omnidian", "VP at Bennie",
+// "CEO - Easyfill", "CEO | Digital Transformation" — none of those company
+// names contain a word like Inc/LLC/Solutions). The general tell is
+// structural, not lexical: whatever follows a comma/"at"/"-"/"|" in a genuine
+// title is itself another role phrase ("CEO, Co-Founder") or a short
+// qualifier — never a proper-noun organization name. Deliberately excludes
+// "of" as a split point: TITLE_TIERS' own "Head of Marketing" pattern uses
+// it, so splitting there would reject a genuine title ("Manager of X"
+// testimonials slip through as a result — a known, accepted gap).
+// Checked in isolation per split part so one bad trailing part (a company
+// name) can't hide behind an earlier legitimate one (a role).
+const TITLE_PART_SPLIT_RE = /,|\bat\b|\bin\b|\s[-–•]\s|\||\.\s+/i;
+function hasNonTitlePart(text) {
+  const parts = text.split(TITLE_PART_SPLIT_RE).map((p) => p.trim()).filter(Boolean);
+  if (parts.length < 2) return false;
+  return parts.slice(1).some((part) => part.length > 3 && !TITLE_TIERS.some((re) => re.test(part)));
+}
+
 function classifyTitle(text) {
+  if (ORG_SUFFIX_RE.test(text) || hasNonTitlePart(text) || DOMAIN_LIKE_RE.test(text)) return 0;
   for (let i = 0; i < TITLE_TIERS.length; i++) {
     if (TITLE_TIERS[i].test(text)) return i + 1;
   }
   return 0;
 }
 
+// Junk checks shared by both extraction paths (DOM heuristic + JSON-LD) —
+// things that are never a real person's name regardless of which path found
+// text shaped like one.
+function isJunkName(t) {
+  if (NAME_BLOCKLIST_RE.test(t)) return true;
+  if (PLACEHOLDER_NAME_RE.test(t)) return true;
+  if (GENERIC_BUSINESS_NAME_RE.test(t)) return true;
+  if (PLACE_NAMES.has(t.toLowerCase())) return true;
+  // A company name ("Meridian Labs Inc.") can end up in the name slot the
+  // same way it ends up in the title slot — same org-suffix tell applies.
+  if (ORG_SUFFIX_RE.test(t)) return true;
+  // A real name in page markup is essentially never written fully upper-case
+  // ("ZEN-Y ICT SOLUTIONS") — that shape belongs to a company/brand name or
+  // acronym-heavy heading, not a person, even though it still fits NAME_RE.
+  if (t === t.toUpperCase() && t !== t.toLowerCase()) return true;
+  return false;
+}
+
 function looksLikeName(text) {
   const t = (text || '').trim();
   if (!t || t.length > 40) return false;
   if (!NAME_RE.test(t)) return false;
-  if (NAME_BLOCKLIST_RE.test(t)) return false;
-  if (PLACEHOLDER_NAME_RE.test(t)) return false;
-  return true;
+  return !isJunkName(t);
 }
+
+// Testimonial/partner-mention captions read "Role, Some Other Company" or
+// "Role Some Other Company Name" — a shape a genuine team-page title never
+// has ("CEO", "Founder & CEO"). Real hits from production: "CEO, Bataib
+// Establishment", "Owner, The Paro Consulting Group", "Information Systems
+// Director, Groupe IMA" — all quoting a client/partner, not the site's own
+// team, on pages with no other tell (no quote marks, not a link). A genuine
+// title essentially never contains a company-suffix word like these.
+const ORG_SUFFIX_RE =
+  /\b(Establishment|Group|Groupe|Consulting|Systems?|International|Portfolio|Solutions?|Technolog(?:y|ies)|Inc\.?|LLC|Ltd\.?|Limited|Corp\.?|Company|Enterprises?|Holdings?|Partners|Associates|Institute)\b/i;
+
+// A "word.tld"-shaped token ("Raccoon.World", "DrinkUp.London") is a company
+// name/domain slipped into a title with no separator at all for
+// hasNonTitlePart to split on — the "CEO Acme.io" shape a testimonial
+// caption takes when its template has no comma between role and company.
+const DOMAIN_LIKE_RE = /\b[a-z0-9-]{2,}\.(com|net|org|io|co|world|london|studio|agency|app|dev)\b/i;
 
 // Walks parsed JSON-LD (schema.org) looking for `Person` nodes with both a
 // name and a jobTitle — the highest-confidence signal a site can give us,
@@ -69,9 +140,14 @@ function walkForPersons(node, candidates, depth = 0) {
   if (!node || typeof node !== 'object' || depth > 4) return;
   if (node['@type'] === 'Person' && node.name && node.jobTitle) {
     const name = String(node.name).trim();
-    if (!PLACEHOLDER_NAME_RE.test(name)) {
-      const tier = classifyTitle(String(node.jobTitle)) || 4;
-      candidates.push({ name, title: String(node.jobTitle), tier });
+    const jobTitle = String(node.jobTitle);
+    // classifyTitle already rejects an org-suffix-shaped title (tier 0), but
+    // the `|| 4` fallback below exists for a jobTitle that's simply not one
+    // of TITLE_TIERS' known phrases — don't let that fallback silently
+    // un-reject an org-suffix title that classifyTitle correctly flagged.
+    if (!isJunkName(name) && !ORG_SUFFIX_RE.test(jobTitle)) {
+      const tier = classifyTitle(jobTitle) || 4;
+      candidates.push({ name, title: jobTitle, tier });
     }
   }
   for (const key of Object.keys(node)) {

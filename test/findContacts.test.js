@@ -244,6 +244,208 @@ test('findContacts ignores a job-title word standing where a name should be', as
   }
 });
 
+test('findContacts ignores an all-caps company/brand name standing where a name should be', async () => {
+  // Real production hit: "ZEN-Y ICT SOLUTIONS" (the company's own brand name,
+  // in all caps) was read as if it were a person.
+  const { server, origin } = await startSiteWith({
+    '/': `<html><body><div><h3>ZEN-Y ICT SOLUTIONS</h3><p>Your IT Business Technology Partner</p></div></body></html>`,
+    '/contact': '<html><body></body></html>',
+    '/about': '<html><body></body></html>',
+  });
+  try {
+    const contacts = await findContacts(origin);
+    assert.equal(contacts.contactName, '');
+  } finally {
+    server.close();
+  }
+});
+
+test('findContacts ignores a place name standing where a name should be', async () => {
+  // Real production hit: "United States" / "SUF Consulting Inc. (Strategic
+  // Partner)" — a location, not a person.
+  const { server, origin } = await startSiteWith({
+    '/': `<html><body><div><h3>United States</h3><p>Managing Partner</p></div></body></html>`,
+    '/contact': '<html><body></body></html>',
+    '/about': '<html><body></body></html>',
+  });
+  try {
+    const contacts = await findContacts(origin);
+    assert.equal(contacts.contactName, '');
+  } finally {
+    server.close();
+  }
+});
+
+test('findContacts ignores a service/product name standing where a name should be', async () => {
+  // Real production hit: "Rapid MVP Development" / "CTO-as-a-Service".
+  const { server, origin } = await startSiteWith({
+    '/': `<html><body><div><h3>Rapid MVP Development</h3><p>CTO-as-a-Service</p></div></body></html>`,
+    '/contact': '<html><body></body></html>',
+    '/about': '<html><body></body></html>',
+  });
+  try {
+    const contacts = await findContacts(origin);
+    assert.equal(contacts.contactName, '');
+  } finally {
+    server.close();
+  }
+});
+
+test('findContacts ignores a testimonial/partner-mention title naming a different company', async () => {
+  // Real production hits: "CEO, Bataib Establishment", "Owner, The Paro
+  // Consulting Group", "Information Systems Director, Groupe IMA" — quoting
+  // a client/partner from a DIFFERENT company, not the site's own team, with
+  // no quote marks or link to otherwise flag it as untrustworthy.
+  const cases = [
+    'CEO, Bataib Establishment',
+    'Owner, The Paro Consulting Group',
+    'Information Systems Director, Groupe IMA',
+  ];
+  for (const title of cases) {
+    const { server, origin } = await startSiteWith({
+      '/': `<html><body><div><h3>Jordan Reyes</h3><p>${title}</p></div></body></html>`,
+      '/contact': '<html><body></body></html>',
+      '/about': '<html><body></body></html>',
+    });
+    try {
+      const contacts = await findContacts(origin);
+      assert.equal(contacts.contactName, '', `"${title}" must not be accepted as a team title`);
+    } finally {
+      server.close();
+    }
+  }
+});
+
+test('findContacts ignores a testimonial title naming a bare company with no legal suffix', async () => {
+  // Real production hits: "COO/Founder, Omnidian", "Director, Rediflex AB,
+  // Sweden" — the company name has no Inc/LLC/Solutions-style suffix for
+  // ORG_SUFFIX_RE to catch, so the general "trailing part isn't itself a
+  // role" check has to do the work instead.
+  const cases = ['COO/Founder, Omnidian', 'Director, Rediflex AB, Sweden', 'SR. Project Manager, Communicate Health'];
+  for (const title of cases) {
+    const { server, origin } = await startSiteWith({
+      '/': `<html><body><div><h3>Jordan Reyes</h3><p>${title}</p></div></body></html>`,
+      '/contact': '<html><body></body></html>',
+      '/about': '<html><body></body></html>',
+    });
+    try {
+      const contacts = await findContacts(origin);
+      assert.equal(contacts.contactName, '', `"${title}" must not be accepted as a team title`);
+    } finally {
+      server.close();
+    }
+  }
+});
+
+test('findContacts still accepts a multi-role title with a comma and no company name', async () => {
+  // Real true positive: "Jean Marois" / "President, CEO and Co-Founder" —
+  // every comma-separated part is itself a role, so this must survive the
+  // testimonial-shape guard above.
+  const { server, origin } = await startSiteWith({
+    '/': `<html><body><div><h3>Jean Marois</h3><p>President, CEO and Co-Founder</p></div></body></html>`,
+    '/contact': '<html><body></body></html>',
+    '/about': '<html><body></body></html>',
+  });
+  try {
+    const contacts = await findContacts(origin);
+    assert.equal(contacts.contactName, 'Jean Marois');
+    assert.equal(contacts.contactTitle, 'President, CEO and Co-Founder');
+  } finally {
+    server.close();
+  }
+});
+
+test('findContacts ignores testimonial titles using "at"/"-"/"|" instead of a comma', async () => {
+  // Real production hits — same testimonial-caption problem as the comma
+  // case, just with a different connector before the (different) company.
+  const cases = ['VP at Bennie', 'CEO & Co-Founder - Easyfill', 'CEO | Digital Transformation'];
+  for (const title of cases) {
+    const { server, origin } = await startSiteWith({
+      '/': `<html><body><div><h3>Jordan Reyes</h3><p>${title}</p></div></body></html>`,
+      '/contact': '<html><body></body></html>',
+      '/about': '<html><body></body></html>',
+    });
+    try {
+      const contacts = await findContacts(origin);
+      assert.equal(contacts.contactName, '', `"${title}" must not be accepted as a team title`);
+    } finally {
+      server.close();
+    }
+  }
+});
+
+test('findContacts ignores UI/badge text standing where a name should be', async () => {
+  // Real production hits: "Admin Panel" / "Partner Panel" and "Official Odoo
+  // Partner" / "AWS Partner" — dashboard chrome and certification badges, not
+  // people, on agency-directory-sourced pages.
+  const cases = [
+    ['Admin Panel', 'Partner Panel'],
+    ['Official Odoo Partner', 'AWS Partner'],
+  ];
+  for (const [name, title] of cases) {
+    const { server, origin } = await startSiteWith({
+      '/': `<html><body><div><h3>${name}</h3><p>${title}</p></div></body></html>`,
+      '/contact': '<html><body></body></html>',
+      '/about': '<html><body></body></html>',
+    });
+    try {
+      const contacts = await findContacts(origin);
+      assert.equal(contacts.contactName, '', `"${name}" must not be accepted as a name`);
+    } finally {
+      server.close();
+    }
+  }
+});
+
+test('findContacts ignores a domain-like company name with no separator ("CEO Raccoon.World")', async () => {
+  // Real production hit: "Alex Radovichenko" / "COO Raccoon.World" — the
+  // template put the company name directly after the role with no comma/at/
+  // dash for hasNonTitlePart to split on.
+  const { server, origin } = await startSiteWith({
+    '/': `<html><body><div><h3>Jordan Reyes</h3><p>COO Raccoon.World</p></div></body></html>`,
+    '/contact': '<html><body></body></html>',
+    '/about': '<html><body></body></html>',
+  });
+  try {
+    const contacts = await findContacts(origin);
+    assert.equal(contacts.contactName, '');
+  } finally {
+    server.close();
+  }
+});
+
+test('findContacts ignores a company name (with a legal suffix) standing where a name should be', async () => {
+  // Real production hit: "Meridian Labs Inc." / "— Co-founder ·" — the
+  // company's own name, not a person, in the name slot this time.
+  const { server, origin } = await startSiteWith({
+    '/': `<html><body><div><h3>Meridian Labs Inc.</h3><p>Co-founder</p></div></body></html>`,
+    '/contact': '<html><body></body></html>',
+    '/about': '<html><body></body></html>',
+  });
+  try {
+    const contacts = await findContacts(origin);
+    assert.equal(contacts.contactName, '');
+  } finally {
+    server.close();
+  }
+});
+
+test('findContacts ignores a bullet-separated testimonial title ("CEO • DesignRush")', async () => {
+  // Real production hit: DesignRush is one of this scraper's own directory
+  // sources, not a person's employer — a badge/credit line, not a title.
+  const { server, origin } = await startSiteWith({
+    '/': `<html><body><div><h3>Jordan Reyes</h3><p>CEO • DesignRush</p></div></body></html>`,
+    '/contact': '<html><body></body></html>',
+    '/about': '<html><body></body></html>',
+  });
+  try {
+    const contacts = await findContacts(origin);
+    assert.equal(contacts.contactName, '');
+  } finally {
+    server.close();
+  }
+});
+
 test('findContacts leaves contactName empty when no person data is present', async () => {
   const { server, origin } = await startSiteWith({
     '/': '<html><body>Just a plain homepage, no team info.</body></html>',
