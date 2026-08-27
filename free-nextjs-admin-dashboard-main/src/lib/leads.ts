@@ -411,11 +411,18 @@ export type LeadFacets = {
 export async function fetchLeadFacets(): Promise<LeadFacets> {
   const supabase = await getSupabaseServerClient();
   if (supabase) {
-    const { data, error } = await supabase.from("leads").select("source").not("source", "is", null);
+    // A plain `.select("source")` with no range/limit silently truncates to
+    // PostgREST's default 1000-row cap — confirmed live against production:
+    // it returned exactly 1000 rows and, because those happened to be the
+    // most recently inserted (businesslist_ng/pk), the dropdown showed only
+    // 2 of the table's 13 real sources. Fixed with a server-side DISTINCT
+    // (supabase/migrations/0012_distinct_sources_rpc.sql) instead of paging
+    // through the whole table client-side, since that table is expected to
+    // keep growing toward a 150k/month target.
+    const { data, error } = await supabase.rpc("distinct_lead_sources");
     if (!error && data) {
       const rows = data as unknown as { source: string }[];
-      const sources = Array.from(new Set(rows.map((r) => r.source))).sort();
-      return { sources };
+      return { sources: rows.map((r) => r.source) };
     }
   }
   const all = await fetchLeads();

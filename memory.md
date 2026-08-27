@@ -574,3 +574,39 @@ answered.
 Neither deliverable changed OSM usage, added new infrastructure, or reached
 a legal conclusion — both are inputs to a decision the user (and, for the
 licence question, an actual lawyer) still needs to make.
+
+---
+
+## Sources dropdown bug — found while answering an unrelated question (2026-08-27)
+
+User asked "what do these sources mean?" pointing at the dashboard's Sources
+filter showing only `businesslist_ng`/`businesslist_pk` as options. Checked
+rather than explained it away — this was a real production bug, not a
+misunderstanding.
+
+`fetchLeadFacets()` in `free-nextjs-admin-dashboard-main/src/lib/leads.ts`
+ran `.select("source").not("source","is",null)` with no explicit
+`.range()`/`.limit()`. PostgREST silently caps an unranged query at 1000
+rows. Verified live: the naive query returned exactly 1000 rows; paginating
+through the full ~15,927-row table found **13 real distinct sources**, but
+the first 1000 rows (apparently the most recently inserted — this session's
+businesslist widening work) happened to be entirely `businesslist_ng`/`_pk`.
+Customers filtering leads by source saw 2 of 13 options, silently, with no
+error. (Also found: one row has `source = ''` — a data-quality issue, not
+fixed, not investigated further.)
+
+Fixed at the database layer, not by paginating client-side: added
+`supabase/migrations/0012_distinct_sources_rpc.sql`, a
+`distinct_lead_sources()` Postgres function doing a real `SELECT DISTINCT`
+server-side, and pointed `fetchLeadFacets()` at it via `.rpc()`. Paginating
+through the whole table on every dashboard load doesn't scale toward the
+150k/month target; one indexed DISTINCT query does.
+
+**Applied directly to production** via `scripts/apply-migration.js` and
+`SUPABASE_DB_URL` (a raw Postgres connection, not the Supabase MCP tool —
+that MCP's connected account doesn't include this project; checked via
+`list_projects` first rather than assuming). Verified twice: the RPC alone
+returns the correct 13 sources, and a live dev-server session confirmed the
+dashboard's actual dropdown now lists all 13. `overture` is correctly absent
+from that list — it hasn't been run against production yet, only tested
+locally in this session.
