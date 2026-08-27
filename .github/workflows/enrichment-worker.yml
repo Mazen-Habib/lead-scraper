@@ -1,0 +1,79 @@
+name: Enrichment Worker (continuous backlog, batched)
+
+# Runs scripts/enrichment-worker.js in --once mode on a schedule, since a
+# TRULY continuous process can't live on GitHub Actions (every job is a
+# fresh VM that's destroyed when it exits — there's no "stays running"
+# option here). Running --once every few hours is the closest approximation
+# GitHub Actions can offer without a real always-on host.
+#
+# This exists because GCP e2-micro billing verification failed twice
+# (error OR_BACR2_31 — a card rejection, not a balance issue) and Hetzner
+# was explicitly declined — see memory.md's enrichment-worker entry. Rather
+# than block on resolving hosting, this wires the same already-built,
+# already-verified worker into the one piece of infrastructure that's
+# already working: the existing GitHub Actions setup.
+#
+# Real cost, stated up front rather than glossed over (see memory.md's
+# runtime-scoping entry for the same discipline applied here): the account
+# was already over its free 2,000 min/month before this workflow existed
+# (~2,110 min/month steady-state from the other 5 workflows). At 4 runs/day
+# x ~10 min/run x 30 days, this adds ~1,200 min/month, bringing the total to
+# ~3,310/month — roughly $10-11/month in GitHub Actions overage at the
+# post-Jan-2026 $0.008/min rate. That is a real, ongoing charge, not free —
+# raise or lower `cron`/`batch-size` below to trade cost against throughput.
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'   # every 6 hours — see cost note above before changing this
+  workflow_dispatch:
+    inputs:
+      batch_size:
+        description: 'Leads per run'
+        default: '75'
+
+# Prevents two runs overlapping if one is still going when the next cron
+# fires (a slow scrapegraph/LLM rung could plausibly run past 6 hours in a
+# bad case) — an overlapping run would double-process the same batch since
+# last_enrichment_attempt_at only gets written at the END of a run.
+concurrency:
+  group: enrichment-worker
+  cancel-in-progress: false
+
+permissions:
+  contents: read   # this workflow only writes to Supabase, never commits to the repo
+
+jobs:
+  enrich:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25   # generous vs. the ~5-10 min a 75-lead batch actually took in local testing
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Python deps (ScrapegraphAI — email enrichment rung 2)
+        run: pip install "scrapegraphai>=1.0" langchain-groq langchain-mistralai langchain-openai --quiet
+
+      - name: Run enrichment worker (one batch)
+        run: node scripts/enrichment-worker.js --once --batch-size=${{ github.event.inputs.batch_size || '75' }}
+        env:
+          NODE_ENV: production
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GROQ_KEY_1: ${{ secrets.GROQ_KEY_1 }}
+          GROQ_KEY_2: ${{ secrets.GROQ_KEY_2 }}
+          GROQ_KEY_3: ${{ secrets.GROQ_KEY_3 }}
+          MISTRAL_KEY_1: ${{ secrets.MISTRAL_KEY_1 }}
+          MISTRAL_KEY_2: ${{ secrets.MISTRAL_KEY_2 }}
+          MISTRAL_KEY_3: ${{ secrets.MISTRAL_KEY_3 }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          FIRECRAWL_API_KEY: ${{ secrets.FIRECRAWL_API_KEY }}

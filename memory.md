@@ -657,3 +657,33 @@ it to an actual always-on box is still blocked on resolving hosting
 yet tried). The script itself has no hosting-specific code — it's a plain
 Node process reading `.env`, so it'll run unmodified wherever it eventually
 lands.
+
+---
+
+## Enrichment worker wired into GitHub Actions, not a VPS (2026-08-27)
+
+User pivoted mid-conversation from "build a local worker" to "add that in
+the actions of GitHub" — sidesteps the whole GCP/Hetzner hosting saga
+entirely by using infrastructure that's already working.
+
+Added `.github/workflows/enrichment-worker.yml`: runs
+`scripts/enrichment-worker.js --once` on a schedule (every 6 hours) rather
+than truly continuously — GitHub Actions can't do continuous, every job is a
+fresh VM destroyed on exit, so scheduled `--once` batches are the closest
+approximation available. Added a `concurrency` group
+(`cancel-in-progress: false`) so an overlapping run can't double-process a
+batch if one run happens to still be going when the next cron fires — real
+risk given `last_enrichment_attempt_at` is only written at the end of a run.
+
+**Stated the real cost up front, not after the fact** (same discipline as
+the Places-API mistake earlier): the account was already ~2,110 min/month
+steady-state before this. At 4 runs/day x ~10 min (generous vs. the ~5-10
+min actually observed for a 75-lead batch locally) x 30 days, this adds
+~1,200 min/month → ~3,310/month total → roughly **$10-11/month** in GitHub
+Actions overage at the current $0.008/min rate. Not free. Frequency (cron)
+and batch size are both easy to turn up or down later against that number.
+
+Not yet verified with a live GitHub Actions run (only `workflow_dispatch`
+triggering + local `--once` testing available so far) — worth watching the
+first scheduled run for the exact real timing/cost before assuming the
+6-hour cadence is right.
