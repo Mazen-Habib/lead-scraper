@@ -23,7 +23,7 @@ on:
     inputs:
       pk_max_pages:
         description: 'Pakistan: pages per category'
-        default: '8'
+        default: '4'
       ng_max_pages:
         description: 'Nigeria: pages per category (40s/request — keep this low)'
         default: '1'
@@ -38,8 +38,13 @@ jobs:
   scrape:
     runs-on: ubuntu-latest
     # Budget reasoning: Pakistan runs at ~30 pages/min observed live (no
-    # Crawl-delay), so ~32 categories x 8 pages tops out around 90-120 minutes
-    # even with autothrottle backing off. Nigeria is the real cost: with
+    # Crawl-delay). 2026-08-27: widened from 34 to 67 categories (see
+    # businesslist_pk.py) — pk_max_pages default cut from 8 to 4 in the same
+    # change to keep total page volume roughly where it was (67 x 4 = 268
+    # pages vs. the old 34 x 8 = 272), trading per-category depth for category
+    # breadth rather than growing the job's total runtime. Still tops out
+    # around 90-120 minutes even with autothrottle backing off. Nigeria is the
+    # real cost, untouched by this change: with
     # Crawl-delay 40 enforced via DOWNLOAD_SLOTS, ~10 categories x 1 page
     # (roughly 150 requests including company pages) is ~100 minutes on its
     # own. ingest-run-csv.js adds email-enrichment website crawls + MX checks
@@ -85,7 +90,7 @@ jobs:
         run: |
           python -m scrapy crawl businesslist_pk \
             -a country=pk \
-            -a max_pages=${{ github.event.inputs.pk_max_pages || '8' }}
+            -a max_pages=${{ github.event.inputs.pk_max_pages || '4' }}
 
       - name: Crawl businesslist.com.ng (Nigeria)
         working-directory: scrapy-scraper

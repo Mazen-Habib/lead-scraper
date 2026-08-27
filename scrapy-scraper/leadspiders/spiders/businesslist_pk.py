@@ -70,10 +70,25 @@ COUNTRIES = {
 # verticals genuinely thin in the current corpus: automotive, logistics-
 # transport, manufacturing-industrial, real-estate, finance-insurance,
 # healthcare, professional-services (legal), beauty-wellness.
+#
+# 2026-08-27: widened from 34 to 67 categories (Pakistan only — see below for
+# why Nigeria's default list is untouched). Every added slug was pulled live
+# from businesslist.pk's own /browse-business-directory DOM (not guessed) and
+# spot-checked directly (e.g. /category/dentists really renders "473 listings
+# in Pakistan"). Deliberately stuck to buyer-shaped local-business categories —
+# healthcare, legal, real estate, hospitality, education, home/professional
+# services, beauty/wellness — and skipped the site's own Computers & Internet
+# and Business Services/Consulting sections, which are vendor-shaped in
+# exactly the way googleMaps.searches was fixed for elsewhere this session;
+# widening this source shouldn't reintroduce that bias through a different
+# door. Some new categories (dentists, restaurants, hotels) overlap what
+# Google Maps/OSM already cover for Pakistan — that's fine, this is a third
+# independent source and dedupeKey() merges true duplicates; it still adds
+# whatever those two sources missed.
 DEFAULT_CATEGORIES = [
     # automotive
     "auto-repair", "auto-dealers-newused", "car-rental", "auto-parts-newused",
-    "vehicle-manufacturers",
+    "vehicle-manufacturers", "driving-schools",
     # logistics-transport
     "logistics", "transport", "courier-services", "package-shipping",
     # manufacturing-industrial
@@ -81,18 +96,29 @@ DEFAULT_CATEGORIES = [
     "furniture-manufacturers", "industrial-equipment",
     # real-estate
     "estate-agents", "property-management", "realtors", "property-development",
-    "construction-services",
+    "construction-services", "property-consultants", "commercial-property",
+    "interior-design", "renovation",
     # finance-insurance
     "insurance-companies", "finances-insurance", "banks-credit-unions",
-    "audit-and-accounting",
+    "audit-and-accounting", "tax-consultants",
     # healthcare (genuinely thin in the corpus — 14 leads before this crawl)
-    "doctors-and-clinics", "pharmacies", "wellness",
+    "doctors-and-clinics", "pharmacies", "wellness", "dentists", "opticians",
+    "cosmetic-surgery", "massage-therapists",
     # professional-services / legal (also thin — no dedicated source covers it)
-    "lawyers", "legal-services",
+    "lawyers", "legal-services", "solicitors",
     # media-entertainment
-    "printing", "photography", "events-conferences",
+    "printing", "photography", "events-conferences", "weddings",
+    "event-services",
     # beauty-wellness
-    "beauty-professionals", "health-beauty", "fitness",
+    "beauty-professionals", "health-beauty", "fitness", "hairdressers",
+    # food-hospitality (net-new vertical — no dedicated source covers this)
+    "restaurants", "cafes", "catering", "hotels", "travel-agents",
+    "tour-operators", "visa-agencies",
+    # education (net-new vertical)
+    "schools", "universities", "tutoring", "child-daycare-services",
+    # professional/home services (net-new vertical)
+    "security", "architectural-services", "construction", "decorators",
+    "gardeners", "landscaping", "plumbers", "handyman",
 ]
 
 

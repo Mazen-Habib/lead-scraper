@@ -413,3 +413,50 @@ together: prefer measuring before claiming a fix worked (this is why
 committed by an over-broad `rm` glob and had to be restored via
 `git checkout --` during this session — check `git status` output for
 `D` (deleted) entries specifically before every commit, not just `M`/`??`.
+
+---
+
+## businesslist.pk category widening (2026-08-27)
+
+Widened `businesslist_pk.py`'s `DEFAULT_CATEGORIES` from 34 to 67 categories
+(Pakistan only). Every added slug was pulled live from
+businesslist.pk's own `/browse-business-directory` DOM via a real browser
+session (`document.querySelectorAll('a[href*="/category/"]')`), not guessed —
+the site actually has **1,131 categories** total (docstring's old "300+"
+estimate was stale), and a wrong guess 404s (already known from the original
+34). Spot-checked 3 of the new ones live before trusting them in a cron job:
+`/category/dentists` really renders "473 listings in Pakistan"; a local test
+crawl of `schools,child-daycare-services,security` (max_pages=1) came back
+58/58 requests at HTTP 200, 54 real leads, ~30 pages/min — matches the
+existing documented throughput exactly.
+
+New categories deliberately stayed buyer-shaped (healthcare, legal, real
+estate, hospitality, education, home/professional services, beauty/wellness)
+and skipped the site's own "Computers & Internet" and "Business
+Services"/Consulting sections — those are vendor-shaped the same way
+`googleMaps.searches` was, and widening this source shouldn't reintroduce
+that bias through a different door. Some new categories (dentists,
+restaurants, hotels) overlap what Google Maps/OSM already cover for
+Pakistan — left in anyway, since this is a third independent source and
+`dedupeKey()` already merges true duplicates; it still adds whatever those
+two sources missed.
+
+**Nigeria's category list was deliberately NOT touched.** Its 40s/request
+`Crawl-delay` (already documented in `scrapy-scrape.yml`'s own budget
+comments) makes category expansion expensive in a way Pakistan's list isn't —
+widening NG the same way would blow the job's 300-minute ceiling. Also
+noticed in passing: the NG workflow's default 10-category fallback includes
+`insurance-companies`, which doesn't appear on `businesslist.com.ng`'s own
+browse page (though the platform's categories are shared cross-country per
+the spider's docstring, so it may just have zero current NG listings rather
+than being a dead slug) — not fixed, flagged here in case it's worth
+checking later.
+
+**Time-budget adjustment, not just a category-list edit:** cut
+`scrapy-scrape.yml`'s `pk_max_pages` default from 8 to 4 (both the
+`workflow_dispatch` field default AND the bash `|| '4'` fallback the actual
+Friday cron run uses — the workflow_dispatch default alone does NOT apply to
+scheduled runs, easy to miss). 67 categories x 4 pages (268 total) keeps
+total page volume close to the old 34 x 8 (272), trading per-category depth
+for category breadth rather than growing the job's runtime — verified against
+the same ~30 pages/min the workflow's own comments already measured live.
