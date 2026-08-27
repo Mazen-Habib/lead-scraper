@@ -22,6 +22,7 @@ import { scrapeEventbrite } from '../scrapers/eventbrite.js';
 import { scrapeDesignRush } from '../scrapers/designRush.js';
 import { scrapeTechBehemoths } from '../scrapers/techBehemoths.js';
 import { scrapeSelectedFirms } from '../scrapers/selectedFirms.js';
+import { scrapeOverture } from '../scrapers/overture.js';
 
 // buildJobs(config, cloak) -> [{ query, announce, run }]
 //   query    - stamped onto lead.search_query (same string tag() used inline before)
@@ -115,6 +116,38 @@ export const SOURCE_REGISTRY = [
             maxResults: c.maxResults,
           }),
       }));
+    },
+  },
+  {
+    // Bbox-downloaded once per country (cached to disk, refreshed every
+    // config.overture.cacheMaxAgeDays), then queried locally per category —
+    // see overture.js's docstring for why per-category remote queries don't
+    // work at this dataset's scale. `pythonBin` comes through the same
+    // buildJobs(config, cloak, pythonBin) signature gatherLeads already
+    // passes to every entry; only this one and (indirectly) the enrichment
+    // rungs actually use it.
+    key: 'overture',
+    source: 'overture',
+    engine: 'python_helper',
+    errorName: 'Overture Maps',
+    buildJobs(config, _cloak, pythonBin) {
+      const c = config.overture || {};
+      if (!c.enabled) return [];
+      if (!pythonBin) {
+        console.warn('  !! Overture Maps: no Python binary resolved (needs overturemaps + duckdb) — skipped');
+        return [];
+      }
+      return (c.countries || []).flatMap((country) =>
+        (country.categories || []).map((category) => ({
+          query: `${country.code}/${category}`,
+          announce: `[python] Overture Maps: "${category}" in ${country.code}`,
+          run: () =>
+            scrapeOverture(country.code, country.bbox, category, {
+              pythonBin,
+              maxAgeDays: c.cacheMaxAgeDays,
+            }),
+        }))
+      );
     },
   },
   {

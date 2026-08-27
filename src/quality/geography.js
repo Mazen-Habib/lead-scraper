@@ -13,6 +13,30 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const REGIONS = JSON.parse(readFileSync(resolve(root, 'shared/regions.json'), 'utf8'));
 const GEO = JSON.parse(readFileSync(resolve(root, 'shared/geo.json'), 'utf8'));
 
+// ISO 3166-1 alpha-2 -> our country slug, for the countries shared/geo.json
+// already supports. Lets a source that supplies a real country code (Overture
+// Places does; most scrapers here don't) resolve correctly even when its
+// address/city text is unusable for keyword matching — Overture's Pakistan
+// data came back with city names in Urdu script, which the English keyword
+// lists below can never match, silently leaving `country` null despite the
+// source having already told us exactly which country a place is in.
+const ISO2_TO_SLUG = {
+  AE: 'uae', SA: 'saudi-arabia', QA: 'qatar', KW: 'kuwait', BH: 'bahrain',
+  OM: 'oman', JO: 'jordan', LB: 'lebanon', IQ: 'iraq', IL: 'israel',
+  PS: 'palestine', EG: 'egypt', YE: 'yemen', SY: 'syria', PK: 'pakistan',
+  IN: 'india', BD: 'bangladesh', LK: 'sri-lanka', NP: 'nepal', SG: 'singapore',
+  PH: 'philippines', MY: 'malaysia', VN: 'vietnam', ID: 'indonesia',
+  TH: 'thailand', MM: 'myanmar', KH: 'cambodia', NG: 'nigeria', KE: 'kenya',
+  ZA: 'south-africa', GH: 'ghana', ET: 'ethiopia', TZ: 'tanzania',
+  UG: 'uganda', MA: 'morocco', SN: 'senegal', CI: 'ivory-coast', GB: 'uk',
+  DE: 'germany', NL: 'netherlands', FR: 'france', ES: 'spain', SE: 'sweden',
+  NO: 'norway', DK: 'denmark', FI: 'finland', PL: 'poland', UA: 'ukraine',
+  CZ: 'czech-republic', AT: 'austria', CH: 'switzerland', IT: 'italy',
+  PT: 'portugal', BE: 'belgium', US: 'usa', CA: 'canada', MX: 'mexico',
+  AU: 'australia', NZ: 'new-zealand', JP: 'japan', KR: 'south-korea',
+  TW: 'taiwan', HK: 'hong-kong', CN: 'china',
+};
+
 function regionHaystack(lead) {
   return [lead.address, lead.search_query].filter(Boolean).join(' ').toLowerCase();
 }
@@ -70,18 +94,28 @@ export function resolveRegions(leads) {
  */
 export function resolveGeo(lead) {
   const haystack = regionHaystack(lead);
-  if (!haystack) return { country: null, city: null };
 
-  for (const country of GEO.countries) {
-    for (const city of country.cities) {
-      if (city.keywords.some((kw) => matchesWord(haystack, kw))) {
-        return { country: country.slug, city: city.slug };
+  if (haystack) {
+    for (const country of GEO.countries) {
+      for (const city of country.cities) {
+        if (city.keywords.some((kw) => matchesWord(haystack, kw))) {
+          return { country: country.slug, city: city.slug };
+        }
       }
     }
   }
-  for (const country of GEO.countries) {
-    if (country.countryKeywords.some((kw) => matchesWord(haystack, kw))) {
-      return { country: country.slug, city: null };
+
+  // A source-supplied ISO code (Overture) beats no match at all, but city
+  // keyword matching above still wins when it succeeds — it's more specific,
+  // and matches the "richest bucket wins" rule used elsewhere in this file.
+  const isoSlug = lead.country && ISO2_TO_SLUG[lead.country.toUpperCase()];
+  if (isoSlug) return { country: isoSlug, city: null };
+
+  if (haystack) {
+    for (const country of GEO.countries) {
+      if (country.countryKeywords.some((kw) => matchesWord(haystack, kw))) {
+        return { country: country.slug, city: null };
+      }
     }
   }
   return { country: null, city: null };

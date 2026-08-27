@@ -294,6 +294,115 @@ volume or budget change from the user first.
 
 ---
 
+## Worldwide buyer-only sourcing (2026-08-27) — Overture Maps added as a source
+
+User's real question: "make sure the scraping is of customers and always
+that, no sellers" combined with "we want scrapers to run all day, all night,
+all over the world" — i.e. buyer-purity AND global scale, not either alone.
+
+**Corrected a premise before acting on it.** Google Maps is not the seller
+problem — it's neutral, returns whatever the query text asks for.
+`googleMaps.searches` was 122/122 vendor-shaped query STRINGS ("software
+companies in X"), while `googleMapsGeneral.searches` (354 queries, same
+scraper) was already 100% buyer-shaped. The fix was rewriting query text, not
+dropping the source — would have deleted the dentists/hospitals/law-firms
+data along with the vendors.
+
+**What shipped, in order:**
+1. Rewrote all 122 vendor-shaped `googleMaps.searches` into 116 buyer-shaped
+   queries (retail, gyms, auto repair, accounting/insurance, home-services
+   contractors, veterinary, event venues, salons) across the same 58 cities —
+   config-only, zero new code.
+2. Disabled (`enabled: false`) the 9 vendor-only-by-construction sources
+   (Clutch, GoodFirms, Sortlist, DesignRush, TechBehemoths, SelectedFirms,
+   TopDevelopers, PSEB, GitHub Orgs — was 26% of the DB) from future
+   scrape/sync, per the user's explicit answer to an AskUserQuestion — their
+   code is untouched, just toggled off. ~4,135 already-synced vendor leads in
+   Supabase were deliberately NOT touched/deleted — that's a separate,
+   still-open decision.
+3. **Added Overture Maps Places as a new source** (`src/scrapers/overture.js`
+   + `src/scrapers/overture_fetch.py`, registered in `SOURCE_REGISTRY` as key
+   `overture`). Why: Linux Foundation project (Meta/Microsoft/Amazon/TomTom
+   backed), 61M+ global POIs, **CDLA Permissive 2.0 license — no share-alike**
+   (unlike OSM's ODbL, see below), schema carries `phones`/`websites`/
+   `emails`/`categories`/`confidence` directly.
+
+**Measured before trusting it (learned from the Places-API cost mistake
+earlier — verify, don't assume).** First attempt (naive
+`read_parquet(s3_glob) WHERE country=X`) stalled 27 minutes with zero output
+and had to be killed — Overture's Places theme isn't partitioned by country,
+so that scan forces reading a large share of the global dataset before
+anything can be pruned. Fixed by using the `overturemaps` Python package's
+bbox-download (uses the release's STAC catalog for spatial pruning) — same
+Pakistan bbox came back in ~80s. **Real, live-measured numbers for Pakistan
+(1.22M places in the bbox):** dentist 6,526 leads (96% phone / 45% website /
+**63% email**), lawyer 2,941 (91%/54%/**69%**), real_estate_agent 4,568
+(90%/51%/**62%**), accountant 1,668 (96%/64%/**69%**), gym 10,894
+(86%/30%/44%), hospital 24,313 (74%/31%/34%). Email coverage came back much
+higher than expected going in — worth remembering as the opposite kind of
+surprise from the Places-API cost mistake (that one was "cheaper than
+expected," corrected down; this one was "better data than expected,"
+confirmed by measurement, not assumed).
+
+**Provenance check, relevant to the OSM licence question below:** Overture's
+`sources` field names each place's upstream contributor. In the verified
+Pakistan sample: meta, Microsoft, Foursquare, AllThePlaces, DAC, PinMeTo,
+Overture-signals — **no OpenStreetMap contribution observed**. Good signal
+that Overture Places is a genuinely independent alternative to OSM for this
+country, not just an OSM repackaging — but this was checked on one country's
+sample, not exhaustively, so don't treat it as a blanket guarantee for every
+country before pointing Overture at a new one.
+
+**Real bug found and fixed while wiring this in:**
+`src/quality/geography.js`'s `resolveGeo()` built its match haystack only from
+`lead.address` + `lead.search_query` and ignored any country field a source
+already supplied — so Overture leads (which DO carry a real ISO alpha-2
+country code, e.g. `PK`) still came back `country: null` for 55/58 leads in a
+test batch, because Overture's Pakistan addresses/city names are in Urdu
+script, unmatchable by the English keyword lists. Fixed by adding an
+`ISO2_TO_SLUG` map (the same ~64 countries `shared/geo.json` already
+supports) and preferring a source-supplied 2-letter code over keyword-guessing
+when address-text matching fails — city-keyword matching still wins first
+when it succeeds (more specific). Verified: country resolution on the same
+test batch went from 3/58 to 58/58. All 185 existing tests still pass — this
+only adds a new fallback path, doesn't change behavior for sources that don't
+set `lead.country`.
+
+**Wired into `weekly-scrape-general.yml`** (the buyer-vertical Wednesday run):
+added `overturemaps`/`duckdb` pip install, an `actions/cache` step keyed by
+ISO week for the ~250MB-per-country bbox download (config's own
+`cacheMaxAgeDays: 30` is the real freshness control — the cache step just
+avoids re-downloading inside one calendar week), and `overture` added to that
+workflow's `--only=` list. Scoped to Pakistan only for now
+(`config.json`'s `overture.countries`) — adding more countries is just adding
+more bbox entries to that config array, each one costs one more ~1-2 min
+download the first time, then reads from its own cache file.
+
+**Still genuinely open, not resolved:**
+1. **OSM licence question** (ODbL share-alike vs. this project's merged
+   Supabase table) — needs an actual lawyer, not an engineering fix. Interim
+   safety: OSM-derived rows are already identifiable via the existing
+   `source = 'openstreetmap'` column, so segregating them later (if the legal
+   review requires it) doesn't need new schema — this was checked, not
+   assumed.
+2. **businesslist.pk/ng category widening** — deliberately NOT done this
+   session. The spider's `DEFAULT_CATEGORIES` (30 of 300+ available) were
+   already a deliberately verified, curated set (wrong slugs 404, documented
+   in the spider's own docstring) and the Wednesday job is already time-budgeted
+   close to its ceiling — widening this needs live slug verification against
+   the real site plus a runtime test, not a guess.
+3. **Continuous/always-on runtime** (the "all day, all night" half of the
+   ask) — deliberately NOT started. Overture's bbox-query model already
+   removes most of the reason a continuous worker was being considered
+   (discovery is now a bounded query, not an unbounded crawl), so this may
+   need less infrastructure than originally scoped — worth re-scoping AFTER
+   Overture's real throughput is seen in production, not before.
+4. **~4,135 already-synced vendor leads in Supabase** from the now-disabled
+   sources — still present, not purged, not moved. A separate decision from
+   "stop future syncing," deliberately not acted on without an explicit ask.
+
+---
+
 ## Standing instruction from this thread
 
 User: **"make sure not to miss anything at all"** / **"the sutomer land[s]

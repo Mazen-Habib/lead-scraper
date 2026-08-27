@@ -51,6 +51,24 @@ jobs:
       - name: Install Python deps (MarkItDown — web-tagging fallback rung)
         run: pip install "markitdown[all]" --quiet
 
+      - name: Install Python deps (Overture Maps — bbox-pruned Places source)
+        run: pip install overturemaps duckdb --quiet
+
+      - name: Compute ISO week for cache key
+        id: week
+        run: echo "value=$(date -u +%GW%V)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore Overture bbox cache
+        # Keyed by ISO week so a re-run within the same week reuses the ~250MB
+        # per-country download instead of re-fetching it; config.overture's
+        # own cacheMaxAgeDays (30d) is the real freshness control — this key
+        # just avoids re-downloading unchanged data inside one calendar week.
+        uses: actions/cache@v4
+        with:
+          path: output/cache
+          key: overture-bbox-${{ steps.week.outputs.value }}
+        id: overture-cache
+
       - name: Install curl-impersonate (TLS-fingerprint fallback for emailFinder)
         # Best-effort: never fails the job. See weekly-scrape.yml for the full
         # explanation — same step, kept identical across workflows.
@@ -73,7 +91,7 @@ jobs:
         run: npm run sync-shared-data:check
 
       - name: Run scraper (general/local-business sources only)
-        run: node src/index.js --only=googleMapsGeneral,openStreetMap
+        run: node src/index.js --only=googleMapsGeneral,openStreetMap,overture
         env:
           NODE_ENV: production
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}

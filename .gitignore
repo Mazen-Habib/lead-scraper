@@ -38,6 +38,11 @@ node_modules/
 output/master.json
 *.log
 
+# Overture Maps bbox downloads (output/cache/overture_<country>.parquet) —
+# regenerated automatically per config.overture.cacheMaxAgeDays, ~250MB per
+# country, never meant to be committed.
+output/cache/
+
 # Playwright browser cache
 .cache/
 

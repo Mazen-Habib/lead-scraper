@@ -29,6 +29,14 @@ const SOURCE_SCORES = {
   // Same platform, same shape of signal (structured contact data, no
   // ratings/reviews) — the spider now runs against businesslist.com.ng too.
   businesslist_ng: 10,
+  // Structured Places data (phones/websites/emails/confidence fields
+  // directly in the schema) with measured 60-70% email population for the
+  // buyer categories actually queried (dentist/lawyer/real_estate_agent/
+  // accountant) — same tier as the other structured-data sources above.
+  // Needs its own entry immediately, same lesson businesslist_pk/ng already
+  // hit once: no entry means the `?? 5` default silently drops good leads
+  // under the minScore floor.
+  overture: 10,
 };
 
 // Taxonomy buckets (src/quality/classifier.js) that indicate a premium tech
