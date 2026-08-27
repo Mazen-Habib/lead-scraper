@@ -330,7 +330,14 @@ type Filters = {
 };
 
 const DEFAULT_FILTERS: Filters = {
-  search: "", tier: "All", source: "All", region: "All", country: "All", city: "All", leadType: "All", industry: "All",
+  // leadType defaults to "buyer", not "All" — the now-disabled vendor-only
+  // sources (Clutch/GoodFirms/etc.) left ~4,135 vendor leads already synced
+  // to Supabase, and the product's ICP is buyers. "All" is still a real,
+  // one-click dropdown option for anyone who wants to see vendors mixed in;
+  // this only changes what a customer sees on first load. Leave the
+  // leadType=undefined handling in the API routes alone — that's what makes
+  // selecting "All" here actually work (see filtersToFilterJson below).
+  search: "", tier: "All", source: "All", region: "All", city: "All", country: "All", leadType: "buyer", industry: "All",
   firmSizeBand: "All", emailOnly: false, minScore: "", maxScore: "",
   sortCol: "score", sortDir: "desc",
 };
@@ -403,7 +410,11 @@ function filtersFromInitialQuery(q?: InitialQuery): Filters {
     region: q.region ?? "All",
     country: q.country ?? "All",
     city: q.city ?? "All",
-    leadType: q.leadType ?? "All",
+    // Same "buyer" default as DEFAULT_FILTERS above, and for the same
+    // reason — this is the fallback that actually applies on first page
+    // load (server-rendered initial query from URL search params), which
+    // DEFAULT_FILTERS alone does not cover once `q` is defined.
+    leadType: q.leadType ?? "buyer",
     industry: q.industry ?? "All",
     firmSizeBand: q.firmSizeBand ?? "All",
     emailOnly: q.hasEmail ?? false,

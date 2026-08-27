@@ -460,3 +460,54 @@ scheduled runs, easy to miss). 67 categories x 4 pages (268 total) keeps
 total page volume close to the old 34 x 8 (272), trading per-category depth
 for category breadth rather than growing the job's runtime — verified against
 the same ~30 pages/min the workflow's own comments already measured live.
+
+---
+
+## Overture category widening + dashboard default (2026-08-27, same day)
+
+Dashboard fix, not just a data fix: the vendor/buyer split (`lead_type`
+column, added by an earlier session) already existed and was already computed
+correctly, but `LeadsTable.tsx`'s default filter was `leadType: "All"`, so
+the ~4,135 vendor leads from the now-disabled sources were still shown to
+customers by default, just with an amber "Vendor" badge. Changed the default
+to `buyer` so they're hidden on first load; "All" is still a real one-click
+dropdown option, nothing was deleted or made inaccessible.
+
+Caught a real bug while verifying this in the browser rather than trusting
+the diff: there were actually two separate hardcoded "All" defaults —
+`DEFAULT_FILTERS` and a second one inside `filtersFromInitialQuery()`
+(`q.leadType ?? "All"`), which is the one that actually applies on first page
+load since the page always passes an initial query object. Editing only
+`DEFAULT_FILTERS` looked correct in the diff but did nothing when checked
+live — a hard reload still showed "All" selected. Fixed both; confirmed via a
+real dev-server session that the dropdown's value is "buyer" on load. Worth
+remembering as a concrete case of the standing "measure before trusting a
+fix worked" rule below, not just an abstract principle.
+
+Overture Pakistan widened from 10 to 40 categories, using real category
+names and counts read directly from the already-cached
+`output/cache/overture_pk.parquet` (no new download, no guessing — Overture's
+own taxonomy names, e.g. `financial_service`, `property_management`,
+`home_developer`). Measured contact-field coverage for all 30 new categories
+before adding any: lowest was `elementary_school` at 23% email and
+`financial_service` at 14% email (though phone/website stayed strong there,
+95%/89%); most sat 30-77% email. Deliberately excluded the vendor-shaped
+categories present in the same taxonomy (`software_development`,
+`information_technology_company`, `marketing_agency`,
+`it_service_and_computer_repair`, `computer_store`, `computer_coaching`,
+`industrial_company`, `wholesale_store`) and non-commercial/institutional
+ones (`mosque`, `church_cathedral`, `hindu_temple`, `sikh_temple`, `park`,
+`bus_station`, `atms`, `police_department`, `post_office`,
+`central_government_office`) — same buyer-only discipline as the businesslist
+widening above, applied to a different source's own taxonomy.
+
+No runtime-budget concern here, unlike businesslist's page-count math:
+Overture categories query the already-cached local parquet file, not a fresh
+network fetch per category — verified live, a 3-category test
+(school/construction_services/interior_design) returned 10,732 leads with no
+new download, near-instant per category. This is the concrete case of the
+"discovery becomes a bounded query, not a crawl" argument from the original
+sourcing report — 30 more Overture categories cost nothing extra in
+wall-clock time, unlike the 33 more businesslist categories, which did need
+the pk_max_pages adjustment since that source really does re-request per
+category.
