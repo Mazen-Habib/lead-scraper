@@ -111,3 +111,28 @@ test('real directory categories classify into the vertical they describe', () =>
     assert.equal(classifyLead({ name: 'Acme', category }).industry, slug, category);
   }
 });
+
+test('generic software/IT categories classify as software-development instead of falling through unclassified', () => {
+  // No taxonomy bucket had a bare "software" keyword — 2,200+ of 2,309
+  // unclassified production leads were exactly this: plain "software
+  // company"/"software developer" listings with nowhere to go.
+  const expectations = [
+    'software / open source',
+    'software developer',
+    'Software company',
+    'software development',
+    'Computer support and services',
+    'Computer consultant',
+    'IT Services',
+  ];
+  for (const category of expectations) {
+    assert.equal(classifyLead({ category }).industry, 'software-development', category);
+  }
+});
+
+test('software-development does not swallow the more specific tech buckets', () => {
+  assert.equal(classifyLead({ category: 'Web Development Agency' }).industry, 'web-development');
+  assert.equal(classifyLead({ category: 'Cloud infrastructure and DevOps' }).industry, 'cloud-devops');
+  assert.equal(classifyLead({ category: 'Mobile app development' }).industry, 'mobile-apps');
+  assert.equal(classifyLead({ category: 'Artificial intelligence startup' }).industry, 'ai-ml');
+});
