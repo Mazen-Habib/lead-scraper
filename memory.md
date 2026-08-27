@@ -511,3 +511,66 @@ sourcing report — 30 more Overture categories cost nothing extra in
 wall-clock time, unlike the 33 more businesslist categories, which did need
 the pk_max_pages adjustment since that source really does re-request per
 category.
+
+---
+
+## Overture widened further: 92 categories, 2nd country (2026-08-27, same day)
+
+Widened Pakistan's Overture category list from 40 to **92** — went deeper into
+the same live `output/cache/overture_pk.parquet` taxonomy (ranked categories
+100-220 by count, not just the top 100 checked earlier), measured
+phone/email coverage for all 52 new additions before adding any (weakest:
+`travel_agents` and `money_transfer_services` at ~0% email but 100% phone —
+kept anyway since the pipeline's contact-point filter accepts phone-only).
+Same buyer-only discipline: skipped `web_designer`, `social_media_agency`,
+`internet_marketing_service`, `graphic_designer`, `employment_agencies` (all
+vendor/B2B-service-shaped) and `library`/`corporate_office` (not real leads).
+
+**Added UAE as a second Overture country** — downloaded and checked its bbox
+(51.5795, 22.4969, 56.3968, 26.0693) before committing to it, not after:
+140,004 places in the raw bbox, 138,214 after the existing country filter
+(the bbox spills slightly into Qatar/Oman, `overture_fetch.py`'s
+`country_filter` already handles this correctly since it was built for
+exactly this). All 92 PK-vetted categories are present in the UAE data too —
+51,302 leads across them, contact coverage as strong as Pakistan's. Ran a
+real end-to-end pipeline test on 3 UAE categories before considering this
+done: 47/47 leads resolved `country=uae` and `lead_type=buyer` correctly (the
+ISO2_TO_SLUG map added earlier already had `AE`, so no code change was needed
+for this, just config). No CI workflow edit was needed either — the
+`overture` SOURCE_REGISTRY entry already loops over every country in
+`config.overture.countries`, so `weekly-scrape-general.yml`'s existing
+`--only=...,overture` picks up AE automatically.
+
+## Two research deliverables produced, no code changes
+
+**Always-on runtime scoping** (published as an artifact, not just discussed):
+pulled ACTUAL GitHub Actions usage via `gh api .../actions/runs` rather than
+estimating from workflow timeouts — **2,893 minutes in the last 30 days**,
+already over the personal-account free tier of 2,000. 783 of those minutes
+were from a since-deleted `nightly-scrape.yml` (added 13 Jul 2026, since
+replaced by the current weekly split) and won't recur; real steady-state
+from the 5 current workflows is ~2,110 min/month, still slightly over.
+Overage cost itself is trivial (~$1/month at the post-Jan-2026 $0.008/min
+rate) — the real constraint is job-timeout-shaped batches, not dollars.
+Recommendation: don't build general-purpose always-on infrastructure: keep
+discovery (Maps/OSM/businesslist/Overture's bbox refresh) on the existing
+weekly cadence since none of them benefit from running more often after this
+session's changes, and put a small Hetzner CX22 (~$5-9/month, current 2026
+price after Hetzner's June rise) on enrichment specifically — the one piece
+that's genuinely bottlenecked by batch windows. Re-measure GH Actions minutes
+after that lands before spending on anything more.
+
+**OSM licence question** (published as an artifact, written for an actual
+lawyer to read, not a legal opinion): states the fact pattern precisely
+(ODbL data merged into the same table as non-ODbL sources via `dedupeKey()`,
+`source` column already makes OSM-derived rows identifiable), quotes ODbL's
+own share-alike summary, and poses the specific open question (does merging
+create a Derivative Database whose obligation could reach the whole table).
+Explicitly makes no legal claim of its own. Notes the Overture provenance
+finding (no OSM contribution observed in the Pakistan sample) as a fact that
+may narrow the question, not as grounds to assume the question is already
+answered.
+
+Neither deliverable changed OSM usage, added new infrastructure, or reached
+a legal conclusion — both are inputs to a decision the user (and, for the
+licence question, an actual lawyer) still needs to make.
