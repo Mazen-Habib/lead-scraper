@@ -197,6 +197,103 @@ selection.
 7. Decide on a paid enrichment vendor once (1) is measured — see the API
    research above.
 
+---
+
+## ICP clarification + cost-at-scale analysis (2026-08-25, later same day)
+
+### The ICP, restated precisely
+User confirmed the earlier "all of the above" answer in more concrete terms,
+using the real-estate result as the example: leads should be **actual local
+businesses who would *buy* services** (dentists, real estate agencies,
+restaurants, clinics), **not agencies/vendors who *sell* those same
+services** (web dev shops, marketing agencies, freelancer directories). The
+Brooklyn/Hounslow region bug and the seller-pollution problem are different
+bugs, but the real-estate screenshot conflated both — worth re-checking that
+example specifically once the region bug is fixed, to confirm how much of it
+was misclassification vs. genuine seller-type sourcing.
+
+**Practical effect on sourcing:** the agency-directory sources (Clutch,
+GoodFirms, Sortlist, DesignRush, TechBehemoths, SelectedFirms, TopDevelopers,
+PSEB, GitHub Orgs — see the seller-vs-buyer breakdown above) aren't wrong to
+keep for the "sell to agencies" / "resell lead data" slices of the ICP, but
+they should stop being presented as if they were buyer-quality inside a
+generic industry filter like "Real Estate." Not yet built: some way to
+distinguish "vendor learning to appear in this vertical" from "genuine local
+buyer in this vertical" at the data level, not just at the source level.
+
+### Volume constraint that reframes everything: ~150,000 NEW leads/month wanted
+This changes which tools are even viable, independent of per-unit price.
+
+### First recommendation (Google Places API) — given, then corrected same session
+Initially recommended Google Maps Platform / Places API as "official, reliable,
+~$17/1000, genuinely cheap, use liberally" and as the structural fix for
+seller-pollution (Places' category taxonomy is precise; agency listings and
+real local businesses are distinguishable there in a way keyword-search
+Maps scraping isn't).
+
+**That recommendation was corrected once real volume math was done in the same
+conversation.** At 150k/month, Details calls alone (~$17-20/1000) run
+**~$2,500-3,000/month**, before search calls; realistic total
+**~$3,000-5,000+/month, ongoing**. Not "cheap, use liberally" — a real
+recurring line item, same order of magnitude as the Apollo pricing the user
+had already ruled out. **Lesson recorded explicitly because it was a real
+misstep, not hedging:** do the per-1000 x expected-volume multiplication
+BEFORE calling anything "cheap" — a correct per-unit price can still be an
+incorrect recommendation once multiplied by the user's actual scale. Re-verify
+this arithmetic before ever repeating the Places API recommendation.
+
+### The framing that actually fits the volume + cost + ICP constraints together
+User's own observation, correct and worth protecting: **"scrapping isnt
+google maps only, it has a lot of different aspects to it."** The existing
+pipeline already runs 14+ free sources (Google Maps scraper, OpenStreetMap,
+businesslist.pk/ng — 383 of 388 categories still untouched, GitHub Orgs, the
+agency directories). At 150k/month, this free multi-source pipeline is the
+project's actual structural cost advantage, not a stopgap to be replaced by a
+paid API. The right shape of solution:
+
+1. **Discovery/volume stays on the free scraper stack.** Expand it (more
+   businesslist categories, more OSM city/category combos, wider Maps query
+   coverage) rather than buying discovery volume from Places/any paid source.
+   Paid discovery only makes sense as a narrow gap-filler for a specific
+   city/category combo the free sources genuinely can't reach.
+2. **Decision-maker enrichment**, the actual "god-tier" requirement, should
+   be free-first at this volume: the already-crawled about/team/leadership
+   pages (see the earlier entry in this file — still not built) are the only
+   enrichment path whose cost doesn't scale with volume. This got MORE
+   important, not less, once 150k/month was named as the target — every
+   per-lookup paid enrichment tool (Apollo, Hunter, Snov, ZoomInfo, Lusha)
+   becomes $7,500-15,000+/month at this scale regardless of which vendor,
+   because the problem is the per-record pricing model itself, not any one
+   vendor's rate.
+3. **Bulk email verification (MillionVerifier)** is the one paid tool that
+   stays cheap at this volume — bulk pricing, not per-lookup — roughly
+   $90-150/month for 150k emails. Recommended as the one paid piece worth
+   adding regardless of ICP/sourcing decisions.
+4. **True wholesale/bulk-licensed B2B data** (Cognism, Data Axle, or similar)
+   was named as the only category of paid vendor that's actually built for
+   six-figure-monthly volume affordably — but it's a negotiated sales
+   conversation, not a self-serve key, and is a separate track from anything
+   buildable without that conversation happening first.
+
+### Explicit ruling from the user
+**Apollo is ruled out — "too expensive."** Don't re-propose it without a
+volume or budget change from the user first.
+
+### Revised priority order coming out of this discussion
+1. Free decision-maker extraction (already the top item above — now doubly
+   justified by the volume math, still not started)
+2. Expand free-source breadth (businesslist categories, OSM, Maps query
+   coverage) rather than any paid discovery API
+3. MillionVerifier once free extraction is producing contacts to verify
+4. Region bug fix + re-audit the real-estate example specifically once fixed,
+   to separate the misclassification effect from the genuine sourcing effect
+5. Bulk/wholesale data-licensing conversation — flagged as real and eventually
+   necessary for full 150k/month named-contact coverage, but explicitly a
+   later, separate track requiring the user's own sales conversation, not
+   something to build toward by default
+
+---
+
 ## Standing instruction from this thread
 
 User: **"make sure not to miss anything at all"** / **"the sutomer land[s]
