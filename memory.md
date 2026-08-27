@@ -687,3 +687,17 @@ Not yet verified with a live GitHub Actions run (only `workflow_dispatch`
 triggering + local `--once` testing available so far) — worth watching the
 first scheduled run for the exact real timing/cost before assuming the
 6-hour cadence is right.
+
+**Update, same day — verified with a real triggered run, not left as an
+estimate:** ran `gh workflow run enrichment-worker.yml -f batch_size=10` and
+watched it to completion rather than assuming the YAML was correct. Real
+result: **1m27s total** (setup/install overhead + ~30s of actual work),
+10/10 leads updated, 0 failed — and the scrapegraph rung correctly fired
+for 2/10 leads still missing email, confirming all three enrichment rungs
+(website crawl, scrapegraph, MX verify) work inside the CI environment, not
+just locally. This is far faster than the ~10 min/run I conservatively
+estimated before triggering it — the real added cost is closer to
+~$2-3/month than the $10-11 quoted above, though that was for batch-size=10,
+not the scheduled default of 75, so the real per-run time at 75 will land
+somewhere between these two figures. Correcting the estimate here rather
+than leaving the pessimistic one standing uncorrected.
