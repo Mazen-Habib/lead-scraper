@@ -610,3 +610,50 @@ returns the correct 13 sources, and a live dev-server session confirmed the
 dashboard's actual dropdown now lists all 13. `overture` is correctly absent
 from that list — it hasn't been run against production yet, only tested
 locally in this session.
+
+---
+
+## Enrichment worker built and verified against production (2026-08-27)
+
+GCP e2-micro was the chosen hosting path, but billing verification failed
+twice (error `OR_BACR2_31` — Google's own message says "try a different
+payment method," so it's a card-rejection, not a balance issue; likely a
+debit-card restriction, not something either of us could fix from outside
+Google's fraud system). User chose to build and verify the worker locally
+now rather than keep fighting cloud signup, and deploy once hosting is
+sorted — this section is that work.
+
+`scripts/enrichment-worker.js` — a continuous loop that queries Supabase
+directly for leads with a website but missing email/linkedin/contact_name,
+runs them through the exact same enrichment building blocks
+`runPipeline.js` already uses (`enrichLeads`, scrapegraph via spawnSync,
+Firecrawl, `verifyLeads`, `scoreLeads` — reused, not reimplemented), and
+writes only the fields enrichment can change back to Supabase. Deliberately
+never touches industry/region/lead_type/source — those are the discovery
+side's job, not enrichment's.
+
+Needed one new migration first (`0013_enrichment_attempts.sql`,
+`last_enrichment_attempt_at` column): without it, a continuous worker would
+re-select the same permanently-unenrichable leads (dead site, no published
+contact info) every cycle forever, since "missing email" alone never becomes
+false for a genuinely un-enrichable lead. The worker now deprioritizes a
+lead for 7 days after any attempt, success or failure.
+
+**Verified against real production data, not just run once and assumed
+working** — `--once --batch-size=3`: found id 61079 (Genesis Dentists
+Melbourne) had no `contact_name`, ran it through the pipeline, and
+genuinely extracted **"Dr Paul Soryal"** for free from the site — exactly
+the highest-priority free-decision-maker-extraction win flagged earlier in
+this file, now confirmed working end-to-end through a from-scratch worker,
+not just the original scrape pipeline. Score/tier updated correctly (43→C,
+56→B, 58→B). Then re-ran the exact eligibility query against those 3 IDs
+and got zero rows back — confirmed the cooldown correctly excludes
+just-processed leads from the next batch, not just written and hoped.
+
+**Not yet deployed anywhere** — this runs locally on demand
+(`node scripts/enrichment-worker.js`, no `--once` for continuous). Deploying
+it to an actual always-on box is still blocked on resolving hosting
+(GCP billing rejected, Hetzner explicitly declined by the user, Oracle not
+yet tried). The script itself has no hosting-specific code — it's a plain
+Node process reading `.env`, so it'll run unmodified wherever it eventually
+lands.
