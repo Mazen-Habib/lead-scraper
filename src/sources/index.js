@@ -23,6 +23,7 @@ import { scrapeDesignRush } from '../scrapers/designRush.js';
 import { scrapeTechBehemoths } from '../scrapers/techBehemoths.js';
 import { scrapeSelectedFirms } from '../scrapers/selectedFirms.js';
 import { scrapeOverture } from '../scrapers/overture.js';
+import { scrapeDuckDuckGo } from '../scrapers/duckduckgo.js';
 
 // buildJobs(config, cloak) -> [{ query, announce, run }]
 //   query    - stamped onto lead.search_query (same string tag() used inline before)
@@ -326,6 +327,24 @@ export const SOURCE_REGISTRY = [
             }),
         };
       });
+    },
+  },
+  {
+    // Phase A2 (see duckduckgo.js): general web-search discovery, not tied to
+    // any single directory site — mainly to backfill the thin-coverage
+    // regions/verticals the directory scrapers above miss.
+    key: 'duckDuckGo',
+    source: 'duckduckgo',
+    engine: 'normal_scraper',
+    errorName: 'DuckDuckGo',
+    buildJobs(config) {
+      const c = config.duckDuckGo || {};
+      if (!c.enabled) return [];
+      return (c.searches || []).map((query) => ({
+        query,
+        announce: `[normal] DuckDuckGo: "${query}"`,
+        run: () => scrapeDuckDuckGo(query, c.maxResultsPerSearch || 30),
+      }));
     },
   },
 ];

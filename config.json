@@ -710,6 +710,23 @@
       }
     ]
   },
+  "duckDuckGo": {
+    "enabled": true,
+    "engine": "normal_scraper",
+    "searches": [
+      "software house in Lahore",
+      "web development company in Karachi",
+      "digital marketing agency in Islamabad",
+      "IT services company in Faisalabad",
+      "app development company in Rawalpindi",
+      "software company in Peshawar",
+      "marketing agency in Multan",
+      "software development company in Gujranwala",
+      "web design agency in Sialkot",
+      "IT company in Hyderabad Pakistan"
+    ],
+    "maxResultsPerSearch": 30
+  },
   "cloak": {
     "headless": true,
     "humanize": true,
