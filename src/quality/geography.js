@@ -148,4 +148,4 @@ export function cityLabel(slug) {
   return slug;
 }
 
-export { REGIONS, GEO };
+export { REGIONS, GEO, ISO2_TO_SLUG };

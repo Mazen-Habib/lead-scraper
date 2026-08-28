@@ -1,7 +1,8 @@
 import * as cheerio from 'cheerio';
-import { cleanEmail, cleanStr } from '../lib/cleanLead.js';
+import { cleanEmail, cleanStr, cleanPhone } from '../lib/cleanLead.js';
 import { curlFetchText } from '../lib/curlImpersonate.js';
-import { GEO, REGIONS } from '../quality/geography.js';
+import { GEO, REGIONS, resolveGeo } from '../quality/geography.js';
+import { extractPhoneNumbers, resolveDefaultCountryIso2 } from '../lib/phoneExtract.js';
 
 const EMAIL_RE = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,}/g;
 // Paths most likely to expose a contact email during a bulk (thousands-of-leads) run
@@ -297,22 +298,32 @@ function discoverFooterPaths($, origin, alreadyQueued) {
 
 /**
  * Crawls a company website's homepage + contact pages for emails/socials.
- * Returns { emails: [...], linkedin: '', facebook: '', instagram: '' }
+ * Returns { emails: [...], linkedin: '', facebook: '', instagram: '', phone: '' }
  *
  * opts:
- *   deep      - bulk runs use a thin 3-path/6s-timeout crawl; a deliberate
- *               single-company lookup (src/commands/scrapeUrl.js) sets this
- *               to true for extra paths, footer-link discovery, and a longer timeout.
- *   timeoutMs - per-page fetch timeout (default 6000, deep default 30000)
+ *   deep              - bulk runs use a thin 3-path/6s-timeout crawl; a deliberate
+ *                        single-company lookup (src/commands/scrapeUrl.js) sets this
+ *                        to true for extra paths, footer-link discovery, and a longer timeout.
+ *   timeoutMs         - per-page fetch timeout (default 6000, deep default 30000)
+ *   defaultCountryIso2 - ISO 3166-1 alpha-2 hint (e.g. "PK") for resolving bare
+ *                        local-format phone numbers — see src/lib/phoneExtract.js.
  */
 export async function findContacts(website, opts = {}) {
-  const { deep = false, timeoutMs = deep ? 30000 : 6000 } = opts;
-  const contacts = { emails: new Set(), linkedin: '', facebook: '', instagram: '', contactName: '', contactTitle: '' };
+  const { deep = false, timeoutMs = deep ? 30000 : 6000, defaultCountryIso2 } = opts;
+  const contacts = {
+    emails: new Set(),
+    linkedin: '',
+    facebook: '',
+    instagram: '',
+    contactName: '',
+    contactTitle: '',
+    phone: '',
+  };
   let origin;
   try {
     origin = new URL(website).origin;
   } catch {
-    return { emails: [], linkedin: '', facebook: '', instagram: '', contactName: '', contactTitle: '' };
+    return { emails: [], linkedin: '', facebook: '', instagram: '', contactName: '', contactTitle: '', phone: '' };
   }
 
   const queue = [...CANDIDATE_PATHS, ...(deep ? DEEP_CANDIDATE_PATHS : [])];
@@ -345,6 +356,20 @@ export async function findContacts(website, opts = {}) {
     for (const m of matches) {
       const email = cleanEmail(m); // normalise before adding
       if (email && !JUNK_PATTERNS.test(email)) contacts.emails.add(email);
+    }
+
+    // tel: links are the phone equivalent of mailto: — highest-confidence signal
+    if (!contacts.phone) {
+      const telHref = $('a[href^="tel:"]').first().attr('href');
+      if (telHref) {
+        const [validated] = extractPhoneNumbers(telHref.replace(/^tel:/i, ''), defaultCountryIso2);
+        if (validated) contacts.phone = validated;
+      }
+    }
+    // Fall back to scanning visible text for a valid phone number
+    if (!contacts.phone) {
+      const [validated] = extractPhoneNumbers($.text(), defaultCountryIso2);
+      if (validated) contacts.phone = validated;
     }
 
     // Social profiles (LinkedIn is the valuable one for B2B scoring)
@@ -387,6 +412,7 @@ export async function findContacts(website, opts = {}) {
     instagram: contacts.instagram,
     contactName: contacts.contactName,
     contactTitle: contacts.contactTitle,
+    phone: contacts.phone,
   };
 }
 
@@ -420,7 +446,13 @@ export async function enrichLeads(leads, concurrency = 15) {
     while (queue.length > 0) {
       const lead = queue.shift();
       try {
-        const c = await findContacts(lead.website);
+        // Country hint for resolving bare local-format phone numbers
+        // ("0300-1234567") — cheap, pure keyword match against address/
+        // search_query the scraper already populated (see geography.js);
+        // doesn't require resolveRegions() to have run yet.
+        const { country } = resolveGeo(lead);
+        const defaultCountryIso2 = resolveDefaultCountryIso2(lead.country || country);
+        const c = await findContacts(lead.website, { defaultCountryIso2 });
         // Merge crawler results with scraper-provided values — prefer the
         // crawler's contact page email (more reliable) but never blank-out
         // a field that the original scraper already populated.
@@ -433,6 +465,9 @@ export async function enrichLeads(leads, concurrency = 15) {
         lead.instagram = c.instagram || lead.instagram || '';
         lead.contact_name = c.contactName || lead.contact_name || '';
         lead.contact_title = c.contactTitle || lead.contact_title || '';
+        // Never overwrite a phone number the source scraper already gave us
+        // (e.g. Google Maps' own phone field) — the crawl only fills a gap.
+        if (!lead.phone && c.phone) lead.phone = cleanPhone(c.phone);
       } catch {
         /* leave fields as-is on error */
       }

@@ -54,6 +54,21 @@ test('findContacts in deep mode follows footer links to find contacts CANDIDATE_
   }
 });
 
+test('findContacts extracts and validates a tel: link, given a country hint', async () => {
+  const server = createServer((req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/html' });
+    res.end('<html><body><a href="tel:+92300-1234567">Call us</a></body></html>');
+  });
+  await new Promise((r) => server.listen(0, '127.0.0.1', r));
+  const { port } = server.address();
+  try {
+    const contacts = await findContacts(`http://127.0.0.1:${port}`, { defaultCountryIso2: 'PK' });
+    assert.equal(contacts.phone, '+923001234567');
+  } finally {
+    server.close();
+  }
+});
+
 test('findContacts returns empty result for an unparsable website', async () => {
   const contacts = await findContacts('not a url');
   assert.deepEqual(contacts, {
@@ -63,6 +78,7 @@ test('findContacts returns empty result for an unparsable website', async () => 
     instagram: '',
     contactName: '',
     contactTitle: '',
+    phone: '',
   });
 });
 
