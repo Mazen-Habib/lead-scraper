@@ -1,5 +1,5 @@
 import * as cheerio from 'cheerio';
-import { cleanEmail, cleanStr, cleanPhone } from '../lib/cleanLead.js';
+import { cleanEmail, cleanStr, cleanPhone, isRoleInbox } from '../lib/cleanLead.js';
 import { curlFetchText } from '../lib/curlImpersonate.js';
 import { GEO, REGIONS, resolveGeo } from '../quality/geography.js';
 import { extractPhoneNumbers, resolveDefaultCountryIso2 } from '../lib/phoneExtract.js';
@@ -332,8 +332,17 @@ export async function findContacts(website, opts = {}) {
 
   for (let i = 0; i < queue.length; i++) {
     const path = queue[i];
-    // Stop early once we have an email and a LinkedIn link
-    if (contacts.emails.size > 0 && contacts.linkedin) break;
+    // Stop early once we have a REAL PERSON'S email (or at least a named
+    // contact) and a LinkedIn link — not just "an email, any email". The old
+    // condition (`emails.size > 0`) stopped the moment it found info@/sales@
+    // on the homepage, which is where a role inbox usually lives, so the
+    // crawl never reached /team or /leadership — exactly the pages a named
+    // person's email would be on. Measured before this fix: 61% of leads
+    // with an email had only a role inbox (scripts/audit-leads.js). This is
+    // a deliberate tradeoff toward more requests per lead when the homepage
+    // is role-inbox-only, in exchange for actually finding the person.
+    const hasPersonalEmail = [...contacts.emails].some((e) => !isRoleInbox(e));
+    if ((hasPersonalEmail || contacts.contactName) && contacts.linkedin) break;
 
     let html;
     try {
@@ -405,8 +414,16 @@ export async function findContacts(website, opts = {}) {
     }
   }
 
+  // A real person's email first, even if a role inbox was technically found
+  // earlier in the crawl (e.g. info@ sitting in the homepage footer, found
+  // before /team's sarah@company.com) — this is what actually makes
+  // lead.email = c.emails[0] pick the person instead of the reception desk.
+  const orderedEmails = [...contacts.emails].sort(
+    (a, b) => Number(isRoleInbox(a)) - Number(isRoleInbox(b))
+  );
+
   return {
-    emails: [...contacts.emails].slice(0, 3),
+    emails: orderedEmails.slice(0, 3),
     linkedin: contacts.linkedin,
     facebook: contacts.facebook,
     instagram: contacts.instagram,

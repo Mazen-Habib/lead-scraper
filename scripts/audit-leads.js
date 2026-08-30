@@ -22,6 +22,7 @@
 import 'dotenv/config';
 import { fetchMasterFromSupabase } from '../src/lib/pushToSupabase.js';
 import { dedupeKey } from '../src/lib/normalizeUrl.js';
+import { isRoleInbox } from '../src/lib/cleanLead.js';
 
 // ── issue definitions ───────────────────────────────────────────────────────
 //
@@ -36,11 +37,6 @@ import { dedupeKey } from '../src/lib/normalizeUrl.js';
 // "company name" is actually a fragment of the whole row. These pollute every
 // downstream filter and look absurd to a customer.
 const MALFORMED_NAME = /^[,\s]|^https?:\/\/|!3m|,https?:\/\//;
-
-// Reception desks, not people. Deliverable, but nobody's inbox in particular —
-// the difference between a lead you can personalize and one you can't.
-const ROLE_INBOX =
-  /^(info|contact|hello|sales|admin|support|office|enquiry|enquiries|inquiry|mail|team|hi|help|general|reception|marketing|careers|jobs|hr|billing|accounts|noreply|no-reply)@/i;
 
 // Deliberately permissive — this is a corruption check, not RFC validation.
 // cleanLead.js already rejects anything unparseable upstream; what survives to
@@ -82,7 +78,7 @@ const CHECKS = [
     id: 'role_inbox_only',
     severity: 'medium',
     label: 'Only reachable via a role inbox (info@/sales@ — no named person)',
-    test: (l) => !!l.email && ROLE_INBOX.test(l.email),
+    test: (l) => !!l.email && isRoleInbox(l.email),
   },
   {
     id: 'no_region',
@@ -271,7 +267,7 @@ async function main() {
 
     console.log('  CONTACT REACHABILITY');
     const withEmail = leads.filter((l) => l.email);
-    const roleInbox = withEmail.filter((l) => ROLE_INBOX.test(l.email));
+    const roleInbox = withEmail.filter((l) => isRoleInbox(l.email));
     console.log(`    ${String(withEmail.length).padStart(6)}  ${pct(withEmail.length, total).padStart(5)}%  have any email`);
     console.log(`    ${String(roleInbox.length).padStart(6)}  ${pct(roleInbox.length, withEmail.length).padStart(5)}%  ...of those, role inboxes (of emails, not of total)`);
     console.log(`    ${String(leads.filter((l) => l.contact_name).length).padStart(6)}  ${pct(leads.filter((l) => l.contact_name).length, total).padStart(5)}%  have a named decision-maker (contact_name)`);

@@ -701,3 +701,50 @@ estimated before triggering it — the real added cost is closer to
 not the scheduled default of 75, so the real per-run time at 75 will land
 somewhere between these two figures. Correcting the estimate here rather
 than leaving the pessimistic one standing uncorrected.
+
+---
+
+## The real "people not sellers" fix — role-inbox crawl stopped too early (2026-08-31)
+
+Found the actual root cause of the 61%-role-inbox measurement from earlier
+in this file, not just another report of it. `findContacts()`
+(`emailFinder.js`) had an early-stop condition —
+`if (contacts.emails.size > 0 && contacts.linkedin) break;` — that fired the
+moment it found ANY email, including a role inbox sitting in the homepage
+footer, which is exactly where `info@`/`sales@` usually lives. That meant
+the crawl frequently never reached `/team`, `/about-us`, `/leadership` —
+the pages a named person's email would actually be on. The measurement
+tool (`audit-leads.js`) was reporting the symptom correctly the whole time;
+nothing upstream was acting on it.
+
+Fixed two things together, not just one:
+1. The early-stop condition now requires a **non-role email** (or an
+   already-found `contactName`) before it's satisfied, not just "an email,
+   any email" — so the crawl keeps going into deeper pages when only a role
+   inbox has been found so far.
+2. When multiple emails are found across a crawl, the returned list is now
+   sorted personal-first — previously `lead.email = c.emails[0]` picked
+   whichever email was found chronologically, which usually meant the
+   homepage's role inbox, even when a personal one was also found on a
+   later page in the same crawl.
+
+Extracted the `ROLE_INBOX` regex (previously duplicated only in
+`audit-leads.js`, with `emailFinder.js` having no equivalent check at all)
+into a shared `isRoleInbox()` in `src/lib/cleanLead.js` — both files import
+the same one now.
+
+**Verified against real production data, not just unit tests**: pulled 3
+real leads with a role-inbox-only email and no `contact_name` from
+Supabase, ran them through the fixed `enrichLeads()`. "Fast Cables"
+(`fast-cables.com`) previously had only `info@fast-cables.com` — the fixed
+crawl found **`usman63@hotmail.com`, `alishehzad@fast-cables.com`,
+`exports@fast-cables.com`** as well, and correctly promoted the personal
+email to primary. The other two test leads (14 Hills, University Hospital
+Sharjah) genuinely only publish a role inbox on their sites — confirmed by
+the deeper crawl finding nothing else, which is the honest outcome, not a
+failure of the fix.
+
+This is a deliberate tradeoff, stated plainly: leads whose homepage is
+role-inbox-only now cost more requests per lead (the crawl continues into
+/team-style pages instead of stopping at the homepage), in exchange for
+actually finding the person this whole product exists to find.

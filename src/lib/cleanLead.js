@@ -63,6 +63,19 @@ export function cleanEmail(raw) {
   return VALID_EMAIL.test(s) ? s : '';
 }
 
+// Reception desks, not people — deliverable, but nobody's inbox in
+// particular. The single source of truth for this check: scripts/audit-leads.js
+// used to keep its own separate copy for *measuring* the 61%-role-inbox
+// problem, while emailFinder.js had no equivalent check at all and couldn't
+// act on it. Both now import this one.
+const ROLE_INBOX =
+  /^(info|contact|hello|sales|admin|support|office|enquiry|enquiries|inquiry|mail|team|hi|help|general|reception|marketing|careers|jobs|hr|billing|accounts|noreply|no-reply)@/i;
+
+/** True if an email is a generic role inbox rather than a named person's. */
+export function isRoleInbox(email) {
+  return !!email && ROLE_INBOX.test(email);
+}
+
 /** Cleans a phone number: strips HTML, decodes entities, normalises whitespace. */
 export function cleanPhone(raw) {
   if (!raw) return '';
