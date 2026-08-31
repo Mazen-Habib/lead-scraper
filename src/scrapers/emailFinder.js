@@ -1,14 +1,43 @@
 import * as cheerio from 'cheerio';
+import { EnvHttpProxyAgent, setGlobalDispatcher } from 'undici';
 import { cleanEmail, cleanStr, cleanPhone, isRoleInbox } from '../lib/cleanLead.js';
 import { curlFetchText } from '../lib/curlImpersonate.js';
 import { GEO, REGIONS, resolveGeo } from '../quality/geography.js';
 import { extractPhoneNumbers, resolveDefaultCountryIso2 } from '../lib/phoneExtract.js';
+import { deobfuscateEmails } from '../lib/emailDeobfuscate.js';
+
+// Off by default — HTTP_PROXY/HTTPS_PROXY aren't set for anyone today, so
+// this is a hook for later (per the "free-first, paid optional later"
+// framing), not something active now. undici's EnvHttpProxyAgent reads
+// those two env vars (plus NO_PROXY) itself; setting the dispatcher
+// unconditionally is safe even with no proxy configured — it's a no-op.
+if (process.env.HTTP_PROXY || process.env.HTTPS_PROXY) {
+  setGlobalDispatcher(new EnvHttpProxyAgent());
+}
+
+// Cycled per-request rather than one fixed string — a single UA repeated
+// across thousands of requests to a target site over a run is itself a
+// fingerprint. All real, current desktop browser strings; only the ones
+// actually seen in wide use, not an invented pattern.
+const USER_AGENTS = [
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15',
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0',
+  'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+];
+let uaIndex = 0;
+function nextUserAgent() {
+  const ua = USER_AGENTS[uaIndex % USER_AGENTS.length];
+  uaIndex++;
+  return ua;
+}
 
 const EMAIL_RE = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,}/g;
 // Paths most likely to expose a contact email during a bulk (thousands-of-leads) run
 const CANDIDATE_PATHS = ['', '/contact', '/about'];
 // Extra paths worth the time for a single deliberate on-demand lookup (2.1)
-const DEEP_CANDIDATE_PATHS = ['/team', '/about-us', '/leadership', '/contact-us', '/company'];
+const DEEP_CANDIDATE_PATHS = ['/team', '/about-us', '/leadership', '/contact-us', '/company', '/careers'];
 // Junk matches that regex picks up from asset filenames / trackers
 const JUNK_PATTERNS =
   /\.(png|jpe?g|gif|svg|webp|css|js)$|sentry|wixpress|example\.(com|org)|@2x|@3x|^(xxx|email|name|user|your|test|firstname|lastname)@|@(xxx|domain|yourdomain|yoursite|sentry|example)\.|placeholder/i;
@@ -253,8 +282,7 @@ async function fetchPage(url, timeoutMs) {
     const res = await fetch(url, {
       signal: AbortSignal.timeout(timeoutMs),
       headers: {
-        'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+        'User-Agent': nextUserAgent(),
         Accept: 'text/html,application/xhtml+xml',
       },
       redirect: 'follow',
@@ -364,6 +392,14 @@ export async function findContacts(website, opts = {}) {
     const matches = html.match(EMAIL_RE) || [];
     for (const m of matches) {
       const email = cleanEmail(m); // normalise before adding
+      if (email && !JUNK_PATTERNS.test(email)) contacts.emails.add(email);
+    }
+
+    // De-obfuscated emails: Cloudflare's data-cfemail attribute and
+    // bracket-wrapped text patterns ("name[at]domain[dot]com") never match
+    // EMAIL_RE above since there's no literal "@" in the source — a genuine
+    // gap, not covered by the two passes above.
+    for (const email of deobfuscateEmails(html, $)) {
       if (email && !JUNK_PATTERNS.test(email)) contacts.emails.add(email);
     }
 

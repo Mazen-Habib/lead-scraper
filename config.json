@@ -1097,5 +1097,29 @@
         ]
       }
     ]
+  },
+  "youtube": {
+    "enabled": false,
+    "maxResultsPerSearch": 10,
+    "searches": [
+      "marketing agency Lahore",
+      "IT company Karachi",
+      "real estate agency Dubai",
+      "dental clinic Karachi",
+      "law firm Lahore"
+    ]
+  },
+  "olx": {
+    "enabled": true,
+    "maxListingsPerCategory": 15,
+    "categories": [
+      "consultancy-services_c707005",
+      "construction-services_c707004",
+      "event-services_c300",
+      "car-services_c707003",
+      "tailor-services_c707008",
+      "insurance-services_c707006",
+      "other-services_c625"
+    ]
   }
 }

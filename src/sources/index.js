@@ -24,6 +24,8 @@ import { scrapeTechBehemoths } from '../scrapers/techBehemoths.js';
 import { scrapeSelectedFirms } from '../scrapers/selectedFirms.js';
 import { scrapeOverture } from '../scrapers/overture.js';
 import { scrapeDuckDuckGo } from '../scrapers/duckduckgo.js';
+import { scrapeYouTube } from '../scrapers/youtube.js';
+import { scrapeOlx } from '../scrapers/olx.js';
 
 // buildJobs(config, cloak) -> [{ query, announce, run }]
 //   query    - stamped onto lead.search_query (same string tag() used inline before)
@@ -344,6 +346,49 @@ export const SOURCE_REGISTRY = [
         query,
         announce: `[normal] DuckDuckGo: "${query}"`,
         run: () => scrapeDuckDuckGo(query, c.maxResultsPerSearch || 30),
+      }));
+    },
+  },
+  {
+    // The one "social platform" source actually worth building — see
+    // memory.md's architecture-plan entry for why Instagram/LinkedIn/
+    // Facebook/TikTok deliberately aren't. Off by default: needs
+    // YOUTUBE_API_KEY, which isn't set anywhere yet. scrapeYouTube() itself
+    // also no-ops cleanly with a warning if the key is missing, so leaving
+    // this on without a key wouldn't break anything either — this flag is
+    // just to avoid burning the free 100-searches/day quota on nothing.
+    key: 'youtube',
+    source: 'youtube',
+    engine: 'normal_scraper',
+    errorName: 'YouTube',
+    buildJobs(config) {
+      const c = config.youtube || {};
+      if (!c.enabled) return [];
+      return (c.searches || []).map((query) => ({
+        query,
+        announce: `[normal] YouTube: "${query}"`,
+        run: () => scrapeYouTube(query, { maxResults: c.maxResultsPerSearch }),
+      }));
+    },
+  },
+  {
+    // The "OLX-style classifieds" source from the architecture plan.
+    // Verified live before building: robots.txt allows these paths, and a
+    // real listing page was inspected directly — including the real
+    // limitation that OLX gates phone numbers behind a click, so this
+    // source only ever supplies name/category/city/website/email, never
+    // phone. See olx.js's own docstring for the full detail.
+    key: 'olx',
+    source: 'olx',
+    engine: 'normal_scraper',
+    errorName: 'OLX',
+    buildJobs(config) {
+      const c = config.olx || {};
+      if (!c.enabled) return [];
+      return (c.categories || []).map((categorySlug) => ({
+        query: categorySlug,
+        announce: `[normal] OLX: "${categorySlug}"`,
+        run: () => scrapeOlx(categorySlug, { maxListings: c.maxListingsPerCategory }),
       }));
     },
   },

@@ -37,6 +37,20 @@ const SOURCE_SCORES = {
   // hit once: no entry means the `?? 5` default silently drops good leads
   // under the minScore floor.
   overture: 10,
+  // Lower confidence than the structured sources above — the signal is a
+  // channel's free-text "About" description, which can be a sponsorship-
+  // inquiry contact rather than the actual business, not a schema field.
+  // Still needs an explicit entry rather than the `?? 5` default, same
+  // reasoning as every entry above it.
+  youtube: 6,
+  // Genuinely sparse signal, stated plainly: OLX gates phone numbers behind
+  // a click (see olx.js's docstring), so most leads from here have neither
+  // phone nor a recovered website/email and get dropped by
+  // filterByContactPoint downstream anyway. The ones that DO have a
+  // recovered contact point are real signal, just rarer than any other
+  // source — scored lowest of all of them for that reason, not as a
+  // technicality to route around the `?? 5` default.
+  olx: 4,
 };
 
 // Taxonomy buckets (src/quality/classifier.js) that indicate a premium tech

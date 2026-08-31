@@ -748,3 +748,92 @@ This is a deliberate tradeoff, stated plainly: leads whose homepage is
 role-inbox-only now cost more requests per lead (the crawl continues into
 /team-style pages instead of stopping at the homepage), in exchange for
 actually finding the person this whole product exists to find.
+
+---
+
+## Architecture-plan items implemented (2026-08-31)
+
+Followed up on the "Lead Scraper Architecture Plan" artifact from 27 Aug —
+implemented all 6 concrete gap items from its checklist (not the
+Instagram/LinkedIn/Facebook/TikTok row, which was a decision to make, not a
+build). "leave enrichment for now" was interpreted as: don't touch the
+enrichment WORKER (`scripts/enrichment-worker.js`/its GH Actions cron)
+specifically — the small `emailFinder.js` fixes below still went in, since
+the user's follow-up ("add these") pointed at the whole checklist including
+those.
+
+1. **Email de-obfuscation** — new `src/lib/emailDeobfuscate.js`: decodes
+   Cloudflare's `data-cfemail` (hex + single-byte XOR, verified against a
+   real generated test vector, not hand-typed) and bracket/paren-wrapped
+   text obfuscation (`name [at] domain [dot] com`). Deliberately does NOT
+   touch bare " at "/" dot " without brackets — too many false positives in
+   ordinary prose. 6 tests.
+2. **User-agent rotation** — `emailFinder.js` now cycles through 5 real
+   current desktop UA strings instead of one fixed string repeated across
+   every request in a run.
+3. **Proxy support, off by default** — `undici`'s `EnvHttpProxyAgent`,
+   activated only if `HTTP_PROXY`/`HTTPS_PROXY` are actually set (they
+   aren't, anywhere, today). A hook for later, not active now — matches the
+   "free now, paid optional later" framing.
+4. **`/careers` path** added to `DEEP_CANDIDATE_PATHS`.
+5. **YouTube Data API v3 source** (`src/scrapers/youtube.js`) — the one
+   "social platform" source the architecture plan actually recommended
+   building. Designed around real 2026 quota costs, verified via research
+   before writing code: `search.list` = 100 units/call (~100 searches/day
+   on the free 10,000-unit tier), `channels.list` = 1 unit/call — one search
+   per query, then one batched cheap call for channel details. Extracts a
+   business website/email from a channel's "About" description when
+   present. **Off by default** (`config.json`'s `youtube.enabled: false`)
+   since `YOUTUBE_API_KEY` isn't set yet — user is adding it "tomorrow".
+   3 tests; one caught a real bug (see below).
+6. **OLX Pakistan Services** (`src/scrapers/olx.js`) — the "OLX-style
+   classifieds" source, picked and verified live via the browser before
+   writing any code (robots.txt allows category/item pages; 7 real category
+   slugs confirmed: consultancy/construction/event/car/tailor/insurance/
+   other services). **A real, load-bearing limitation found during that
+   check**: OLX does not expose a seller's phone number to a plain fetch —
+   it's gated behind a "Contact Now" click, not in JSON-LD or any embedded
+   data blob. Deliberately did not reverse-engineer that reveal call. This
+   source only ever supplies name/category/city/website/email — reuses
+   `emailDeobfuscate.js` for the occasional obfuscated-domain description
+   ("tax. msft. pk" seen live). Scored lowest of all sources (4) in
+   `scorer.js`, stated plainly why. On by default with a conservative
+   7-category list and 1 req/sec pacing (`createPacer`, reused from
+   `jinaReader.js`) — no crawl-delay in robots.txt, but no reason to hit a
+   live consumer site harder than that either.
+
+**Real bugs caught by testing against live data before trusting any of
+this, not after:**
+- YouTube's non-business-host filter assumed every platform shared the
+  `.com`/`.be` TLD pattern — `linktr.ee` and `bit.ly` don't, so both slipped
+  through undetected until a test caught it. Fixed by matching full
+  registrable domains instead of name+swappable-TLD.
+- OLX's website extraction initially scanned the whole page body, which
+  matched Google Tag Manager's tracking-pixel URL (present on every single
+  page) as if it were the business's own site. Fixed by scanning only the
+  listing's actual description text — found by locating the DOM element
+  whose own text is literally "Description" and reading its sibling,
+  since OLX's build tool generates hash class names
+  (e.g. `_5eb397e5`) with no stable semantic hook to select on directly.
+- The first attempt at reading that sibling used `.parent().next()` instead
+  of `.next()` — one level too high in the DOM — caught immediately by
+  re-running the live test rather than assuming the fix from the previous
+  bug was complete.
+- City extraction via breadcrumb links (`nav a, [class*="breadcrumb"] a`)
+  matched nothing on OLX's real DOM — replaced with a match against the
+  same city-label list `geography.js`/`shared/geo.json` already maintain,
+  which is robust to markup changes since it depends on real place names,
+  not CSS structure.
+
+All 209 tests pass (up from 197 at the start of this entry). Every new
+scraper was run against real, live production traffic before being trusted
+— not just unit-tested — per the standing pattern in this file.
+
+**Required API keys, for the user (asked to be told "at the end, no
+rush")**:
+- `YOUTUBE_API_KEY` — only one actually needed for anything in this batch.
+  Free (Google Cloud Console → enable "YouTube Data API v3" → create an API
+  key), no billing required for the 10,000-unit/day free tier. Nothing else
+  in this batch (de-obfuscation, UA rotation, proxy hook, `/careers`, OLX)
+  needs any key at all — OLX and the emailFinder fixes work with zero new
+  credentials.
