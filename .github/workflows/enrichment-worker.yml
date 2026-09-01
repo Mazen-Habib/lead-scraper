@@ -60,6 +60,15 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Install Playwright + Chromium system deps
+        # Found missing after fixing the GROQ_KEY_1 auth error: a
+        # dead key had been failing scrapegraph's very first request for
+        # weeks, which meant this workflow never actually got far enough
+        # to hit ScrapegraphAI's own Playwright-launched browser and
+        # discover it was never installed here either (the other two
+        # scrape workflows have this step; this one never did).
+        run: npx playwright install chromium --with-deps
+
       - name: Install Python deps (ScrapegraphAI — email enrichment rung 2)
         run: pip install "scrapegraphai>=1.0" langchain-groq langchain-mistralai langchain-openai --quiet
 
