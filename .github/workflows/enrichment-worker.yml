@@ -72,6 +72,18 @@ jobs:
       - name: Install Python deps (ScrapegraphAI — email enrichment rung 2)
         run: pip install "scrapegraphai>=1.0" langchain-groq langchain-mistralai langchain-openai --quiet
 
+      - name: Install Playwright's browser for the PYTHON package specifically
+        # Round two of the same bug: the Node install above satisfies
+        # Node's own playwright/playwright-core (package.json), but
+        # ScrapegraphAI actually launches a browser through pip's separate
+        # `playwright` package, which pins its own browser build revision
+        # (confirmed live: the error asked for a `chromium_headless_shell`
+        # revision the Node-side install never fetched). Python's own
+        # playwright CLI has to run its own install for its own pinned
+        # revision -- the two packages don't share a satisfied cache entry
+        # just because they happen to write into the same directory tree.
+        run: python -m playwright install --with-deps chromium
+
       - name: Run enrichment worker (one batch)
         run: node scripts/enrichment-worker.js --once --batch-size=${{ github.event.inputs.batch_size || '75' }}
         env:
