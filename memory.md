@@ -837,3 +837,69 @@ rush")**:
   in this batch (de-obfuscation, UA rotation, proxy hook, `/careers`, OLX)
   needs any key at all — OLX and the emailFinder fixes work with zero new
   credentials.
+
+---
+
+## The 4.3% named-contact ceiling is DATA, not crawling (2026-09-09)
+
+Investigating "how do we get more qualified buyer leads", measured against
+live production (18,317 leads). `audit-leads.js` reports 94.9% "actionable",
+but that bar counts `info@` as a contact point. The number that matters for
+outreach: **4.3% (791) have a named human**, and **11,182 buyer leads have
+no person at all**.
+
+**Three stacked failures had killed the enrichment rung since mid-August**,
+each hiding the next. All three now fixed and verified in CI:
+1. `GROQ_KEY_1` dead (401) — user replaced it 1 Sept.
+2. `enrichment-worker.yml` never installed Playwright — invisible until the
+   key worked. Needed BOTH `npx playwright install` and, separately,
+   `python -m playwright install`: ScrapegraphAI launches through pip's
+   playwright package, which pins its own browser revision independently of
+   Node's. The Node install alone does not satisfy it.
+3. `llama-3.3-70b-versatile` **deprecated by Groq 2026-08-16** for free/dev
+   tiers. The 404 said "does not exist or you do not have access to it" —
+   the second clause was the real one. Now `openai/gpt-oss-120b`, passed as a
+   `ChatGroq` model_instance (current Groq ids contain their own slash, so
+   the old `groq/<id>` string form would produce `groq/openai/gpt-oss-120b`).
+   Added `GROQ_ENRICH_MODEL` env override so the next deprecation is a secret
+   change, not a code deploy — this outage lasted three weeks because it
+   needed one.
+
+**The important negative result — do not redo this experiment.** The obvious
+next hypothesis was that names live on /team and /leadership, which bulk
+enrichment never crawled (`enrichLeads` called `findContacts` without
+`deep`, so only `''`, `/contact`, `/about`). Measured on 60 real buyer
+leads: **deep found 0 names in 87s; shallow found 0 in ~35s.** Sampled 10 of
+their sites — only 2 had a /team-style page at all, and the one with a
+genuine `/team` (hamcparland.co.uk, a pharmacy chain) lists *branches*, not
+people; every name-shaped string on it was "Weight Loss", "Blood Pressure",
+"Find Your". The extractor correctly returned nothing.
+
+So the ceiling is **data availability**: this lead population is small local
+businesses (dentists, food shops, tutors) whose websites do not name
+individuals. `enrichLeads` now accepts `opts.deep` for callers who want it
+(the on-demand single-URL lookup is a different population), but the worker
+deliberately leaves it off — 2.5x runtime for zero measured gain.
+
+Consequence for planning: **name→email inference is undermined too**, since
+it depends on having a name. For this ICP the realistic paths are (a)
+official registries that name directors by law — Companies House covers the
+4,287 UK leads free and cleanly, but Pakistan's SECP puts directors behind
+paid downloads and UAE registry data is paid + personal data under the PDPL,
+so it does NOT solve the core markets; or (b) accepting that phone is the
+reachable channel for this ICP (67.7% have one) and that "named
+decision-maker" may be the wrong success metric for a dentist in Faisalabad.
+
+**Still open — `GROQ_KEY_2` is also dead.** A real 150-lead run on 9 Sept
+logged 22 AuthenticationErrors, all on key 2; key 1 threw 6 errors, none of
+them auth (they were dead domains — key 1 genuinely works now). The user
+replaced only key 1. Keys 2 and 3 are still the originals from July, so a
+third of the rotation lands on a dead key. Needs 2 new Groq keys.
+
+**Throughput changes shipped alongside:** worker now filters to
+`lead_type = 'buyer'` (was crawling the 6,713 vendor leads the dashboard
+already hides — a third of the budget on rows nobody sees), and runs
+150-per-batch every 3h instead of 75 every 6h. Measured: a 150-lead batch
+takes 12m52s against the 25-minute timeout. Buyer backlog drains in ~9 days
+instead of ~37, at ~$20/month Actions overage instead of ~$10-11. Drop the
+cron back to `*/6` once drained.
