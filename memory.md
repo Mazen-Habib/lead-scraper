@@ -903,3 +903,30 @@ already hides — a third of the budget on rows nobody sees), and runs
 takes 12m52s against the 25-minute timeout. Buyer backlog drains in ~9 days
 instead of ~37, at ~$20/month Actions overage instead of ~$10-11. Drop the
 cron back to `*/6` once drained.
+
+---
+
+## Overture widened to India — the biggest country not yet covered (2026-09-09)
+
+Resumed real lead-generation work once the credential/infra fixes above
+landed. Checked live production for the highest-value gap: India (1,492
+leads via other sources) was the single largest country with no Overture
+coverage — bigger than UAE, which already had it.
+
+Same verify-before-trust process as PK/AE: downloaded India's bbox (68.1,
+6.5, 97.4, 35.5) — 4.99M places, ~1GB, took ~3.5 min. Confirmed real
+country-code spillover into neighbors (BD 245k, PK 167k, LK 111k, NP 87k)
+is handled correctly by `overture_fetch.py`'s existing `country_filter`,
+same as it already does for PK/AE. Checked the full 92-category buyer list
+against real Indian data before adding: **all 92 present, no gaps, 1.6M
+total leads across them**, with contact coverage as strong or stronger than
+Pakistan/UAE (dentist 95%/63% phone/email, lawyer 92%/70%, accountant
+95%/65%).
+
+Ran a real pipeline test (3 categories, 60 leads) before calling it done:
+55/55 correctly resolved `country=india`, `lead_type=buyer`, 0 vendor —
+`ISO2_TO_SLUG` already had `IN` mapped from the original geography.js work,
+so no code change was needed, only the config addition.
+
+`config.json`'s `overture.countries` is now `[PK, AE, IN]`. All 209 tests
+still pass.
