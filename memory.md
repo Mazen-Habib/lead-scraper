@@ -980,3 +980,32 @@ general (applies to every country, not GB-specific), so existing data isn't
 at further risk going forward, but a backfill pass re-resolving all
 existing Overture-sourced leads through the fixed function would be worth
 doing to catch any that already slipped through under the old logic.
+
+---
+
+## Saudi Arabia added; USA attempt failed cleanly and was correctly discarded (2026-09-09, same day)
+
+Continued down the country-gap list after UK. Saudi Arabia (555 leads,
+zero Overture coverage): downloaded cleanly (501K places, ~100MB, no
+issues), verified 91/92 buyer categories present (only
+`money_transfer_services` missing entirely — negligible), 49,214 total
+leads. Email rates lower than PK/UAE/IN/GB (7-48% vs 30-70% elsewhere) but
+phone rates solid (47-93%) — still genuinely usable since the pipeline
+accepts phone-only contact points. Live pipeline test: 32/32 leads
+correctly resolved `country=saudi-arabia`, all buyer. Added to
+`config.json`; `overture.countries` is now `[PK, AE, IN, GB, SA]`.
+
+**USA was attempted next and deliberately NOT added.** The continental-US
+bbox download crashed partway with `pyarrow.lib.ArrowMemoryError: malloc of
+size 33478208 failed` — the dataset is far larger and denser than
+UK/India/Pakistan. The partial file that was left behind was still
+readable (3.65M rows) but is a geographically arbitrary slice of however
+much downloaded before the crash, not a representative sample of the whole
+country — using it would have meant shipping incomplete coverage silently
+labeled as complete. Deleted it rather than work around the corruption.
+
+USA needs a different approach: splitting the bbox into smaller regional
+chunks (e.g. West/Central/East, or state-level) and unioning the results,
+rather than one whole-country pull. Not attempted this session — flagging
+it as the right next step rather than guessing at chunk boundaries under
+time pressure.
