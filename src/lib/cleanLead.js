@@ -50,7 +50,7 @@ export function cleanStr(value) {
 }
 
 // Valid email pattern (no spaces, proper structure)
-const VALID_EMAIL = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9\-]+(?:\.[a-zA-Z0-9\-]+)*\.[a-zA-Z]{2,}$/;
+const VALID_EMAIL = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,}$/;
 
 /** Cleans an email address. Returns '' if it cannot be made valid. */
 export function cleanEmail(raw) {

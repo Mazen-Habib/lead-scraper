@@ -80,7 +80,7 @@ test('syncLeadsToSupabase reports skipped when Supabase is not configured', asyn
 test('syncLeadsToSupabase succeeds on the first attempt with no retry needed', async () => {
   process.env.SUPABASE_URL = 'https://fake.supabase.co';
   process.env.SUPABASE_SERVICE_ROLE_KEY = 'fake-key';
-  const restore = stubSupabaseFetch((call) => ok([{ id: 1, dedupe_key: 'acme1.com' }]));
+  const restore = stubSupabaseFetch((_call) => ok([{ id: 1, dedupe_key: 'acme1.com' }]));
   try {
     const result = await syncLeadsToSupabase([lead(1)]);
     assert.equal(result.synced, 1);

@@ -18,7 +18,7 @@ function classifierHaystack(lead) {
   const domainWords = (lead.website || '')
     .replace(/^https?:\/\//i, '')
     .replace(/^www\./i, '')
-    .replace(/[.\-\/]/g, ' ');
+    .replace(/[.\-/]/g, ' ');
   // Directory profile URLs (Clutch/DesignRush) end in a readable slug like
   // "acme-web-development-agency" — Google Maps URLs end in a coordinate/data
   // blob like "data=!4m7!3m6!1s0x...", which falsely matched taxonomy

@@ -10,6 +10,8 @@
     "sync-shared-data": "node scripts/sync-shared-data.js",
     "sync-shared-data:check": "node scripts/sync-shared-data.js --check",
     "export-all": "node scripts/export-all-leads.js",
+    "lint": "eslint src test scripts",
+    "format:check": "prettier --check src test scripts",
     "postinstall": "playwright install chromium"
   },
   "dependencies": {
@@ -25,6 +27,9 @@
     "playwright-core": "^1.61.1"
   },
   "devDependencies": {
-    "pg": "^8.22.0"
+    "@eslint/js": "^9.39.5",
+    "eslint": "^9.39.5",
+    "pg": "^8.22.0",
+    "prettier": "^3.9.6"
   }
 }
