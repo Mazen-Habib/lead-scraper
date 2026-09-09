@@ -65,6 +65,12 @@ async function fetchBatch(supabase) {
     .select(dbColumns.join(','))
     .not('website', 'is', null)
     .neq('website', '')
+    // Buyers only. The 6,713 vendor leads in the table are already hidden
+    // from customers by default (LeadsTable's leadType filter), so crawling
+    // them spends the enrichment budget on rows nobody is shown — a third of
+    // the backlog, for nothing. Measured 2026-09-09: 16,264 leads have a
+    // website and no named contact, but only 11,182 of those are buyers.
+    .eq('lead_type', 'buyer')
     .or('email.is.null,linkedin.is.null,contact_name.is.null')
     .or(`last_enrichment_attempt_at.is.null,last_enrichment_attempt_at.lt.${cooldownCutoff}`)
     .order('last_enrichment_attempt_at', { ascending: true, nullsFirst: true })

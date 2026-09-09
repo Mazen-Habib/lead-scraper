@@ -16,20 +16,33 @@ name: Enrichment Worker (continuous backlog, batched)
 # Real cost, stated up front rather than glossed over (see memory.md's
 # runtime-scoping entry for the same discipline applied here): the account
 # was already over its free 2,000 min/month before this workflow existed
-# (~2,110 min/month steady-state from the other 5 workflows). At 4 runs/day
-# x ~10 min/run x 30 days, this adds ~1,200 min/month, bringing the total to
-# ~3,310/month — roughly $10-11/month in GitHub Actions overage at the
-# post-Jan-2026 $0.008/min rate. That is a real, ongoing charge, not free —
-# raise or lower `cron`/`batch-size` below to trade cost against throughput.
+# (~2,110 min/month steady-state from the other 5 workflows).
+#
+# 2026-09-09, raised from 75x4/day to 150x8/day to drain the backlog. Cost
+# recomputed rather than left stale: measured runtime was ~1m47s for a batch
+# of 10; a batch of 150 is dominated by per-lead crawling, so budget ~8-12
+# min/run. At 8 runs/day x 30 days that is ~2,400 min/month, taking the
+# account to roughly ~4,500/month — about $20/month in Actions overage at
+# the post-Jan-2026 $0.008/min rate, up from the ~$10-11 the 6-hourly
+# schedule cost. Deliberate trade: ~9 days to clear the buyer backlog
+# instead of ~37. Drop the cron back to */6 once it is drained.
 
 on:
   schedule:
-    - cron: '0 */6 * * *'   # every 6 hours — see cost note above before changing this
+    # Every 3 hours at :07 (off the hour — every cron on the planet fires at
+    # :00). Raised from every 6h alongside the batch size below to drain the
+    # pre-31-Aug backlog: 16,264 leads had a website but no named contact,
+    # 11,182 of them buyers. At the old 75x4/day it was a 37-day drain for
+    # buyers alone; at 150x8/day it's ~9 days. Real measured runtime is under
+    # 2 minutes for a batch of 10 against a 25-minute timeout, so the headroom
+    # for a larger batch is genuinely there — but re-check the timeout if the
+    # batch is ever raised much beyond 150.
+    - cron: '7 */3 * * *'
   workflow_dispatch:
     inputs:
       batch_size:
         description: 'Leads per run'
-        default: '75'
+        default: '150'
 
 # Prevents two runs overlapping if one is still going when the next cron
 # fires (a slow scrapegraph/LLM rung could plausibly run past 6 hours in a
@@ -85,7 +98,7 @@ jobs:
         run: python -m playwright install --with-deps chromium
 
       - name: Run enrichment worker (one batch)
-        run: node scripts/enrichment-worker.js --once --batch-size=${{ github.event.inputs.batch_size || '75' }}
+        run: node scripts/enrichment-worker.js --once --batch-size=${{ github.event.inputs.batch_size || '150' }}
         env:
           NODE_ENV: production
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
