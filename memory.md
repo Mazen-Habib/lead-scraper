@@ -1009,3 +1009,36 @@ chunks (e.g. West/Central/East, or state-level) and unioning the results,
 rather than one whole-country pull. Not attempted this session — flagging
 it as the right next step rather than guessing at chunk boundaries under
 time pressure.
+
+---
+
+## Singapore and Canada added; USA remains the one open item (2026-09-09, same day)
+
+Continued down the country-gap list.
+
+**Singapore** (835 leads, zero coverage): 132,797 genuine SG places, 92/92
+buyer categories present, 44,598 total leads, strong contact rates
+(interior_design 98%/84%, hair_salon 97%/46%). Live test: 26/26 leads
+correctly resolved `country=singapore`, all buyer.
+
+**Canada** (499 leads, zero coverage): this one is worth noting because the
+earlier USA bbox attempt crashed with an OOM error, and Canada's landmass is
+also enormous — but this download completed cleanly (4.97M places, ~1GB,
+~6 min), fully readable, no truncation. So the earlier US failure wasn't
+simply "any huge bbox will OOM this machine" — something about the
+continental-US pull specifically hit the wall (likely raw commercial POI
+density: the US has far more indexed places per unit area than Canada).
+92/92 categories present, 467,133 total CA leads, the best contact rates
+of any country added so far (real_estate_agent 98%/78%, contractor 99%/61%).
+Live test: 56/59 leads passed the contact-point filter outright (0 dropped
+for missing contact info) — the cleanest batch yet.
+
+`config.json`'s `overture.countries` is now `[PK, AE, IN, GB, SA, SG, CA]`.
+All 211 tests still pass throughout.
+
+**USA is still the one deliberate gap.** Given Canada proved the machine
+can handle a multi-million-row, ~1GB download when the source data isn't
+US-dense, the earlier US OOM is more likely about the sheer number of
+indexed commercial POIs in the US specifically, not bbox size alone. Next
+attempt should split the continental US into 3-4 regional bboxes (e.g.
+West/Central/East/South) rather than retry the whole-country pull as-is.
