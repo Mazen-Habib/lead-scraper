@@ -930,3 +930,53 @@ so no code change was needed, only the config addition.
 
 `config.json`'s `overture.countries` is now `[PK, AE, IN]`. All 209 tests
 still pass.
+
+---
+
+## Overture widened to UK — and a real geo bug found while verifying it (2026-09-09, same day)
+
+UK (4,287 leads) turned out to be the single largest country in the whole
+database with zero Overture coverage — bigger than India, which had just
+been added. Same process: downloaded the bbox (3.3M places, correctly
+country-coded GB with real Ireland/France spillover the existing filter
+already handles), checked the 92-category buyer list against real UK
+data — 92/92 present, 936K total leads, strong contact rates across the
+board (accountant 99.8%/33.3% phone/email, real_estate_agent 98.7%/40.5%).
+
+**A live 60-lead pipeline test surfaced a real bug, not a clean pass** — the
+kind of thing a smaller sample or a rubber-stamped test would have missed.
+One lead, a genuine UK dentist ("Smiths Dentist's") at **"1 Sydney Terrace",
+Londonderry**, resolved to `country: australia` instead of `uk`, even
+though Overture's own source data correctly said `GB`.
+
+Root cause: `resolveGeo()` in `geography.js` tried a free-text city-keyword
+match against the address FIRST, unconditionally, before ever checking the
+source's own ISO country code — so "Sydney" the street name in Northern
+Ireland matched Sydney, Australia's city keyword and silently overrode a
+structured, high-confidence signal that already had the right answer. Same
+underlying bug class as the original "kl" in "Brooklyn" collision this file
+was fixed for once already (see the very top of this file) — a free-text
+match colliding with an unrelated place name — just one layer further in,
+now that a source can hand the resolver a real ISO code to trust.
+
+**Fixed properly, not patched around this one case**: when a lead carries a
+source ISO code, the city-text-match loop now only considers cities
+*within that same country* — so a same-country match (e.g. "Oxford Street,
+London" for a GB-sourced lead) still works exactly as before, and only a
+match that would contradict already-known-good data gets skipped. Two new
+tests in `test/geography.test.js` cover both the collision case (exact real
+data) and the confirms-agreement case, so a future change can't silently
+reintroduce either failure mode. Re-ran the exact live batch that surfaced
+the bug afterward — all 45 leads now correctly resolve to `uk`, the
+specific dentist included — not just trusted the unit test.
+
+`config.json`'s `overture.countries` is now `[PK, AE, IN, GB]`. All 211
+tests pass (was 209 before the 2 new geography tests).
+
+**Worth flagging for later**: this bug class (text collision with a source
+ISO code) could exist for OTHER already-added countries (PK, AE, IN) too,
+just not yet surfaced by a sample that happened to hit it — the fix is
+general (applies to every country, not GB-specific), so existing data isn't
+at further risk going forward, but a backfill pass re-resolving all
+existing Overture-sourced leads through the fixed function would be worth
+doing to catch any that already slipped through under the old logic.

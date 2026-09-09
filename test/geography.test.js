@@ -70,6 +70,21 @@ test('resolveGeo does not mistake "Brooklyn" for a Malaysian city', () => {
   assert.deepEqual(resolveGeo(lead), { country: 'usa', city: null });
 });
 
+test('resolveGeo trusts a source-supplied ISO code over a colliding street name', () => {
+  // Real case, found live 2026-09-09: a genuine UK dentist at "1 Sydney
+  // Terrace", Londonderry — Overture's own country code says GB, but the
+  // address text matches Sydney, Australia's city keyword. The ISO code is
+  // structured, high-confidence data; the text match is a coincidental
+  // collision, same bug class as the Brooklyn/Malaysia case above.
+  const lead = { address: '1 Sydney Terrace, Londonderry', search_query: 'GB/dentist', country: 'GB' };
+  assert.deepEqual(resolveGeo(lead), { country: 'uk', city: null });
+});
+
+test('resolveGeo still uses a text city match when it agrees with the ISO code', () => {
+  const lead = { address: 'Oxford Street, London', search_query: 'GB/dentist', country: 'GB' };
+  assert.deepEqual(resolveGeo(lead), { country: 'uk', city: 'london' });
+});
+
 test('resolveGeos sets country and city on every lead in place', () => {
   const leads = [
     { address: 'Lahore, Pakistan', search_query: '' },

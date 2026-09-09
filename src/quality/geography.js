@@ -94,9 +94,22 @@ export function resolveRegions(leads) {
  */
 export function resolveGeo(lead) {
   const haystack = regionHaystack(lead);
+  const isoSlug = lead.country && ISO2_TO_SLUG[lead.country.toUpperCase()];
 
   if (haystack) {
     for (const country of GEO.countries) {
+      // When a source hands us a real ISO code (Overture), trust it over a
+      // free-text city match from a DIFFERENT country — found live: "1
+      // Sydney Terrace" in Londonderry, Northern Ireland (Overture country
+      // GB) matched Sydney, Australia's city keyword and mis-tagged a real
+      // UK dentist as Australian. Same bug class as the original "kl" in
+      // "Brooklyn" collision this file already fixed once — a street/place
+      // name colliding with an unrelated city's keyword. The fix there was
+      // word-boundary matching; this is the same fix one layer up: a
+      // structured signal should not lose to a text collision it can't tell
+      // apart from a real match. A same-country city match is unaffected —
+      // this only skips a match that would silently overrule known-good data.
+      if (isoSlug && country.slug !== isoSlug) continue;
       for (const city of country.cities) {
         if (city.keywords.some((kw) => matchesWord(haystack, kw))) {
           return { country: country.slug, city: city.slug };
@@ -105,10 +118,7 @@ export function resolveGeo(lead) {
     }
   }
 
-  // A source-supplied ISO code (Overture) beats no match at all, but city
-  // keyword matching above still wins when it succeeds — it's more specific,
-  // and matches the "richest bucket wins" rule used elsewhere in this file.
-  const isoSlug = lead.country && ISO2_TO_SLUG[lead.country.toUpperCase()];
+  // A source-supplied ISO code beats no match at all.
   if (isoSlug) return { country: isoSlug, city: null };
 
   if (haystack) {
