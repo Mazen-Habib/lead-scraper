@@ -82,6 +82,17 @@ async function fetchBatch(supabase) {
 async function runEnrichment(leads, pythonBin) {
   leads.forEach(cleanLead);
 
+  // Deliberately NOT deep, and this is a measured decision rather than an
+  // oversight. The theory was that names live on /team and /leadership and
+  // the shallow 3-path crawl never requests them. Tested against 60 real
+  // buyer leads on 2026-09-09: deep found 0 names in 87s; shallow found 0 in
+  // ~35s. Only 2 of 10 sampled sites had a /team-style page at all, and the
+  // one that genuinely did (a pharmacy chain) listed branches, not people.
+  //
+  // The lead population here is small local businesses — dentists, food
+  // shops, tutors — whose sites simply don't name individuals. Deep crawling
+  // is 2.5x the runtime for no measured gain on this population, so it stays
+  // off until there's evidence of a population it helps.
   console.log(`  Crawling ${leads.length} websites for email/linkedin/contact...`);
   await enrichLeads(leads, 15);
   leads.forEach(cleanLead);

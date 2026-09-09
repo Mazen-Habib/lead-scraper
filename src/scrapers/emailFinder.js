@@ -490,8 +490,21 @@ export async function findContacts(website, opts = {}) {
  * backfillFromKnown() (runPipeline.js) copies contact_name from the Supabase
  * master the same way it does every other field, so once a lead has been
  * crawled once and a name found, later re-scrapes still skip it.
+ *
+ * opts.deep (default false) forwards to findContacts(): false crawls only
+ * ['', '/contact', '/about'], true adds ['/team', '/about-us', '/leadership',
+ * '/contact-us', '/company', '/careers'] plus footer-link discovery.
+ *
+ * That default is why decision-maker coverage sat at 4.3% of 18,317 leads
+ * (measured 2026-09-09): a person's name is almost never on the homepage or
+ * a contact form — it's on /team or /leadership, and bulk enrichment never
+ * requested those pages. The Aug-31 fix that stopped this settling for a
+ * role inbox could only ever help within the pages it was already fetching.
+ * Left defaulting to false so the weekly scrape's runtime is unchanged; the
+ * enrichment worker, whose entire job is depth on a backlog, opts in.
  */
-export async function enrichLeads(leads, concurrency = 15) {
+export async function enrichLeads(leads, concurrency = 15, opts = {}) {
+  const { deep = false, timeoutMs } = opts;
   const queue = leads.filter((l) => l.website && !(l.email && l.linkedin && l.contact_name));
   let done = 0;
 
@@ -505,7 +518,7 @@ export async function enrichLeads(leads, concurrency = 15) {
         // doesn't require resolveRegions() to have run yet.
         const { country } = resolveGeo(lead);
         const defaultCountryIso2 = resolveDefaultCountryIso2(lead.country || country);
-        const c = await findContacts(lead.website, { defaultCountryIso2 });
+        const c = await findContacts(lead.website, { defaultCountryIso2, deep, timeoutMs });
         // Merge crawler results with scraper-provided values — prefer the
         // crawler's contact page email (more reliable) but never blank-out
         // a field that the original scraper already populated.
