@@ -57,10 +57,33 @@ OPENROUTER_MODEL = os.environ.get(
 )
 OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1'
 
+# Overridable for the same reason OPENROUTER_ENRICH_MODEL is: when a provider
+# retires a model, the fix should be an env var, not a code deploy. That is not
+# hypothetical here — the previous default, 'llama-3.3-70b-versatile', was
+# deprecated by Groq on 2026-08-16 for free and developer tiers, and the rung
+# silently returned 404 ("does not exist or you do not have access to it") on
+# every single call for weeks. openai/gpt-oss-120b is Groq's own documented
+# migration target for that model.
+GROQ_MODEL = os.environ.get('GROQ_ENRICH_MODEL', 'openai/gpt-oss-120b')
+
 def _build_pool():
     pool = []
     for k in GROQ_KEYS:
-        pool.append({'llm_cfg': {'model': 'groq/llama-3.3-70b-versatile', 'api_key': k}, 'label': 'groq'})
+        # model_instance, not a 'groq/<id>' string. Groq's current model ids
+        # contain their own slash (openai/gpt-oss-120b), so the old prefixed
+        # form would produce 'groq/openai/gpt-oss-120b' and lose the provider
+        # split. ChatGroq sidesteps ScrapegraphAI's provider parsing entirely —
+        # the same workaround the Mistral and OpenRouter entries below already
+        # use.
+        try:
+            from langchain_groq import ChatGroq
+            pool.append({'llm_cfg': {'model_instance': ChatGroq(model=GROQ_MODEL,
+                                                                api_key=k,
+                                                                temperature=0),
+                                     'model_tokens': 32000}, 'label': 'groq'})
+        except ImportError:
+            log('langchain-groq not installed — Groq enrichment disabled '
+                '(pip install langchain-groq)')
     for k in MISTRAL_KEYS:
         try:
             from langchain_mistralai import ChatMistralAI
