@@ -1081,3 +1081,36 @@ catch (the existing country_filter handles it, same as everywhere else).
 to GitHub's 10GB per-repo cache ceiling. Worth watching: if the cache
 starts evicting, the fix is to stop caching the largest countries and let
 them re-download, or split the cache key per country.
+
+---
+
+## Egypt, Vietnam, Nigeria added (2026-09-10)
+
+Continued down the country-gap list after the USA. All three downloaded
+cleanly in one bbox each — no chunking needed.
+
+| Country | Places in bbox | Categories | Leads across them |
+|---|---|---|---|
+| Egypt (EG) | 293,668 | 92/92 | 120,586 |
+| Vietnam (VN) | 1,503,084 | 92/92 | 605,800 |
+| Nigeria (NG) | 147,282 | 92/92 | 48,027 |
+
+Contact rates are solid across all three — Nigeria's are notably good on
+email (school 82%/59%, education 87%/63%, beauty_salon 94%/65%), Vietnam's
+strongest on volume (restaurant 76K, coffee_shop 64K).
+
+Live pipeline test on all three (dentist + restaurant, 40 leads each):
+EG 17/17, VN 23/23, NG 33/33 — every lead resolved to the correct country,
+all `lead_type=buyer`, no cross-border leakage from the Thailand/Cambodia,
+Israel/Palestine, and Cameroon spillover the boxes catch.
+
+`overture.countries` is now 11: `[PK, AE, IN, GB, SA, SG, CA, US, EG, VN, NG]`.
+
+**Cache size is now the live constraint: 7.1GB** in `output/cache`, against
+GitHub's 10GB per-repo `actions/cache` ceiling. weekly-scrape-general.yml
+caches the whole directory under one key. Adding 2-3 more countries of any
+real size will breach it. Options when that happens, in order of
+preference: (1) per-country cache keys so eviction is granular rather than
+all-or-nothing, (2) stop caching the three US chunks (~3.9GB alone) and let
+them re-download, (3) drop `maxAgeDays` so stale chunks are pruned. Not
+acted on yet — flagging before it silently starts evicting.
