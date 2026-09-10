@@ -70,17 +70,37 @@ def ensure_cache(cache_path, bbox, max_age_days):
     log('download complete')
 
 
+def chunk_cache_paths(cache_path, bboxes):
+    """One cache file per bbox chunk: overture_us.parquet -> overture_us_0.parquet, _1, ..."""
+    if len(bboxes) == 1:
+        return [cache_path]
+    stem, ext = os.path.splitext(cache_path)
+    return [f'{stem}_{i}{ext}' for i in range(len(bboxes))]
+
+
 def main():
     req = json.load(sys.stdin)
-    bbox = req['bbox']
+    # `bboxes` (list of boxes) for a country too large to pull in one request;
+    # `bbox` (single box) is the original shape and still works unchanged.
+    # The USA forced this: a whole-country pull died with
+    # `pyarrow.lib.ArrowMemoryError` partway through, and even half the
+    # country ran long enough to be killed mid-download. Splitting into
+    # regional boxes is the only way that country downloads at all, and each
+    # chunk is cached and refreshed independently.
+    bboxes = req.get('bboxes') or [req['bbox']]
     category = req['category']
     cache_path = req['cache_path']
     max_age_days = req.get('max_age_days', 30)
     country_code = (req.get('country_code') or '').upper()
 
-    ensure_cache(cache_path, bbox, max_age_days)
+    paths = chunk_cache_paths(cache_path, bboxes)
+    for p, bb in zip(paths, bboxes):
+        ensure_cache(p, bb, max_age_days)
 
-    if os.path.getsize(cache_path) == 0:
+    # Drop empty chunks — a bbox that legitimately held nothing writes a
+    # 0-byte file, and read_parquet chokes on those rather than skipping them.
+    readable = [p for p in paths if os.path.getsize(p) > 0]
+    if not readable:
         print(json.dumps([]))
         return
 
@@ -105,7 +125,7 @@ def main():
         WHERE categories."primary" = ?
           {country_filter}
         """,
-        [cache_path] + params,
+        [readable] + params,
     ).fetchall()
 
     leads = []

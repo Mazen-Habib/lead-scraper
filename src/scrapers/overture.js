@@ -22,6 +22,13 @@ import fs from 'fs';
 
 const CACHE_DIR = path.join('output', 'cache');
 
+/**
+ * `bbox` may be a single [w,s,e,n] box, or an array of them for a country too
+ * large to pull in one request — the USA needs the latter: a whole-country
+ * download died with an out-of-memory error partway through, and even half
+ * the country ran long enough to be killed mid-download. Each box is cached
+ * and refreshed independently; the query reads across all of them.
+ */
 export async function scrapeOverture(countryCode, bbox, category, opts = {}) {
   const { pythonBin, maxAgeDays = 30 } = opts;
   if (!pythonBin) {
@@ -31,8 +38,10 @@ export async function scrapeOverture(countryCode, bbox, category, opts = {}) {
   fs.mkdirSync(CACHE_DIR, { recursive: true });
   const cachePath = path.join(CACHE_DIR, `overture_${countryCode.toLowerCase()}.parquet`);
 
+  const bboxes = Array.isArray(bbox[0]) ? bbox : [bbox];
+
   const input = JSON.stringify({
-    bbox,
+    bboxes,
     category,
     cache_path: cachePath,
     max_age_days: maxAgeDays,

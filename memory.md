@@ -1042,3 +1042,42 @@ US-dense, the earlier US OOM is more likely about the sheer number of
 indexed commercial POIs in the US specifically, not bbox size alone. Next
 attempt should split the continental US into 3-4 regional bboxes (e.g.
 West/Central/East/South) rather than retry the whole-country pull as-is.
+
+---
+
+## USA added via multi-bbox chunking — the last big gap (2026-09-10)
+
+The USA had defeated two earlier attempts: a whole-country pull died with
+`pyarrow.lib.ArrowMemoryError` partway through, and even a half-country
+(east) pull ran long enough to be killed mid-download twice. Canada proved
+the machine can handle a ~1GB/5M-row download, so the blocker was US
+commercial-POI density, not bbox size alone.
+
+**Fix: support multiple bboxes per country.** `overture_fetch.py` now takes
+a `bboxes` list (single `bbox` still works unchanged — verified against
+Singapore, still returns its 479 dentists). Each box caches to its own file
+(`overture_us_0/_1/_2.parquet`) and refreshes independently; the DuckDB
+query reads across all of them via `read_parquet([...])`. Empty chunks are
+filtered out first, since a 0-byte file makes `read_parquet` fail rather
+than skip.
+
+US split into three regional boxes — west `[-125,24,-98,49.5]`, northeast
+`[-98,37,-66,49.5]`, southeast `[-98,24,-66,37]`. All three completed
+cleanly with state files. **16,083,181 genuine US places** (4.05M + 6.91M +
+5.12M), 92/92 buyer categories present, **4,765,500 leads across those
+categories** — by a wide margin the largest country in the config.
+Standouts: real_estate_agent 313K at 98.6% phone / 80.9% email,
+insurance_agency 131K at 92.6%/78.4%, contractor 126K at 99.4%/72.4%.
+
+Live pipeline test: 38/38 leads resolved `country=usa`, all buyer, no
+cross-border leakage from the Mexico/Canada spillover the boxes inevitably
+catch (the existing country_filter handles it, same as everywhere else).
+
+`overture.countries` is now `[PK, AE, IN, GB, SA, SG, CA, US]`.
+
+**Operational note for CI**: the three US chunks total ~3.9GB on disk. The
+`actions/cache` step in weekly-scrape-general.yml caches all of
+`output/cache`, which now holds ~7.7GB across all eight countries — close
+to GitHub's 10GB per-repo cache ceiling. Worth watching: if the cache
+starts evicting, the fix is to stop caching the largest countries and let
+them re-download, or split the cache key per country.
