@@ -30,7 +30,7 @@ const CACHE_DIR = path.join('output', 'cache');
  * and refreshed independently; the query reads across all of them.
  */
 export async function scrapeOverture(countryCode, bbox, category, opts = {}) {
-  const { pythonBin, maxAgeDays = 30 } = opts;
+  const { pythonBin, maxAgeDays = 30, maxLeads = 0 } = opts;
   if (!pythonBin) {
     throw new Error('Overture source requires a resolved Python binary (needs overturemaps + duckdb)');
   }
@@ -46,6 +46,7 @@ export async function scrapeOverture(countryCode, bbox, category, opts = {}) {
     cache_path: cachePath,
     max_age_days: maxAgeDays,
     country_code: countryCode,
+    max_leads: maxLeads,
   });
 
   const res = spawnSync(pythonBin, ['src/scrapers/overture_fetch.py'], {

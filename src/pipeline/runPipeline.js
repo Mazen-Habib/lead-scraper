@@ -125,8 +125,23 @@ export async function runPipeline(rawLeads, opts = {}) {
   console.log(`${leads.length} leads after ICP/category filter`);
 
   if (findEmails) {
-    console.log('Crawling company websites for emails and social links...');
-    await enrichLeads(leads, 15);
+    // Sources that hand over contact data directly (Overture's schema has
+    // phones/emails/websites as first-class fields, at 60-80% coverage) are
+    // NOT crawled here. At Overture's volume this is the difference between
+    // a run that finishes and one that doesn't: the Sep-9 run tried to crawl
+    // 2.3M Overture websites and was killed by the 4-hour timeout before
+    // syncing anything. Leads that still lack an email get picked up by the
+    // enrichment worker, which crawls in bounded 150-lead batches instead.
+    const skipCrawl = new Set(config.enrichment?.skipCrawlSources || ['overture']);
+    // Indices, not a filtered copy: scrapegraph below returns NEW objects via
+    // a JSON round-trip, so results have to be written back to the right
+    // slots in `leads` by position.
+    const crawlIdx = [];
+    leads.forEach((l, i) => { if (!skipCrawl.has(l.source)) crawlIdx.push(i); });
+    let toCrawl = crawlIdx.map((i) => leads[i]);
+    const skipped = leads.length - toCrawl.length;
+    console.log(`Crawling company websites for emails and social links...${skipped ? ` (${skipped} skipped: source already supplies contact data)` : ''}`);
+    await enrichLeads(toCrawl, 15);
     const withEmail = leads.filter((l) => l.email).length;
     console.log(`  -> ${withEmail}/${leads.length} leads have an email`);
 
@@ -135,12 +150,12 @@ export async function runPipeline(rawLeads, opts = {}) {
     leads.forEach(cleanLead);
 
     // ScrapegraphAI enrichment — for leads emailFinder couldn't find an email for.
-    // Sends the full lead array; Python returns the same array with gaps filled.
+    // Sends only the crawlable subset; Python returns it with gaps filled.
     if (scrapegraph.enabled && pythonBin && scrapegraph.enrichment?.enabled !== false) {
-      const stillMissing = leads.filter((l) => l.website && !l.email).length;
+      const stillMissing = toCrawl.filter((l) => l.website && !l.email).length;
       console.log(`[scrapegraph] Enriching ${stillMissing} leads still without email...`);
       const sgEnrich = spawnSync(pythonBin, ['src/scrapers/scrapegraph_enricher.py', 'enrich'], {
-        input: JSON.stringify(leads),
+        input: JSON.stringify(toCrawl),
         encoding: 'utf8',
         maxBuffer: 50 * 1024 * 1024,
         timeout: 30 * 60 * 1000,
@@ -150,9 +165,10 @@ export async function runPipeline(rawLeads, opts = {}) {
       if (sgEnrich.status === 0 && sgEnrich.stdout?.trim()) {
         try {
           const enriched = JSON.parse(sgEnrich.stdout);
-          if (Array.isArray(enriched) && enriched.length === leads.length) {
-            leads = enriched;
+          if (Array.isArray(enriched) && enriched.length === toCrawl.length) {
+            crawlIdx.forEach((orig, j) => { leads[orig] = enriched[j]; });
             leads.forEach(cleanLead); // clean any LLM artifacts
+            toCrawl = crawlIdx.map((i) => leads[i]); // re-point at the replaced objects
             const gotEmail = leads.filter((l) => l.email).length;
             console.log(`[scrapegraph] Enrichment done — ${gotEmail}/${leads.length} leads now have email\n`);
           }
@@ -169,7 +185,7 @@ export async function runPipeline(rawLeads, opts = {}) {
     const firecrawl = config.firecrawl || {};
     if (firecrawl.enabled !== false) {
       console.log('Firecrawl enrichment (leads still missing email)...');
-      await enrichWithFirecrawl(leads, firecrawl);
+      await enrichWithFirecrawl(toCrawl, firecrawl);
       leads.forEach(cleanLead);
     }
 

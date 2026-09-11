@@ -148,6 +148,7 @@ export const SOURCE_REGISTRY = [
             scrapeOverture(country.code, country.bbox, category, {
               pythonBin,
               maxAgeDays: c.cacheMaxAgeDays,
+              maxLeads: c.maxLeadsPerCategory,
             }),
         }))
       );

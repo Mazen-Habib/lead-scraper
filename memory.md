@@ -1114,3 +1114,55 @@ preference: (1) per-country cache keys so eviction is granular rather than
 all-or-nothing, (2) stop caching the three US chunks (~3.9GB alone) and let
 them re-download, (3) drop `maxAgeDays` so stale chunks are pruned. Not
 acted on yet — flagging before it silently starts evicting.
+
+---
+
+## The Sep-9 general run was killed by scale I introduced — fixed (2026-09-11)
+
+Checked "when did the last scraper run" and found the weekly general run
+(the one carrying Overture) had been **cancelled at exactly the 240-minute
+timeout** on Sep 9, the first run after 8 countries went in. Traced it:
+it gathered **3,289,830 raw leads → 2,329,313 after dedupe**, then started
+crawling every one of those websites for emails. That crawl alone is days
+of work. It was killed mid-crawl — and because the Supabase sync only
+happens at the very end of the pipeline, **all 2.3M leads were lost**
+(the "per-source checkpoint sync" gap flagged earlier in this file, now
+bitten for real). This was before Egypt/Vietnam/Nigeria; it's worse now.
+
+**My verification had a hole.** Every country was tested with 60 leads
+through `runPipeline` — that proved each one *worked*, never that the
+*sum* fit in a 4-hour job. The pipeline was sized for ~10K leads/run and I
+handed it millions without checking. Recording that plainly so the next
+"add a big source" starts with a volume estimate, not a correctness test.
+
+**Two fixes, both required — either alone is insufficient:**
+
+1. **Per-(country, category) cap, highest Overture `confidence` first** —
+   `overture.maxLeadsPerCategory` in config (set to 100), passed through
+   `scrapeOverture(..., { maxLeads })` → `overture_fetch.py`'s
+   `ORDER BY confidence DESC NULLS LAST LIMIT ?`. Bounds a run at
+   ~100 × 92 × 11 ≈ 100K leads. Verified: US real_estate_agent went from
+   313,035 → exactly 100; cap=0 is unbounded, so existing calls unchanged.
+   Tradeoff, stated: confidence-ordered top-N is deterministic, so after
+   the first sync subsequent weeks contribute ~0 new from Overture until
+   Overture's monthly release changes the data. The long tail never gets
+   in at this cap. Raise it if that's wrong — it's one config number.
+
+2. **Overture leads skip the website crawl in the weekly run** — even 100K
+   crawls at the measured ~276/min is ~6 hours, still past the timeout.
+   Overture's schema already supplies phone/email/website at 60-80%
+   coverage; crawling for what it already gave us is waste. New
+   `config.enrichment.skipCrawlSources` (default `['overture']`) in
+   `runPipeline.js`: those leads bypass emailFinder, scrapegraph, and
+   Firecrawl. Implemented by index (`crawlIdx`), not a filtered copy,
+   because scrapegraph returns NEW objects via a JSON round-trip and
+   results must land in the right `leads[]` slots. MX verification still
+   runs on everything (cheap, and validates Overture's supplied emails).
+   Leads still missing an email are the enrichment worker's job — it
+   already crawls in bounded 150-lead batches.
+   Verified: 3 Overture + 1 Google-Maps lead through the pipeline →
+   "3 skipped", "Enriched 1 websites". Isolation is exact.
+
+All 211 tests pass. Real proof is the next scheduled general run
+completing — triggered manually to confirm rather than waiting for
+Wednesday.

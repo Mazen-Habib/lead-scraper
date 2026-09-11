@@ -92,6 +92,14 @@ def main():
     cache_path = req['cache_path']
     max_age_days = req.get('max_age_days', 30)
     country_code = (req.get('country_code') or '').upper()
+    # Hard cap per (country, category), highest Overture `confidence` first.
+    # Without it this source dumps the ENTIRE category: the first weekly run
+    # after 8 countries were added gathered 3,289,830 raw leads, started
+    # crawling every website for emails, and was killed by the 4-hour job
+    # timeout before syncing anything -- 2.3M leads lost. The pipeline was
+    # sized for ~10K leads/run. Ordering by confidence means the cap keeps
+    # the leads Overture itself is most sure are real businesses.
+    max_leads = int(req.get('max_leads') or 0)
 
     paths = chunk_cache_paths(cache_path, bboxes)
     for p, bb in zip(paths, bboxes):
@@ -107,7 +115,8 @@ def main():
     import duckdb
     con = duckdb.connect()
     country_filter = "AND addresses[1].country = ?" if country_code else ""
-    params = [category] + ([country_code] if country_code else [])
+    limit_clause = "ORDER BY confidence DESC NULLS LAST LIMIT ?" if max_leads > 0 else ""
+    params = [category] + ([country_code] if country_code else []) + ([max_leads] if max_leads > 0 else [])
     rows = con.execute(
         f"""
         SELECT
@@ -124,6 +133,7 @@ def main():
         FROM read_parquet(?)
         WHERE categories."primary" = ?
           {country_filter}
+        {limit_clause}
         """,
         [readable] + params,
     ).fetchall()

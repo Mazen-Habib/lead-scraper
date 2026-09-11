@@ -2037,7 +2037,8 @@
           "toy_store"
         ]
       }
-    ]
+    ],
+    "maxLeadsPerCategory": 100
   },
   "youtube": {
     "enabled": true,
