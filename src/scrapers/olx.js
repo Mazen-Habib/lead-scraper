@@ -19,6 +19,18 @@
  * which sometimes contains a website or email (occasionally obfuscated,
  * e.g. "tax. msft. pk" seen live), recovered via the same
  * emailDeobfuscate.js this session already built for emailFinder.js.
+ *
+ * WhatsApp numbers in the description text are a separate, legitimate
+ * contact point from the gated "Contact Now" phone reveal above: a seller
+ * who pastes "wa.me/923001234567" or "api.whatsapp.com/send?phone=..." into
+ * their own ad copy has voluntarily published that number, the same way a
+ * businesslist.pk listing publishes its phone in a JSON-LD block — nothing
+ * is being reverse-engineered. Extracted and surfaced as a normal `phone`
+ * field so these leads can clear qualityFilter.js's hasContactPoint check.
+ * A bare chat.whatsapp.com/<code> GROUP invite link carries no number at
+ * all (confirmed: the code is an opaque invite token, not an encoded
+ * phone) — not a contact point, and excluded from the `website` field too
+ * so it isn't mistaken for the business's own site.
  */
 import * as cheerio from 'cheerio';
 import { cleanEmail, cleanStr } from '../lib/cleanLead.js';
@@ -46,8 +58,20 @@ const URL_RE = /https?:\/\/[^\s)"'<>]+|(?:[a-z0-9-]+\.)+(?:com|pk|net|org|co)(?:
 const NON_BUSINESS_URL_HOSTS = [
   'googletagmanager.com', 'google-analytics.com', 'doubleclick.net',
   'googlesyndication.com', 'gstatic.com', 'cloudflareinsights.com',
-  'facebook.com', 'olx.com',
+  'facebook.com', 'olx.com', 'whatsapp.com', 'wa.me',
 ];
+
+// A WhatsApp number embedded in the ad's own description text — "wa.me/923..."
+// or the full "api.whatsapp.com/send?phone=923..." form — is the seller
+// publishing their own number, unlike OLX's gated "Contact Now" reveal (see
+// module docstring). A bare chat.whatsapp.com/<token> GROUP invite has no
+// number in it at all and is deliberately not matched here.
+const WHATSAPP_NUMBER_RE = /(?:wa\.me\/|api\.whatsapp\.com\/send\?phone=)\+?(\d{7,15})/i;
+
+function extractWhatsappPhoneFromText(rawText) {
+  const m = rawText.match(WHATSAPP_NUMBER_RE);
+  return m ? `+${m[1]}` : '';
+}
 function isTrackingOrSelfUrl(url) {
   try {
     const host = new URL(url.startsWith('http') ? url : `https://${url}`).hostname;
@@ -158,6 +182,7 @@ export async function scrapeOlx(categorySlug, opts = {}) {
       category: categorySlug.replace(/_c\d+$/, '').replace(/-/g, ' '),
       website: extractWebsiteFromText(descriptionText),
       email: extractEmailFromText(descriptionText, $),
+      phone: extractWhatsappPhoneFromText(descriptionText),
       address: city,
       maps_url: `${BASE}${path}`,
     });
