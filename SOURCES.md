@@ -87,6 +87,9 @@ that would silently return 0 leads:
 | **AngelList / Wellfound** | Company search is gated behind login. |
 | **LinkedIn** | ToS ban risk + aggressive detection. Not worth it; use consented data instead. |
 | **Paid APIs** (Apollo, Hunter) | Not free. See [RESEARCH.md](RESEARCH.md) for the paid path if you outgrow free sources. |
+| **YellowPages.pk / .com.pk, InfoIsInfo.pk, Yalwa.pk, Hotfrog.pk, Cylex-pk.com** | Dead/unreachable domains — confirmed via both DNS resolution and HTTP fetch from two independent networks. These are commonly-cited "Yelp alternative" directories elsewhere but no longer operate a Pakistan site. |
+| **Hamariweb business directory, pk.Kompass.com, Cybo.com, Brownbook.net** | Cloudflare/DataDome `403` block, same pattern as YellowPages above — would need a residential/rotating proxy. |
+| **PakBiz.com, Brandsynario "business directory" page** | Load fine (`200`) but are finance-news and media sites respectively — the directory-sounding URL/name doesn't correspond to an actual browsable business listing. |
 
 ## Pipeline flow
 
