@@ -751,7 +751,8 @@
     "proxy": ""
   },
   "quality": {
-    "minScore": 22
+    "minScore": 22,
+    "smtpVerify": false
   },
   "webTagging": {
     "enabled": true,

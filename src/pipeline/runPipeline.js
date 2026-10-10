@@ -189,8 +189,9 @@ export async function runPipeline(rawLeads, opts = {}) {
       leads.forEach(cleanLead);
     }
 
-    console.log('Verifying email domains (MX check)...');
-    await verifyLeads(leads);
+    const smtpVerify = config.quality?.smtpVerify === true;
+    console.log(smtpVerify ? 'Verifying email mailboxes (SMTP probe)...' : 'Verifying email domains (MX check)...');
+    await verifyLeads(leads, 10, { smtpVerify });
     const alive = leads.filter((l) => l.email_verified === 'alive').length;
     const dead = leads.filter((l) => l.email_verified === 'dead').length;
     console.log(`  -> ${alive} alive, ${dead} dead, ${withEmail - alive - dead} unknown`);
