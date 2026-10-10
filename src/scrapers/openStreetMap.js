@@ -50,13 +50,29 @@ export const GENERAL_BUSINESS_TAG_FILTERS = [
   '["shop"="beauty"]',
 ];
 
+// A bare area["name"="City"] matches EVERY OSM area with that exact name
+// worldwide, not just the one intended — found live, not assumed: adding
+// Lagos (Nigeria) to openStreetMap.verticals also silently pulled in Lagos,
+// Portugal (an Algarve tourist town — same name, unrelated place), so a
+// "Lagos" scrape came back ~1/3 Portuguese hotels mixed in with the real
+// Nigerian businesses. Any city name that collides across countries needs
+// its query scoped to the right country's boundary via ISO3166-1; cities
+// confirmed unique enough not to need this just use the bare city query.
+const CITY_COUNTRY_HINTS = {
+  Lagos: 'NG', // collides with Lagos, Portugal — confirmed live above
+};
+
 export function buildQuery(city, filters) {
   // Resolve the city to an area, then match every tag filter inside it.
   const clauses = filters
     .map((f) => `  nwr${f}(area.a);`)
     .join('\n');
+  const countryIso = CITY_COUNTRY_HINTS[city];
+  const areaClause = countryIso
+    ? `area["ISO3166-1"="${countryIso}"]->.country;\narea["name"="${city}"](area.country)->.a;`
+    : `area["name"="${city}"]->.a;`;
   return `[out:json][timeout:50];
-area["name"="${city}"]->.a;
+${areaClause}
 (
 ${clauses}
 );
